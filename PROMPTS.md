@@ -20,7 +20,7 @@
 
 [x] 12. **The Spiking Engine Logic:** Build a `SimulationService` in `/services`. Implement the core math logic that checks if a neuron’s potential exceeds its threshold, triggers a "spike," and updates the potentials of connected downstream neurons.
 
-[ ] 13. **Climbing Fiber Algorithm:** Within `SimulationService`, implement the error-correction logic. Create a method that compares the Purkinje output to the target signal and adjusts synaptic weights based on biological supervised learning rules.
+[x] 13. **Climbing Fiber Algorithm:** Within `SimulationService`, implement the error-correction logic. Create a method that compares the Purkinje output to the target signal and adjusts synaptic weights based on biological supervised learning rules.
 
 [ ] 14. **Simulation Ticker Provider:** Create a `SimulationNotifier` using Riverpod in `/providers`. Use a `Ticker` or `Timer.periodic` to trigger the simulation logic 60 times per second and notify the UI of state changes.
 
