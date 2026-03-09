@@ -8,7 +8,7 @@
 [x] 5. **Scientific Typography:** Update the `ThemeData` in `lib/theme.dart` to include a custom `TextTheme`. Use a clean, sans-serif font optimized for legibility of scientific data and numerical readouts.
 [x] 6. **Async Initialization:** Update `main.dart` to make the `main()` function `async`. Add `WidgetsFlutterBinding.ensureInitialized()` and `await Firebase.initializeApp()` to ensure the backend is ready before the app launches. 
 [x] 7. **Root ProviderScope:** In `main.dart`, wrap the `CerebroSimApp` widget in a `ProviderScope`. This is the required step to enable Riverpod state management throughout the entire application.
-[ ] 8. **Initial Scaffold:** Create `lib/screens/home_screen.dart` with a basic `Scaffold` and a `Center` widget displaying "CerebroSim Initialized". Apply the `ThemeData` defined in Step 3 to the `MaterialApp` in `main.dart`.
+[x] 8. **Initial Scaffold:** Create `lib/screens/home_screen.dart` with a basic `Scaffold` and a `Center` widget displaying "CerebroSim Initialized". Apply the `ThemeData` defined in Step 3 to the `MaterialApp` in `main.dart`.
 
 **Development Rules**
 1. [x]**One Prompt = One Commit:** Always commit the current code and refer to the Prompt # in the commit message before adding a new feature.
