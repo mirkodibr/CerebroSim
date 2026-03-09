@@ -24,7 +24,7 @@
 
 [x] 14. **Simulation Ticker Provider:** Create a `SimulationNotifier` using Riverpod in `/providers`. Use a `Ticker` or `Timer.periodic` to trigger the simulation logic 60 times per second and notify the UI of state changes.
 
-[ ] 15. **Neural Canvas Painter:** In `/widgets`, implement a `NeuralCanvas` using `CustomPainter`. It should take the current `SimulationState` and draw neurons as circles and synapses as lines, with colors changing based on spike activity.
+[x] 15. **Neural Canvas Painter:** In `/widgets`, implement a `NeuralCanvas` using `CustomPainter`. It should take the current `SimulationState` and draw neurons as circles and synapses as lines, with colors changing based on spike activity.
 
 [ ] 16. **Interactive Viewer Implementation:** Wrap the `NeuralCanvas` in an `InteractiveViewer` within the `HomeScreen`. Configure it to allow users to pinch-to-zoom and pan across the high-resolution neural map.
 
