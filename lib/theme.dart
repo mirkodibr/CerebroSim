@@ -19,6 +19,50 @@ class CerebroTheme {
         background: darkCharcoal,
         onBackground: Colors.white,
       ),
+      textTheme: const TextTheme(
+        displayLarge: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          color: neonCyan,
+          letterSpacing: -0.5,
+        ),
+        displayMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
+          color: neonCyan,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          letterSpacing: 0.15,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.normal,
+          color: Colors.white,
+          letterSpacing: 0.5,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.normal,
+          color: Colors.white70,
+          letterSpacing: 0.25,
+        ),
+        labelLarge: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: neonCyan,
+          letterSpacing: 1.25,
+        ),
+        // Monospace-like feel for numerical readouts using bodySmall
+        bodySmall: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          color: Colors.white60,
+          fontFamily: 'monospace',
+        ),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: darkCharcoal,
         foregroundColor: neonCyan,
