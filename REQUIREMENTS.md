@@ -15,10 +15,10 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 ## Implementation Roadmap
 
 ### Phase 1: Project Setup & Core Infrastructure
-* [ ]**Step 1.1: Environment Configuration:** Add `flutter_riverpod`, `firebase_core`, `firebase_auth`, `cloud_firestore`, and `shared_preferences` to `pubspec.yaml`[cite: 85, 206].
+* [x]**Step 1.1: Environment Configuration:** Add `flutter_riverpod`, `firebase_core`, `firebase_auth`, `cloud_firestore`, and `shared_preferences` to `pubspec.yaml`[cite: 85, 206].
 * [ ]**Step 1.2: Platform Initialization:** Configure Firebase for Android/iOS and initialize it in `main.dart`.
-* [ ]**Step 1.3: Visual Foundation:** Create a centralized `ThemeData` class in `lib/theme.dart` for consistent typography and colors[cite: 36, 86, 157, 207].
-* [ ]**Step 1.4: Base Architecture:** Set up the folder structure and wrap the root widget in a `ProviderScope`[cite: 88, 209].
+* [x]**Step 1.3: Visual Foundation:** Create a centralized `ThemeData` class in `lib/theme.dart` for consistent typography and colors[cite: 36, 86, 157, 207].
+* [ ]**Step 1.4: Base Architecture:** Set up the folder structure [x] and wrap the root widget in a `ProviderScope` [ ].
 
 ### Phase 2: Milestone 1 - The Minimum Viable Product (MVP)
 [ ]*Goal: The core defining feature (Neural Simulation) must function with local state.*
