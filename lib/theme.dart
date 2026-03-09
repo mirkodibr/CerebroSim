@@ -16,8 +16,6 @@ class CerebroTheme {
         onSecondary: Colors.black,
         surface: darkCharcoal,
         onSurface: Colors.white,
-        background: darkCharcoal,
-        onBackground: Colors.white,
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(
