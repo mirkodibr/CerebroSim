@@ -6,7 +6,18 @@ import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  
+  // Start initialization but don't block the UI if it's taking too long
+  // or if it's on a platform that isn't configured yet.
+  debugPrint("Starting Firebase initialization...");
+  
+  Firebase.initializeApp().then((_) {
+    debugPrint("Firebase initialized successfully.");
+  }).catchError((e) {
+    debugPrint("Firebase initialization failed: $e");
+    debugPrint("App will continue in offline mode.");
+  });
+
   runApp(
     const ProviderScope(
       child: CerebroSimApp(),

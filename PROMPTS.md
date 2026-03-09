@@ -26,7 +26,7 @@
 
 [x] 15. **Neural Canvas Painter:** In `/widgets`, implement a `NeuralCanvas` using `CustomPainter`. It should take the current `SimulationState` and draw neurons as circles and synapses as lines, with colors changing based on spike activity.
 
-[ ] 16. **Interactive Viewer Implementation:** Wrap the `NeuralCanvas` in an `InteractiveViewer` within the `HomeScreen`. Configure it to allow users to pinch-to-zoom and pan across the high-resolution neural map.
+[x] 16. **Interactive Viewer Implementation:** Wrap the `NeuralCanvas` in an `InteractiveViewer` within the `HomeScreen`. Configure it to allow users to pinch-to-zoom and pan across the high-resolution neural map.
 
 [ ] 17. **Input Signal Provider:** Create a provider in `/providers` that generates a variety of target signals (e.g., Sine wave, Step function). This acts as the "training data" for the neural network.
 
