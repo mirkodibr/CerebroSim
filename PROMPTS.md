@@ -2,7 +2,7 @@
 
 **Phase 1: Project Setup & Core Infrastructure**
 [x] 1. **Dependency Injection:** Add `flutter_riverpod`, `firebase_core`, `firebase_auth`, `cloud_firestore`, and `shared_preferences` to the `pubspec.yaml` file. Ensure all dependencies are compatible with the latest stable Flutter version and run `flutter pub get`.
-[ ] 2. **Directory Architecture:** Create the following directory structure within the `lib/` folder: `/models`, `/screens`, `/widgets`, `/services`, and `/providers`. Add a placeholder `.gitkeep` file in each to ensure they are tracked by Git.
+[x] 2. **Directory Architecture:** Create the following directory structure within the `lib/` folder: `/models`, `/screens`, `/widgets`, `/services`, and `/providers`. Add a placeholder `.gitkeep` file in each to ensure they are tracked by Git.
 [ ] 3. **Thematic Palette:** Create a file `lib/theme.dart`. Define a `CerebroTheme` class containing a `static ThemeData` object . Use a deep charcoal (#121212) for the primary background and a high-contrast neon cyan (#00E5FF) for primary accents to represent neural activity.
 [ ] 4. **Scientific Typography:** Update the `ThemeData` in `lib/theme.dart` to include a custom `TextTheme`. Use a clean, sans-serif font optimized for legibility of scientific data and numerical readouts.
 [ ] 5. **Async Initialization:** Update `main.dart` to make the `main()` function `async`. Add `WidgetsFlutterBinding.ensureInitialized()` and `await Firebase.initializeApp()` to ensure the backend is ready before the app launches. 
