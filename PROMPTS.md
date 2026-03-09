@@ -28,7 +28,7 @@
 
 [x] 16. **Interactive Viewer Implementation:** Wrap the `NeuralCanvas` in an `InteractiveViewer` within the `HomeScreen`. Configure it to allow users to pinch-to-zoom and pan across the high-resolution neural map.
 
-[ ] 17. **Input Signal Provider:** Create a provider in `/providers` that generates a variety of target signals (e.g., Sine wave, Step function). This acts as the "training data" for the neural network.
+[x] 17. **Input Signal Provider:** Create a provider in `/providers` that generates a variety of target signals (e.g., Sine wave, Step function). This acts as the "training data" for the neural network.
 
 [ ] 18. **Real-Time Signal Plotter:** Build a `SignalPlotter` widget in `/widgets` that graphs the target input wave against the actual output from the simulation to visualize learning progress.
 
