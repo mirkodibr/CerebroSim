@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/models/neuron.dart';
 import 'package:cerebrosim/models/simulation_state.dart';
 import 'package:cerebrosim/providers/simulation_provider.dart';
+import 'package:cerebrosim/providers/signal_provider.dart';
 
 void main() {
   group('SimulationNotifier Tests', () {
@@ -25,7 +26,7 @@ void main() {
       addTearDown(container.dispose);
 
       const initialState = SimulationState(
-        neurons: [Neuron(id: 'n1', type: 'G', threshold: 10, currentPotential: 10)],
+        neurons: [Neuron(id: 'n1', type: 'Granular', threshold: 10, currentPotential: 10)],
         synapses: [],
       );
 
@@ -34,6 +35,29 @@ void main() {
 
       // After tick, potential should be reset to 0 because it was at threshold
       expect(container.read(simulationProvider).neurons.first.currentPotential, 0.0);
+    });
+
+    test('tick() should update signal and record history', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      const initialState = SimulationState(
+        neurons: [
+          Neuron(id: 'n1', type: 'Granular', threshold: 1, currentPotential: 0),
+          Neuron(id: 'n2', type: 'Purkinje', threshold: 1, currentPotential: 0),
+        ],
+        synapses: [],
+      );
+
+      container.read(simulationProvider.notifier).initialize(initialState);
+      
+      // Initially history is empty
+      expect(container.read(signalHistoryProvider), isEmpty);
+
+      container.read(simulationProvider.notifier).tick();
+
+      // After tick, history should have 1 point
+      expect(container.read(signalHistoryProvider).length, 1);
     });
 
     test('start() and stop() should toggle isRunning', () {

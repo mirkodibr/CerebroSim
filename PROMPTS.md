@@ -30,7 +30,7 @@
 
 [x] 17. **Input Signal Provider:** Create a provider in `/providers` that generates a variety of target signals (e.g., Sine wave, Step function). This acts as the "training data" for the neural network.
 
-[ ] 18. **Real-Time Signal Plotter:** Build a `SignalPlotter` widget in `/widgets` that graphs the target input wave against the actual output from the simulation to visualize learning progress.
+[x] 18. **Real-Time Signal Plotter:** Build a `SignalPlotter` widget in `/widgets` that graphs the target input wave against the actual output from the simulation to visualize learning progress.
 
 **Phase 3: Milestone 2 - Full Integration (Auth & Database)**
 
