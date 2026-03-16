@@ -40,8 +40,8 @@ class _NeuralPainter extends CustomPainter {
       final target = state.neurons.firstWhere((n) => n.id == synapse.targetId);
 
       // Adjust color based on weight
-      synapsePaint.color = CerebroTheme.neonCyan.withOpacity(
-        (synapse.weight * 0.5).clamp(0.1, 0.8),
+      synapsePaint.color = CerebroTheme.neonCyan.withValues(
+        alpha: (synapse.weight * 0.5).clamp(0.1, 0.8),
       );
       
       canvas.drawLine(
@@ -66,7 +66,7 @@ class _NeuralPainter extends CustomPainter {
           Offset(neuron.x, neuron.y),
           8.0,
           Paint()
-            ..color = CerebroTheme.neonCyan.withOpacity(0.3)
+            ..color = CerebroTheme.neonCyan.withValues(alpha: 0.3)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
         );
       }

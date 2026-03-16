@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
+import '../models/neuron.dart';
 import '../services/simulation_service.dart';
+import 'signal_provider.dart';
 
 /// Provider for the SimulationService
 final simulationServiceProvider = Provider<SimulationService>((ref) {
@@ -26,6 +28,8 @@ class SimulationNotifier extends Notifier<SimulationState> {
   /// Initializes the simulation with a starting state
   void initialize(SimulationState initialState) {
     state = initialState;
+    ref.read(signalHistoryProvider.notifier).reset();
+    ref.read(signalProvider.notifier).reset();
   }
 
   /// Starts the simulation at ~60 FPS (16ms per tick)
@@ -46,7 +50,44 @@ class SimulationNotifier extends Notifier<SimulationState> {
   /// Processes a single step of the simulation
   void tick() {
     final service = ref.read(simulationServiceProvider);
-    state = service.calculateNextState(state);
+    
+    // 1. Update the signal generator
+    final signalNotifier = ref.read(signalProvider.notifier);
+    signalNotifier.update(16);
+    final currentInput = ref.read(signalProvider);
+
+    // 2. Feed signal into the input neuron (e.g. 'n1')
+    SimulationState currentState = state;
+    final List<Neuron> updatedNeurons = currentState.neurons.map((n) {
+      if (n.type == 'Granular') {
+        // If signal is high, push potential towards threshold
+        return n.copyWith(currentPotential: currentInput ? n.threshold : n.currentPotential);
+      }
+      return n;
+    }).toList();
+    currentState = currentState.copyWith(neurons: updatedNeurons);
+
+    // 3. Process the simulation tick
+    final nextState = service.calculateNextState(currentState);
+    state = nextState;
+
+    // 4. Learning logic (Purkinje cell error correction)
+    // Find the Purkinje cell
+    final purkinje = state.neurons.firstWhere(
+      (n) => n.type == 'Purkinje', 
+      orElse: () => state.neurons.isNotEmpty ? state.neurons.last : const Neuron(id: '', type: '', threshold: 0, currentPotential: 0)
+    );
+    
+    if (purkinje.id.isNotEmpty) {
+      applyLearning(purkinje.id, currentInput);
+    }
+
+    // 5. Update history
+    final outputSpike = purkinje.currentPotential >= purkinje.threshold;
+    ref.read(signalHistoryProvider.notifier).addPoint(
+      currentInput ? 1.0 : 0.0, 
+      outputSpike ? 1.0 : 0.0
+    );
   }
 
   /// Applies error correction based on a target signal

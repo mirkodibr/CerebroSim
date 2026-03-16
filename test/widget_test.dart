@@ -12,7 +12,7 @@ void main() {
       ),
     );
 
-    // Verify that our home screen displays the initialization message.
-    expect(find.text('CerebroSim Initialized'), findsOneWidget);
+    // Verify that our home screen displays the correct title.
+    expect(find.text('CerebroSim Lab'), findsOneWidget);
   });
 }

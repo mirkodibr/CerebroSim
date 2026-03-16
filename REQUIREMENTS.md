@@ -21,17 +21,17 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x]**Step 1.4: Base Architecture:** Set up the folder structure [x] and wrap the root widget in a `ProviderScope` [x].
 
 ### Phase 2: Milestone 1 - The Minimum Viable Product (MVP)
-[ ]*Goal: The core defining feature (Neural Simulation) must function with local state.*
+*Goal: The core defining feature (Neural Simulation) must function with local state.*
 
-* [ ]**Step 2.1: Spiking Neural Data Models:** * **2.1.1:** Define immutable Dart classes for `Neuron` (threshold, potential) and `Synapse` (weight) in `/models`.
-    * **2.1.2:** Create a `SimulationState` model to hold snapshots of all active cells.
-* [ ]**Step 2.2: Simulation Engine (Logic Layer):** * **2.2.1:** Build `SimulationService` in `/services` to process discrete spiking dynamics.
-    * **2.2.2:** Implement the **Climbing Fiber** error-correction logic to adjust synaptic weights.
-* [ ]**Step 2.3: State & Timing:** * **2.3.1:** Create a Riverpod `StateNotifier` to act as the simulation clock at 60fps.
-    * **2.3.2:** Implement a provider to generate target input signals (Sine, Noisy waves).
-* [ ]**Step 2.4: The Neural Canvas (UI Layer):** * **2.4.1:** Implement a `CustomPainter` widget to draw the 2D layout of the cerebellar cortex.
-* [ ]**2.4.2:** Wrap the canvas in an `InteractiveViewer` for zoom/pan support.
-* [ ]**Step 2.5: Real-Time Signal Plotter:** Build a dedicated graphing widget to visualize input vs. output in real-time.
+* [x]**Step 2.1: Spiking Neural Data Models:** * [x]**2.1.1:** Define immutable Dart classes for `Neuron` (threshold, potential) and `Synapse` (weight) in `/models`.
+    * [x]**2.1.2:** Create a `SimulationState` model to hold snapshots of all active cells.
+* [x]**Step 2.2: Simulation Engine (Logic Layer):** * [x]**2.2.1:** Build `SimulationService` in `/services` to process discrete spiking dynamics.
+    * [x]**2.2.2:** Implement the **Climbing Fiber** error-correction logic to adjust synaptic weights.
+* [x]**Step 2.3: State & Timing:** * [x]**2.3.1:** Create a Riverpod `Notifier` to act as the simulation clock at 60fps.
+    * [x]**2.3.2:** Implement a provider to generate target input signals (Sine, Noisy waves).
+* [x]**Step 2.4: The Neural Canvas (UI Layer):** * [x]**2.4.1:** Implement a `CustomPainter` widget to draw the 2D layout of the cerebellar cortex.
+* [x]**2.4.2:** Wrap the canvas in an `InteractiveViewer` for zoom/pan support.
+* [x]**Step 2.5: Real-Time Signal Plotter:** Build a dedicated graphing widget to visualize input vs. output in real-time.
 
 ### Phase 3: Milestone 2 - Full Stack Integration
 [ ]*Goal: Complete major functionality and replace mock data with live cloud and authentication.*

@@ -52,3 +52,30 @@ class SignalNotifier extends Notifier<bool> {
 final signalProvider = NotifierProvider<SignalNotifier, bool>(() {
   return SignalNotifier();
 });
+
+class HistoryPoint {
+  final double input;
+  final double output;
+  HistoryPoint(this.input, this.output);
+}
+
+class SignalHistoryNotifier extends Notifier<List<HistoryPoint>> {
+  @override
+  List<HistoryPoint> build() => [];
+
+  void addPoint(double input, double output) {
+    final nextHistory = List<HistoryPoint>.from(state)..add(HistoryPoint(input, output));
+    if (nextHistory.length > 200) {
+      nextHistory.removeAt(0);
+    }
+    state = nextHistory;
+  }
+
+  void reset() {
+    state = [];
+  }
+}
+
+final signalHistoryProvider = NotifierProvider<SignalHistoryNotifier, List<HistoryPoint>>(() {
+  return SignalHistoryNotifier();
+});
