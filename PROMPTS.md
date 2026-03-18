@@ -76,7 +76,7 @@ Update the `SignalTask.sineWave` case inside `getClimbingFiberSignal`.
 2. Determine the `requiredAction` based on the slope (e.g., if moving up, it should be 'antiopen', otherwise 'anticlose'). 
 3. Return `-0.5` ONLY if `lastAction` is not the `requiredAction` AND `lastAction != 'none'`. Output the updated method.
 
-[ ] 28. **Inhibitory Synapse Initialization:** Read `lib/providers/simulation_provider.dart` (or wherever the initial `SimulationState` is constructed). The lateral inhibition ("dents") and DCN suppression only work if the synapses coming *from* inhibitory cells actually subtract potential. 
+[x] 28. **Inhibitory Synapse Initialization:** Read `lib/providers/simulation_provider.dart` (or wherever the initial `SimulationState` is constructed). The lateral inhibition ("dents") and DCN suppression only work if the synapses coming *from* inhibitory cells actually subtract potential. 
 Ensure that when generating the initial list of `Synapse` objects, any synapse where the `sourceId` belongs to a Basket Cell ('BC') or a Purkinje Cell ('PC') is initialized with a negative weight (e.g., `-1.0`), while Granule/Parallel Fiber ('PF') synapses remain positive. Output the updated initialization logic.
 
 ### Phase 2.5C: Visualization Updates

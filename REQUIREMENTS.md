@@ -38,11 +38,11 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 ### Phase 2.5: Actor-Critic RL Refactor (Kuriyama et al. 2025)
 *Goal: Transition the core simulation engine from classical Supervised Learning to Continuous-Time Reinforcement Learning.*
 
-* [ ]**Step 2.5.1: RL Data Models:** Update `Neuron` with LIF (Leaky Integrate-and-Fire) dynamics (`decayRate`) and `actionGroup`. Update `Synapse` with `eligibilityTrace` and `targetType`.
-* [ ]**Step 2.5.2: State Engine & Traces:** Refactor `SimulationService.calculateNextState` to process potential decay (LIF) and update synapse eligibility traces upon presynaptic spikes.
-* [ ]**Step 2.5.3: Actor-Critic Learning Rule:** Implement `adjustWeightsRL` in `SimulationService`. Calculate predicted value via Stellate Cells (Critic) and action output via Deep Cerebellar Nuclei (DCN). Use TD Error and eligibility traces to update weights.
-* [ ]**Step 2.5.4: Episodic Environment:** Refactor the input provider into an `EnvironmentProvider` that manages episodic runs, outputs state to Parallel Fibers, and triggers continuous Climbing Fiber punishment signals.
-* [ ]**Step 2.5.5: Visualization Updates:** Update `NeuralCanvas` to draw SC, BC, and DCN cells. Update `SignalPlotter` to graph the Critic's value prediction and success rate over episodes.
+* [x]**Step 2.5.1: RL Data Models:** Update `Neuron` with LIF (Leaky Integrate-and-Fire) dynamics (`decayRate`) and `actionGroup`. Update `Synapse` with `eligibilityTrace` and `targetType`.
+* [x]**Step 2.5.2: State Engine & Traces:** Refactor `SimulationService.calculateNextState` to process potential decay (LIF) and update synapse eligibility traces upon presynaptic spikes.
+* [x]**Step 2.5.3: Actor-Critic Learning Rule:** Implement `adjustWeightsRL` in `SimulationService`. Calculate predicted value via Stellate Cells (Critic) and action output via Deep Cerebellar Nuclei (DCN). Use TD Error and eligibility traces to update weights.
+* [x]**Step 2.5.4: Episodic Environment:** Refactor the input provider into an `EnvironmentProvider` that manages episodic runs, outputs state to Parallel Fibers, and triggers continuous Climbing Fiber punishment signals.
+* [x]**Step 2.5.5: Visualization Updates:** Update `NeuralCanvas` to draw SC, BC, and DCN cells. Update `SignalPlotter` to graph the Critic's value prediction and success rate over episodes.
 
 ### Phase 3: Milestone 2 - Full Stack Integration
 [ ]*Goal: Complete major functionality and replace mock data with live cloud and authentication.*

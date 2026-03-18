@@ -4,9 +4,7 @@ import '../providers/simulation_provider.dart';
 import '../providers/environment_provider.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
-import '../models/simulation_state.dart';
-import '../models/neuron.dart';
-import '../models/synapse.dart';
+import '../services/network_initializer.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -25,125 +23,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _resetToRLMock() {
-    // 1. Generate 10 Parallel Fiber neurons (PF)
-    final neurons = <Neuron>[];
-    final synapses = <Synapse>[];
-
-    for (int i = 0; i < 10; i++) {
-      neurons.add(Neuron(
-        id: 'pf_$i',
-        type: 'Granular',
-        threshold: 1.0,
-        currentPotential: 0.0,
-        x: 100.0,
-        y: 100.0 + (i * 60.0),
-      ));
-    }
-
-    // 2. Add Basket Cells (BC - Lateral Inhibition)
-    for (int i = 0; i < 5; i++) {
-      neurons.add(Neuron(
-        id: 'bc_$i',
-        type: 'BC',
-        threshold: 2.0,
-        currentPotential: 0.0,
-        x: 250.0,
-        y: 150.0 + (i * 100.0),
-      ));
-    }
-
-    // 3. Add Purkinje Cell (Actor)
-    neurons.add(const Neuron(
-      id: 'pc_1',
-      type: 'Purkinje',
-      threshold: 5.0,
-      currentPotential: 0.0,
-      x: 400.0,
-      y: 370.0,
-    ));
-
-    // 4. Add Stellate Cell (Critic)
-    neurons.add(const Neuron(
-      id: 'sc_1',
-      type: 'SC',
-      threshold: 3.0,
-      currentPotential: 0.0,
-      x: 400.0,
-      y: 150.0,
-    ));
-
-    // 5. Add DCN Cells (Output Actions)
-    neurons.add(const Neuron(
-      id: 'dcn_open',
-      type: 'DCN',
-      threshold: 2.0,
-      currentPotential: 0.0,
-      x: 700.0,
-      y: 300.0,
-      actionGroup: 'antiopen',
-    ));
-    neurons.add(const Neuron(
-      id: 'dcn_close',
-      type: 'DCN',
-      threshold: 2.0,
-      currentPotential: 0.0,
-      x: 700.0,
-      y: 440.0,
-      actionGroup: 'anticlose',
-    ));
-
-    // 6. Connect PFs to BC, PC and SC
-    for (int i = 0; i < 10; i++) {
-      // PFs are excitatory (+)
-      synapses.add(Synapse(
-        sourceId: 'pf_$i',
-        targetId: 'pc_1',
-        weight: 0.5,
-        learningRate: 0.05,
-        targetType: 'PC',
-      ));
-      synapses.add(Synapse(
-        sourceId: 'pf_$i',
-        targetId: 'sc_1',
-        weight: 0.2,
-        learningRate: 0.02,
-        targetType: 'SC',
-      ));
-      
-      // PF to nearest BC
-      synapses.add(Synapse(
-        sourceId: 'pf_$i',
-        targetId: 'bc_${(i / 2).floor()}',
-        weight: 0.3,
-        learningRate: 0.0,
-        targetType: 'BC',
-      ));
-    }
-
-    // 7. Inhibitory Synapses (Negative Weights)
-    // BC to PC inhibition
-    for (int i = 0; i < 5; i++) {
-      synapses.add(const Synapse(
-        sourceId: 'bc_$i',
-        targetId: 'pc_1',
-        weight: -1.0, // Inhibitory
-        learningRate: 0.0,
-        targetType: 'PC',
-      ));
-    }
-
-    // PC to DCN inhibition
-    synapses.add(const Synapse(
-      sourceId: 'pc_1',
-      targetId: 'dcn_close',
-      weight: -2.0, // Inhibitory
-      learningRate: 0.0,
-      targetType: 'DCN',
-    ));
-
-    ref.read(simulationProvider.notifier).initialize(
-      SimulationState(neurons: neurons, synapses: synapses),
-    );
+    final initialState = NetworkInitializer.createRLMockNetwork();
+    ref.read(simulationProvider.notifier).initialize(initialState);
   }
 
   @override
