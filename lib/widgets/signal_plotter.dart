@@ -13,7 +13,7 @@ class SignalPlotter extends ConsumerWidget {
       height: 150,
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
       ),
@@ -25,7 +25,7 @@ class SignalPlotter extends ConsumerWidget {
             children: [
               const Text(
                 'Actor-Critic Performance',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
               ),
               _buildLegend(),
             ],
@@ -76,12 +76,12 @@ class _SignalPainter extends CustomPainter {
 
     final predictedPaint = Paint()
       ..color = Colors.amberAccent.withValues(alpha: 0.8)
-      ..strokeWidth = 1.5
+      ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
     final actualPaint = Paint()
       ..color = Colors.redAccent.withValues(alpha: 0.8)
-      ..strokeWidth = 1.5
+      ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke;
 
     final predictedPath = Path();

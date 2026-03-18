@@ -44,7 +44,7 @@ class CerebroTheme {
         bodyMedium: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.normal,
-          color: Colors.white70,
+          color: Colors.white,
           letterSpacing: 0.25,
         ),
         labelLarge: TextStyle(

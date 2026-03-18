@@ -45,7 +45,7 @@ class _NeuralPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final synapsePaint = Paint()
-      ..strokeWidth = 1.0
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
     final neuronPaint = Paint()
@@ -65,7 +65,7 @@ class _NeuralPainter extends CustomPainter {
       final targetColor = _getNeuronColor(target.type);
       
       // Weight contributes to opacity
-      final double alpha = (synapse.weight.abs() * 0.4).clamp(0.05, 0.6);
+      final double alpha = (synapse.weight.abs() * 0.7).clamp(0.2, 0.9);
       synapsePaint.color = targetColor.withValues(alpha: alpha);
       
       canvas.drawLine(
@@ -86,12 +86,12 @@ class _NeuralPainter extends CustomPainter {
       // Spiking neurons glow with their cell-type color, others are dimmed
       neuronPaint.color = isSpiking 
           ? baseColor 
-          : baseColor.withValues(alpha: 0.2 + (activityRatio * 0.4));
+          : baseColor.withValues(alpha: 0.5 + (activityRatio * 0.4));
 
       // Draw shadow/glow for spiking or high-activity neurons
       if (isSpiking || activityRatio > 0.5) {
-        final double glowSize = isSpiking ? 10.0 : 6.0;
-        final double glowAlpha = isSpiking ? 0.6 : activityRatio * 0.3;
+        final double glowSize = isSpiking ? 14.0 : 6.0;
+        final double glowAlpha = isSpiking ? 0.8 : activityRatio * 0.3;
         
         canvas.drawCircle(
           Offset(neuron.x, neuron.y),
