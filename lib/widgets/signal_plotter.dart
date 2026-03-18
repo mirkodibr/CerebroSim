@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../providers/signal_provider.dart';
+import '../providers/environment_provider.dart';
 
 class SignalPlotter extends StatelessWidget {
   final List<HistoryPoint> history;
@@ -20,7 +20,7 @@ class SignalPlotter extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Signal Analysis',
+            'Actor-Critic Performance',
             style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
@@ -47,20 +47,19 @@ class _SignalPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (history.isEmpty) return;
 
-    final inputPaint = Paint()
-      ..color = Colors.cyanAccent.withValues(alpha: 0.8)
+    final predictedPaint = Paint()
+      ..color = Colors.purpleAccent.withValues(alpha: 0.8)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
-    final outputPaint = Paint()
-      ..color = Colors.orangeAccent.withValues(alpha: 0.8)
+    final actualPaint = Paint()
+      ..color = Colors.redAccent.withValues(alpha: 0.8)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
-    final inputPath = Path();
-    final outputPath = Path();
+    final predictedPath = Path();
+    final actualPath = Path();
 
-    // Max 200 points as defined in SignalHistoryNotifier
     const int maxPoints = 200;
     final double stepX = size.width / (maxPoints - 1);
     final double midY = size.height / 2;
@@ -69,32 +68,29 @@ class _SignalPainter extends CustomPainter {
     for (int i = 0; i < history.length; i++) {
       final x = i * stepX;
       
-      // Input plot (Target) - centered in top half
-      final inputY = (midY / 2) - (history[i].input * trackHeight / 2);
+      // Predicted Punishment (Critic output)
+      final py = (midY / 2) - (history[i].input * trackHeight / 2);
       if (i == 0) {
-        inputPath.moveTo(x, inputY);
+        predictedPath.moveTo(x, py);
       } else {
-        // Use step-like line for binary signals
-        inputPath.lineTo(x, inputY);
+        predictedPath.lineTo(x, py);
       }
 
-      // Output plot (Actual) - centered in bottom half
-      final outputY = (size.height * 0.75) - (history[i].output * trackHeight / 2);
+      // Actual Punishment (Environment CF signal)
+      final ay = (size.height * 0.75) - (history[i].output * trackHeight / 2);
        if (i == 0) {
-        outputPath.moveTo(x, outputY);
+        actualPath.moveTo(x, ay);
       } else {
-        outputPath.lineTo(x, outputY);
+        actualPath.lineTo(x, ay);
       }
     }
 
-    canvas.drawPath(inputPath, inputPaint);
-    canvas.drawPath(outputPath, outputPaint);
+    canvas.drawPath(predictedPath, predictedPaint);
+    canvas.drawPath(actualPath, actualPaint);
 
-    // Legend/Labels
-    _drawLabel(canvas, "Target", const Offset(0, 0), Colors.cyanAccent);
-    _drawLabel(canvas, "Actual", Offset(0, midY), Colors.orangeAccent);
+    _drawLabel(canvas, "Predicted", const Offset(0, 0), Colors.purpleAccent);
+    _drawLabel(canvas, "Actual CF", Offset(0, midY), Colors.redAccent);
     
-    // Draw a divider
     final dividerPaint = Paint()
       ..color = Colors.white10
       ..strokeWidth = 1;

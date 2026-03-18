@@ -50,7 +50,7 @@ Ensure both classes remain completely immutable, update their `copyWith`, `toJso
 4. If target is 'SC' (Critic), `newWeight += learningRate * tdError * eligibilityTrace`. 
 5. If target is 'PC' (Actor), `newWeight -= learningRate * tdError * eligibilityTrace`. Clamp weights between 0.0 and 1.0. Output the updated method.
 
-[ ] 22. **DCN Action Selection:** Read `lib/services/simulation_service.dart`. Add a new method `String getExecutedAction(SimulationState currentState)`. 
+[x] 22. **DCN Action Selection:** Read `lib/services/simulation_service.dart`. Add a new method `String getExecutedAction(SimulationState currentState)`. 
 Filter the state for 'DCN' (Deep Cerebellar Nuclei) neurons. Find the DCN neuron with the highest `currentPotential` (using argmax). Return its `actionGroup` string (e.g., 'antiopen' or 'anticlose'). If no DCN cells exist or potentials are tied at 0, return 'none'. Output the new method.
 
 [ ] 23. **Environment Provider Refactor:** Read `lib/providers/signal_provider.dart` and `lib/providers/simulation_provider.dart`. We are replacing the supervised "target wave" with an episodic RL environment. 

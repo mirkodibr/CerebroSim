@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
 import '../models/neuron.dart';
 import '../services/simulation_service.dart';
-import 'signal_provider.dart';
+import 'environment_provider.dart';
 
 /// Provider for the SimulationService
 final simulationServiceProvider = Provider<SimulationService>((ref) {
@@ -17,8 +17,6 @@ class SimulationNotifier extends Notifier<SimulationState> {
 
   @override
   SimulationState build() {
-    // Return an initial empty state. 
-    // In a real app, this might load from a default configuration.
     ref.onDispose(() => _timer?.cancel());
     return const SimulationState(neurons: [], synapses: []);
   }
@@ -29,7 +27,7 @@ class SimulationNotifier extends Notifier<SimulationState> {
   void initialize(SimulationState initialState) {
     state = initialState;
     ref.read(signalHistoryProvider.notifier).reset();
-    ref.read(signalProvider.notifier).reset();
+    ref.read(environmentProvider.notifier).reset();
   }
 
   /// Starts the simulation at ~60 FPS (16ms per tick)
@@ -51,46 +49,53 @@ class SimulationNotifier extends Notifier<SimulationState> {
   void tick() {
     final service = ref.read(simulationServiceProvider);
     
-    // 1. Update the signal generator
-    final signalNotifier = ref.read(signalProvider.notifier);
-    signalNotifier.update(16);
-    final currentInput = ref.read(signalProvider);
+    // 1. Advance environment
+    final envNotifier = ref.read(environmentProvider.notifier);
+    envNotifier.update(16);
+    final pfState = envNotifier.getPFStateVector();
 
-    // 2. Feed signal into the input neuron (e.g. 'n1')
+    // 2. Feed PF state into 'Granular' neurons (Parallel Fibers)
+    // Assume PF neurons have IDs like 'pf_0', 'pf_1', etc.
     SimulationState currentState = state;
     final List<Neuron> updatedNeurons = currentState.neurons.map((n) {
       if (n.type == 'Granular') {
-        // If signal is high, push potential towards threshold
-        return n.copyWith(currentPotential: currentInput ? n.threshold : n.currentPotential);
+        final pfIndexString = n.id.replaceFirst('pf_', '');
+        final index = int.tryParse(pfIndexString);
+        if (index != null && index < pfState.length) {
+          // If this PF should be active now, push it to threshold
+          return n.copyWith(currentPotential: pfState[index] ? n.threshold : n.currentPotential);
+        }
       }
       return n;
     }).toList();
     currentState = currentState.copyWith(neurons: updatedNeurons);
 
-    // 3. Process the simulation tick
-    final nextState = service.calculateNextState(currentState);
-    state = nextState;
+    // 3. Process the simulation step (LIF dynamics)
+    state = service.calculateNextState(currentState);
 
-    // 4. Learning logic (Actor-Critic Refactor)
-    // Temporary: Mock punishment signal based on supervised error for compilability
-    final purkinje = state.neurons.firstWhere(
-      (n) => n.type == 'Purkinje', 
-      orElse: () => state.neurons.isNotEmpty ? state.neurons.last : const Neuron(id: '', type: '', threshold: 0, currentPotential: 0)
-    );
-    final isSpiking = purkinje.currentPotential >= purkinje.threshold;
-    final double mockPunishment = (isSpiking != currentInput) ? -1.0 : 0.0;
+    // 4. Learning logic (Actor-Critic)
+    final lastAction = service.getExecutedAction(state);
+    final actualPunishment = envNotifier.getClimbingFiberSignal(lastAction);
+    
+    // Apply weight updates
+    state = service.adjustWeightsRL(state, climbingFiberPunishment: actualPunishment);
 
-    applyLearningRL(mockPunishment);
+    // 5. Update history for plotting
+    // predictedPunishment is the sum of SC neuron potentials (Critic)
+    double predictedPunishment = 0.0;
+    for (final neuron in state.neurons) {
+      if (neuron.type == 'SC') {
+        predictedPunishment += neuron.currentPotential;
+      }
+    }
 
-    // 5. Update history
-    final outputSpike = purkinje.currentPotential >= purkinje.threshold;
     ref.read(signalHistoryProvider.notifier).addPoint(
-      currentInput ? 1.0 : 0.0, 
-      outputSpike ? 1.0 : 0.0
+      predictedPunishment, 
+      actualPunishment
     );
   }
 
-  /// Applies RL learning rule with climbing fiber punishment
+  /// Applies RL learning rule with climbing fiber punishment (Convenience method)
   void applyLearningRL(double climbingFiberPunishment) {
     final service = ref.read(simulationServiceProvider);
     state = service.adjustWeightsRL(state, climbingFiberPunishment: climbingFiberPunishment);
