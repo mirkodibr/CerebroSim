@@ -53,30 +53,36 @@ Ensure both classes remain completely immutable, update their `copyWith`, `toJso
 [x] 22. **DCN Action Selection:** Read `lib/services/simulation_service.dart`. Add a new method `String getExecutedAction(SimulationState currentState)`. 
 Filter the state for 'DCN' (Deep Cerebellar Nuclei) neurons. Find the DCN neuron with the highest `currentPotential` (using argmax). Return its `actionGroup` string (e.g., 'antiopen' or 'anticlose'). If no DCN cells exist or potentials are tied at 0, return 'none'. Output the new method.
 
-[ ] 23. **Environment Provider Refactor:** Read `lib/providers/signal_provider.dart` and `lib/providers/simulation_provider.dart`. We are replacing the supervised "target wave" with an episodic RL environment. 
+[x] 23. **Environment Provider Refactor:** Read `lib/providers/signal_provider.dart` and `lib/providers/simulation_provider.dart`. We are replacing the supervised "target wave" with an episodic RL environment. 
 Rename/Refactor the signal provider to an `environmentProvider` using Riverpod. It should hold state for an `episodeNumber` and `currentStep` (0 to 1000ms). It should expose a method to get the current state vector for the Parallel Fibers, and a method `double getClimbingFiberSignal()` that returns a negative punishment (e.g., -1.0) only if the wrong action is taken at step 500. Output the complete new provider code.
 
 [ ] 24. **UI Canvas & Plotter Updates:** Read `lib/widgets/neural_canvas.dart` and `lib/widgets/signal_plotter.dart`. 
 1. Update the `CustomPainter` to assign specific colors and vertical layers to the new cell types: SC (Critic), BC (Inhibitor), and DCN (Output). 
 2. Update the `SignalPlotter` to stop comparing "Target vs Output". Instead, plot the SC group's `predictedPunishment` against the actual `climbingFiberPunishment` over the 1000ms episode to visualize the Critic's learning. Output the updated widget code.
 
+[x] 25. **Multi-Task Environment Implementation:** Delete `lib/providers/signal_provider.dart` and create `lib/providers/environment_provider.dart`. 
+1. Implement an `EnvironmentState` class that tracks `currentStep`, `episodeNumber`, and a `SignalTask` enum (delayEyeblink, sineWave, stepFunction).
+2. Create an `EnvironmentNotifier` using Riverpod. Implement `advanceStep()` to loop every 1000ms.
+3. Implement `List<double> getParallelFiberState(int numberOfTiles)` to generate different spatial arrays based on the active task (e.g., a sweeping index for the sine wave, a static block for eyeblink).
+4. Implement `double getClimbingFiberPunishment(String currentAction)` to apply task-specific penalty rules (e.g., -1.0 at step 500 if action is not 'anticlose' for the eyeblink task). Output the complete code.
+
 **Phase 3: Milestone 2 - Full Integration (Auth & Database)**
 
-[ ] 19. **Authentication Service:** Implement `AuthService` in `/services` using Firebase Authentication. Include methods for Email/Password sign-up, login, and sign-out.
+[ ] 26. **Authentication Service:** Implement `AuthService` in `/services` using Firebase Authentication. Include methods for Email/Password sign-up, login, and sign-out.
 
-[ ] 20. **Google Sign-In Integration:** Expand the `AuthService` to include Google Sign-In as an advanced authentication provider.
+[ ] 27. **Google Sign-In Integration:** Expand the `AuthService` to include Google Sign-In as an advanced authentication provider.
 
-[ ] 21. **The Auth Gate:** Create an `AuthGate` widget in `/widgets` that listens to the Firebase Auth state stream. Show the `LoginScreen` if the user is unauthenticated, otherwise show the `HomeScreen`.
+[ ] 28. **The Auth Gate:** Create an `AuthGate` widget in `/widgets` that listens to the Firebase Auth state stream. Show the `LoginScreen` if the user is unauthenticated, otherwise show the `HomeScreen`.
 
-[ ] 22. **Authentication UI:** Create a professional `LoginScreen` and `RegistrationScreen` in `/screens` that use the custom `ThemeData` and handle loading/error states.
+[ ] 29. **Authentication UI:** Create a professional `LoginScreen` and `RegistrationScreen` in `/screens` that use the custom `ThemeData` and handle loading/error states.
 
-[ ] 23. **Firestore Database Service:** Build a `DatabaseService` in `/services` to handle cloud persistence. Implement a method to convert the current `SimulationState` into a JSON map for storage.
+[ ] 30. **Firestore Database Service:** Build a `DatabaseService` in `/services` to handle cloud persistence. Implement a method to convert the current `SimulationState` into a JSON map for storage.
 
-[ ] 24. **Research Vault CRUD:** Implement methods in `DatabaseService` to save "Brain State" snapshots to Firestore and fetch a list of previous simulation sessions.
+[ ] 31. **Research Vault CRUD:** Implement methods in `DatabaseService` to save "Brain State" snapshots to Firestore and fetch a list of previous simulation sessions.
 
-[ ] 25. **Cloud Gallery UI:** Create a `GalleryScreen` in `/screens` using a Riverpod `StreamProvider` to display the user's saved simulations from the cloud in real-time.
+[ ] 32. **Cloud Gallery UI:** Create a `GalleryScreen` in `/screens` using a Riverpod `StreamProvider` to display the user's saved simulations from the cloud in real-time.
 
-[ ] 26. **Cloud Loading Logic:** Implement a feature to "Load" a snapshot from the Gallery, which replaces the local simulation weights and connections with the data retrieved from Firestore.
+[ ] 33. **Cloud Loading Logic:** Implement a feature to "Load" a snapshot from the Gallery, which replaces the local simulation weights and connections with the data retrieved from Firestore.
 
 **Development Rules**
 1. [x]**One Prompt = One Commit:** Always commit the current code and refer to the Prompt # in the commit message before adding a new feature.

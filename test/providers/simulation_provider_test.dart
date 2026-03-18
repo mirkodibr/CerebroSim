@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/models/neuron.dart';
 import 'package:cerebrosim/models/simulation_state.dart';
 import 'package:cerebrosim/providers/simulation_provider.dart';
-import 'package:cerebrosim/providers/signal_provider.dart';
+import 'package:cerebrosim/providers/environment_provider.dart';
 
 void main() {
   group('SimulationNotifier Tests', () {
@@ -37,14 +37,14 @@ void main() {
       expect(container.read(simulationProvider).neurons.first.currentPotential, 0.0);
     });
 
-    test('tick() should update signal and record history', () {
+    test('tick() should advance environment and record history', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       const initialState = SimulationState(
         neurons: [
-          Neuron(id: 'n1', type: 'Granular', threshold: 1, currentPotential: 0),
-          Neuron(id: 'n2', type: 'Purkinje', threshold: 1, currentPotential: 0),
+          Neuron(id: 'pf_0', type: 'Granular', threshold: 1, currentPotential: 0),
+          Neuron(id: 'pc_1', type: 'Purkinje', threshold: 1, currentPotential: 0),
         ],
         synapses: [],
       );
@@ -53,11 +53,13 @@ void main() {
       
       // Initially history is empty
       expect(container.read(signalHistoryProvider), isEmpty);
+      expect(container.read(environmentProvider).currentStep, 0.0);
 
       container.read(simulationProvider.notifier).tick();
 
-      // After tick, history should have 1 point
+      // After tick, history should have 1 point and environment should advance by 16ms
       expect(container.read(signalHistoryProvider).length, 1);
+      expect(container.read(environmentProvider).currentStep, 16.0);
     });
 
     test('start() and stop() should toggle isRunning', () {

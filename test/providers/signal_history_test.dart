@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cerebrosim/providers/signal_provider.dart';
+import 'package:cerebrosim/providers/environment_provider.dart';
 
 void main() {
   group('SignalHistoryNotifier', () {

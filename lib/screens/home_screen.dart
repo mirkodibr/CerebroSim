@@ -99,8 +99,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     // 6. Connect PC to DCN (Inhibitory)
-    // In our simplified model, we just use negative weights or handle it in logic.
-    // Marr-Albus uses inhibition. Here, let's just connect them for visual.
     synapses.add(const Synapse(
       sourceId: 'pc_1',
       targetId: 'dcn_close',
@@ -128,12 +126,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             const Text('CerebroSim RL Lab'),
             Text(
-              'Episode: ${envState.episodeNumber} | Step: ${envState.currentStep.toInt()}ms',
+              '${envState.activeTask.name} | Ep: ${envState.episodeNumber} | ${envState.currentStep.toInt()}ms',
               style: const TextStyle(fontSize: 10, color: Colors.white70),
             ),
           ],
         ),
         actions: [
+          PopupMenuButton<SignalTask>(
+            icon: const Icon(Icons.settings_suggest),
+            tooltip: 'Switch Task',
+            onSelected: (task) {
+              ref.read(environmentProvider.notifier).setTask(task);
+              ref.read(signalHistoryProvider.notifier).reset();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: SignalTask.delayEyeblink, child: Text('Delay Eyeblink')),
+              const PopupMenuItem(value: SignalTask.sineWave, child: Text('Sine Wave Tracking')),
+              const PopupMenuItem(value: SignalTask.stepFunction, child: Text('Step Function')),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _resetToRLMock,
