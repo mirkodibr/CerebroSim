@@ -30,7 +30,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final simulationState = ref.watch(simulationProvider);
-    final history = ref.watch(signalHistoryProvider);
     final isRunning = ref.watch(simulationProvider.notifier).isRunning;
     final envState = ref.watch(environmentProvider);
 
@@ -94,7 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             left: 16,
             right: 16,
             bottom: 32,
-            child: SignalPlotter(history: history),
+            child: const SignalPlotter(),
           ),
         ],
       ),

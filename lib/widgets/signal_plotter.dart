@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/environment_provider.dart';
 
-class SignalPlotter extends StatelessWidget {
-  final List<HistoryPoint> history;
-
-  const SignalPlotter({super.key, required this.history});
+class SignalPlotter extends ConsumerWidget {
+  const SignalPlotter({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(signalHistoryProvider);
+
     return Container(
       height: 150,
       padding: const EdgeInsets.all(8),
@@ -19,9 +20,15 @@ class SignalPlotter extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Actor-Critic Performance',
-            style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Actor-Critic Performance',
+                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              _buildLegend(),
+            ],
           ),
           const SizedBox(height: 4),
           Expanded(
@@ -36,6 +43,26 @@ class SignalPlotter extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildLegend() {
+    return Row(
+      children: [
+        _legendItem('Predicted', Colors.amberAccent),
+        const SizedBox(width: 8),
+        _legendItem('Actual CF', Colors.redAccent),
+      ],
+    );
+  }
+
+  Widget _legendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 9, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
 }
 
 class _SignalPainter extends CustomPainter {
@@ -48,7 +75,7 @@ class _SignalPainter extends CustomPainter {
     if (history.isEmpty) return;
 
     final predictedPaint = Paint()
-      ..color = Colors.purpleAccent.withValues(alpha: 0.8)
+      ..color = Colors.amberAccent.withValues(alpha: 0.8)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -88,8 +115,8 @@ class _SignalPainter extends CustomPainter {
     canvas.drawPath(predictedPath, predictedPaint);
     canvas.drawPath(actualPath, actualPaint);
 
-    _drawLabel(canvas, "Predicted", const Offset(0, 0), Colors.purpleAccent);
-    _drawLabel(canvas, "Actual CF", Offset(0, midY), Colors.redAccent);
+    _drawLabel(canvas, "Predicted (SC)", const Offset(0, 0), Colors.amberAccent);
+    _drawLabel(canvas, "Actual (CF)", Offset(0, midY), Colors.redAccent);
     
     final dividerPaint = Paint()
       ..color = Colors.white10
