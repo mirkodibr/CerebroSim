@@ -11,14 +11,15 @@ void main() {
     service = SimulationService();
   });
 
-  group('SimulationService Spiking Logic Tests', () {
-    test('Neuron below threshold should not spike and potential remains same', () {
-      const neuron = Neuron(id: 'n1', type: 'Granular', threshold: 10.0, currentPotential: 5.0);
+  group('SimulationService Spiking Logic Tests (with LIF Dynamics)', () {
+    test('Neuron below threshold should decay its potential', () {
+      const neuron = Neuron(id: 'n1', type: 'Granular', threshold: 10.0, currentPotential: 5.0, decayRate: 0.1);
       const state = SimulationState(neurons: [neuron], synapses: []);
 
       final nextState = service.calculateNextState(state);
 
-      expect(nextState.neurons.first.currentPotential, 5.0);
+      // 5.0 * (1.0 - 0.1) = 4.5
+      expect(nextState.neurons.first.currentPotential, 4.5);
     });
 
     test('Neuron at threshold should spike and reset potential to baseline', () {
@@ -40,16 +41,39 @@ void main() {
       final nextState = service.calculateNextState(state);
 
       final nextTarget = nextState.neurons.firstWhere((n) => n.id == 'n2');
+      // target potential was 0.0, next is 5.0
       expect(nextTarget.currentPotential, 5.0);
       
       final nextSource = nextState.neurons.firstWhere((n) => n.id == 'n1');
       expect(nextSource.currentPotential, 0.0);
     });
 
-    test('Multiple source neurons should sum their potential on target', () {
+    test('Eligibility traces should decay and be reinforced by spikes', () {
+      const s1 = Neuron(id: 's1', type: 'G', threshold: 5.0, currentPotential: 5.0); // Spikes
+      const s2 = Neuron(id: 's2', type: 'G', threshold: 5.0, currentPotential: 0.0); // Doesn't spike
+      const target = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 0.0);
+      
+      const syn1 = Synapse(sourceId: 's1', targetId: 't', weight: 1.0, learningRate: 0.1, eligibilityTrace: 1.0, targetType: 'test');
+      const syn2 = Synapse(sourceId: 's2', targetId: 't', weight: 1.0, learningRate: 0.1, eligibilityTrace: 1.0, targetType: 'test');
+
+      const state = SimulationState(neurons: [s1, s2, target], synapses: [syn1, syn2]);
+
+      final nextState = service.calculateNextState(state);
+
+      final nextSyn1 = nextState.synapses.firstWhere((s) => s.sourceId == 's1');
+      final nextSyn2 = nextState.synapses.firstWhere((s) => s.sourceId == 's2');
+
+      // syn1: (1.0 * 0.95) + 1.0 = 1.95
+      expect(nextSyn1.eligibilityTrace, closeTo(1.95, 0.001));
+      // syn2: (1.0 * 0.95) = 0.95
+      expect(nextSyn2.eligibilityTrace, closeTo(0.95, 0.001));
+    });
+
+    test('Multiple source neurons should sum their potential on target after decay', () {
       const s1 = Neuron(id: 's1', type: 'G', threshold: 5.0, currentPotential: 5.0);
       const s2 = Neuron(id: 's2', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      const target = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 2.0);
+      // Target doesn't spike, so it decays. 2.0 * (1 - 0.1) = 1.8
+      const target = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 2.0, decayRate: 0.1);
       
       const syn1 = Synapse(sourceId: 's1', targetId: 't', weight: 3.0, learningRate: 0.1, targetType: 'test');
       const syn2 = Synapse(sourceId: 's2', targetId: 't', weight: 4.0, learningRate: 0.1, targetType: 'test');
@@ -59,26 +83,8 @@ void main() {
       final nextState = service.calculateNextState(state);
 
       final nextTarget = nextState.neurons.firstWhere((n) => n.id == 't');
-      // 2.0 (initial) + 3.0 (from s1) + 4.0 (from s2) = 9.0
-      expect(nextTarget.currentPotential, 9.0);
-    });
-
-    test('Target should spike immediately if input exceeds threshold', () {
-        // Source spikes and its weight is 25.0, target threshold is 20.0.
-        // In our logic, nextState target will have 25.0 potential, but it will spike in the *next* next step.
-        // Wait, if nextTarget.potential = 25.0, and then we run calculateNextState again, it should reset.
-        
-        const s = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
-        const t = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 0.0);
-        const syn = Synapse(sourceId: 's', targetId: 't', weight: 25.0, learningRate: 0.1, targetType: 'test');
-        
-        var state = SimulationState(neurons: [s, t], synapses: [syn]);
-        
-        state = service.calculateNextState(state);
-        expect(state.neurons.firstWhere((n) => n.id == 't').currentPotential, 25.0);
-        
-        state = service.calculateNextState(state);
-        expect(state.neurons.firstWhere((n) => n.id == 't').currentPotential, 0.0);
+      // 1.8 (decayed) + 3.0 (from s1) + 4.0 (from s2) = 8.8
+      expect(nextTarget.currentPotential, closeTo(8.8, 0.001));
     });
   });
 

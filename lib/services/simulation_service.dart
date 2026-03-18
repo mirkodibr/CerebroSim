@@ -5,12 +5,9 @@ import '../models/simulation_state.dart';
 class SimulationService {
   /// Processes a single discrete time step (tick) of the simulation.
   /// 
-  /// Logic:
-  /// 1. Identify which neurons spike (potential >= threshold).
-  /// 2. For each spiking neuron:
-  ///    - Reset its potential to 0.0.
-  ///    - Propagate its 'signal' (using synaptic weights) to downstream neurons.
-  /// 3. Update all neurons with their new potentials.
+  /// Updates for Continuous-Time RL:
+  /// 1. LIF Dynamics: Non-spiking neurons decay their potential.
+  /// 2. Eligibility Traces: Synapse traces decay and are reinforced by presynaptic spikes.
   SimulationState calculateNextState(SimulationState currentState) {
     final Map<String, double> potentialDeltas = {};
     final Set<String> spikingNeurons = {};
@@ -30,22 +27,35 @@ class SimulationService {
       }
     }
 
-    // 2. Build the new list of neurons with updated potentials
+    // 2. Update eligibility traces (decay factor 0.95 + reinforce if source spiked)
+    final List<Synapse> nextSynapses = currentState.synapses.map((synapse) {
+      double newTrace = synapse.eligibilityTrace * 0.95;
+      if (spikingNeurons.contains(synapse.sourceId)) {
+        newTrace += 1.0;
+      }
+      return synapse.copyWith(eligibilityTrace: newTrace);
+    }).toList();
+
+    // 3. Build the new list of neurons with LIF dynamics
     final List<Neuron> nextNeurons = currentState.neurons.map((neuron) {
       double nextPotential;
       
       if (spikingNeurons.contains(neuron.id)) {
-        // Spiked: reset to baseline (0.0) and then add any incoming potentials from other spikes
+        // Spiked: reset to baseline (0.0) and then add any incoming potentials
         nextPotential = potentialDeltas[neuron.id] ?? 0.0;
       } else {
-        // Did not spike: keep current potential and add incoming potentials
-        nextPotential = neuron.currentPotential + (potentialDeltas[neuron.id] ?? 0.0);
+        // LIF: Decay current potential then add incoming potentials
+        final decayedPotential = neuron.currentPotential * (1.0 - neuron.decayRate);
+        nextPotential = decayedPotential + (potentialDeltas[neuron.id] ?? 0.0);
       }
 
       return neuron.copyWith(currentPotential: nextPotential);
     }).toList();
 
-    return currentState.copyWith(neurons: nextNeurons);
+    return currentState.copyWith(
+      neurons: nextNeurons,
+      synapses: nextSynapses,
+    );
   }
 
   /// Implements the Climbing Fiber Algorithm (error-correction).
