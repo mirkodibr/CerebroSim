@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cerebrosim/widgets/signal_plotter.dart';
-import 'package:cerebrosim/providers/signal_provider.dart';
+import 'package:cerebrosim/providers/environment_provider.dart';
 
 void main() {
   testWidgets('SignalPlotter renders and draws based on history', (WidgetTester tester) async {
@@ -18,8 +18,8 @@ void main() {
       ),
     );
 
-    // Verify Title
-    expect(find.text('Signal Analysis'), findsOneWidget);
+    // Verify Title (Updated in step 24 to 'Actor-Critic Performance')
+    expect(find.text('Actor-Critic Performance'), findsOneWidget);
     
     // Verify CustomPaint is present
     expect(find.byType(CustomPaint), findsAtLeast(1));
@@ -37,7 +37,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Signal Analysis'), findsOneWidget);
+    expect(find.text('Actor-Critic Performance'), findsOneWidget);
     expect(find.byType(CustomPaint), findsAtLeast(1));
   });
 }

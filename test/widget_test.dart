@@ -13,6 +13,7 @@ void main() {
     );
 
     // Verify that our home screen displays the correct title.
-    expect(find.text('CerebroSim Lab'), findsOneWidget);
+    // Updated in Prompt 23 to 'CerebroSim RL Lab'
+    expect(find.text('CerebroSim RL Lab'), findsOneWidget);
   });
 }
