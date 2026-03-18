@@ -102,4 +102,29 @@ class SimulationService {
 
     return currentState.copyWith(synapses: nextSynapses);
   }
+
+  /// Returns the motor action executed by the DCN (Deep Cerebellar Nuclei).
+  /// 
+  /// Logic:
+  /// 1. Filter for 'DCN' type neurons.
+  /// 2. Find the one with the highest currentPotential.
+  /// 3. Return its actionGroup string.
+  /// 4. Returns 'none' if no DCN neurons exist or all potentials are 0.
+  String getExecutedAction(SimulationState currentState) {
+    final dcnNeurons = currentState.neurons.where((n) => n.type == 'DCN').toList();
+    
+    if (dcnNeurons.isEmpty) return 'none';
+
+    Neuron? winner;
+    double maxPotential = 0.0;
+
+    for (final neuron in dcnNeurons) {
+      if (neuron.currentPotential > maxPotential) {
+        maxPotential = neuron.currentPotential;
+        winner = neuron;
+      }
+    }
+
+    return winner?.actionGroup ?? 'none';
+  }
 }

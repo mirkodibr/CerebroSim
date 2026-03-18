@@ -148,4 +148,30 @@ void main() {
       expect(nextState.synapses.first.weight, 0.0);
     });
   });
+
+  group('SimulationService getExecutedAction Tests', () {
+    test('Should return the action group of the DCN with highest potential', () {
+      const dcn1 = Neuron(id: 'd1', type: 'DCN', threshold: 1, currentPotential: 0.5, actionGroup: 'antiopen');
+      const dcn2 = Neuron(id: 'd2', type: 'DCN', threshold: 1, currentPotential: 0.8, actionGroup: 'anticlose');
+      const other = Neuron(id: 'o', type: 'PC', threshold: 1, currentPotential: 1.0, actionGroup: 'wrong');
+      
+      final state = SimulationState(neurons: [dcn1, dcn2, other], synapses: []);
+      
+      expect(service.getExecutedAction(state), 'anticlose');
+    });
+
+    test('Should return none if no DCN neurons exist', () {
+      const other = Neuron(id: 'o', type: 'PC', threshold: 1, currentPotential: 1.0, actionGroup: 'wrong');
+      final state = SimulationState(neurons: [other], synapses: []);
+      
+      expect(service.getExecutedAction(state), 'none');
+    });
+
+    test('Should return none if all DCN potentials are 0', () {
+      const dcn1 = Neuron(id: 'd1', type: 'DCN', threshold: 1, currentPotential: 0.0, actionGroup: 'antiopen');
+      final state = SimulationState(neurons: [dcn1], synapses: []);
+      
+      expect(service.getExecutedAction(state), 'none');
+    });
+  });
 }

@@ -43,7 +43,7 @@ Ensure both classes remain completely immutable, update their `copyWith`, `toJso
 1. Instead of simply maintaining potential, non-spiking neurons must multiply their current potential by `(1.0 - neuron.decayRate)` before adding new incoming potential. 
 2. Update synapse eligibility traces: multiply all current traces by a decay factor (e.g., 0.95). If the synapse's `sourceId` just spiked, add 1.0 to its trace. Output the updated method.
 
-[ ] 21. **Actor-Critic Learning Rule:** Read `lib/services/simulation_service.dart`. Delete the `adjustWeights` method. Write a new method `SimulationState adjustWeightsRL(SimulationState currentState, {required double climbingFiberPunishment})`. 
+[x] 21. **Actor-Critic Learning Rule:** Read `lib/services/simulation_service.dart`. Delete the `adjustWeights` method. Write a new method `SimulationState adjustWeightsRL(SimulationState currentState, {required double climbingFiberPunishment})`. 
 1. Calculate `predictedPunishment` by summing the potential of all 'SC' (Stellate Cell) neurons. 
 2. Calculate `tdError = climbingFiberPunishment - predictedPunishment`. 
 3. Loop through synapses. If `eligibilityTrace < 0.01`, skip. 
