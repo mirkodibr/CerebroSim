@@ -40,7 +40,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ));
     }
 
-    // 2. Add Purkinje Cell (Actor)
+    // 2. Add Basket Cells (BC - Lateral Inhibition)
+    for (int i = 0; i < 5; i++) {
+      neurons.add(Neuron(
+        id: 'bc_$i',
+        type: 'BC',
+        threshold: 2.0,
+        currentPotential: 0.0,
+        x: 250.0,
+        y: 150.0 + (i * 100.0),
+      ));
+    }
+
+    // 3. Add Purkinje Cell (Actor)
     neurons.add(const Neuron(
       id: 'pc_1',
       type: 'Purkinje',
@@ -50,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       y: 370.0,
     ));
 
-    // 3. Add Stellate Cell (Critic)
+    // 4. Add Stellate Cell (Critic)
     neurons.add(const Neuron(
       id: 'sc_1',
       type: 'SC',
@@ -60,7 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       y: 150.0,
     ));
 
-    // 4. Add DCN Cells (Output Actions)
+    // 5. Add DCN Cells (Output Actions)
     neurons.add(const Neuron(
       id: 'dcn_open',
       type: 'DCN',
@@ -80,8 +92,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       actionGroup: 'anticlose',
     ));
 
-    // 5. Connect PFs to PC and SC
+    // 6. Connect PFs to BC, PC and SC
     for (int i = 0; i < 10; i++) {
+      // PFs are excitatory (+)
       synapses.add(Synapse(
         sourceId: 'pf_$i',
         targetId: 'pc_1',
@@ -96,13 +109,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         learningRate: 0.02,
         targetType: 'SC',
       ));
+      
+      // PF to nearest BC
+      synapses.add(Synapse(
+        sourceId: 'pf_$i',
+        targetId: 'bc_${(i / 2).floor()}',
+        weight: 0.3,
+        learningRate: 0.0,
+        targetType: 'BC',
+      ));
     }
 
-    // 6. Connect PC to DCN (Inhibitory)
+    // 7. Inhibitory Synapses (Negative Weights)
+    // BC to PC inhibition
+    for (int i = 0; i < 5; i++) {
+      synapses.add(const Synapse(
+        sourceId: 'bc_$i',
+        targetId: 'pc_1',
+        weight: -1.0, // Inhibitory
+        learningRate: 0.0,
+        targetType: 'PC',
+      ));
+    }
+
+    // PC to DCN inhibition
     synapses.add(const Synapse(
       sourceId: 'pc_1',
       targetId: 'dcn_close',
-      weight: 2.0,
+      weight: -2.0, // Inhibitory
       learningRate: 0.0,
       targetType: 'DCN',
     ));

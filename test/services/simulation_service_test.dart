@@ -85,6 +85,20 @@ void main() {
       // Reset to 0.0 + 0.5 = 0.5
       expect(nextState.neurons.first.currentPotential, 0.5);
     });
+
+    test('Inhibitory synapse (negative weight) should subtract potential from target', () {
+      const source = Neuron(id: 'bc', type: 'BC', threshold: 2.0, currentPotential: 2.0);
+      const target = Neuron(id: 'pc', type: 'Purkinje', threshold: 10.0, currentPotential: 5.0, decayRate: 0.0);
+      const synapse = Synapse(sourceId: 'bc', targetId: 'pc', weight: -1.5, learningRate: 0.0, targetType: 'PC');
+      
+      final state = SimulationState(neurons: [source, target], synapses: [synapse]);
+
+      final nextState = service.calculateNextState(state);
+
+      final nextTarget = nextState.neurons.firstWhere((n) => n.id == 'pc');
+      // 5.0 (initial) - 1.5 (inhibitory weight) = 3.5
+      expect(nextTarget.currentPotential, 3.5);
+    });
   });
 
   group('SimulationService Actor-Critic Learning (adjustWeightsRL) Tests', () {
