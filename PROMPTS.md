@@ -56,7 +56,7 @@ Filter the state for 'DCN' (Deep Cerebellar Nuclei) neurons. Find the DCN neuron
 [x] 23. **Environment Provider Refactor:** Read `lib/providers/signal_provider.dart` and `lib/providers/simulation_provider.dart`. We are replacing the supervised "target wave" with an episodic RL environment. 
 Rename/Refactor the signal provider to an `environmentProvider` using Riverpod. It should hold state for an `episodeNumber` and `currentStep` (0 to 1000ms). It should expose a method to get the current state vector for the Parallel Fibers, and a method `double getClimbingFiberSignal()` that returns a negative punishment (e.g., -1.0) only if the wrong action is taken at step 500. Output the complete new provider code.
 
-[ ] 24. **UI Canvas & Plotter Updates:** Read `lib/widgets/neural_canvas.dart` and `lib/widgets/signal_plotter.dart`. 
+[x] 24. **UI Canvas & Plotter Updates:** Read `lib/widgets/neural_canvas.dart` and `lib/widgets/signal_plotter.dart`. 
 1. Update the `CustomPainter` to assign specific colors and vertical layers to the new cell types: SC (Critic), BC (Inhibitor), and DCN (Output). 
 2. Update the `SignalPlotter` to stop comparing "Target vs Output". Instead, plot the SC group's `predictedPunishment` against the actual `climbingFiberPunishment` over the 1000ms episode to visualize the Critic's learning. Output the updated widget code.
 
