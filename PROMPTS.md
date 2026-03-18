@@ -81,7 +81,7 @@ Ensure that when generating the initial list of `Synapse` objects, any synapse w
 
 ### Phase 2.5C: Visualization Updates
 
-[ ] 29. **Neural Canvas Spatial Layout:** Read `lib/widgets/neural_canvas.dart`. We need to update the `CustomPainter` to visually support the new Actor-Critic architecture. 
+[x] 29. **Neural Canvas Spatial Layout:** Read `lib/widgets/neural_canvas.dart`. We need to update the `CustomPainter` to visually support the new Actor-Critic architecture. 
 1. Update the node rendering logic to assign distinct colors based on the `neuron.type`: PFs (Neon Cyan), SCs (Yellow/Gold for Critic), BCs (Orange for Inhibitor), PCs (Purple for Actor), and DCN (Green for Output). 
 2. Ensure the vertical layout (Y-axis) reflects the biological layers: PFs at the top, SCs and BCs in the middle molecular layer, PCs below them, and DCNs at the very bottom. 
 3. If a neuron's `currentPotential` is high, increase its opacity or glow effect to visualize the Leaky Integrate-and-Fire activity. Output the completely updated widget.
