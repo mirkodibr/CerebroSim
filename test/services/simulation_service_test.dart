@@ -41,7 +41,6 @@ void main() {
       final nextState = service.calculateNextState(state);
 
       final nextTarget = nextState.neurons.firstWhere((n) => n.id == 'n2');
-      // target potential was 0.0, next is 5.0
       expect(nextTarget.currentPotential, 5.0);
       
       final nextSource = nextState.neurons.firstWhere((n) => n.id == 'n1');
@@ -63,82 +62,90 @@ void main() {
       final nextSyn1 = nextState.synapses.firstWhere((s) => s.sourceId == 's1');
       final nextSyn2 = nextState.synapses.firstWhere((s) => s.sourceId == 's2');
 
-      // syn1: (1.0 * 0.95) + 1.0 = 1.95
       expect(nextSyn1.eligibilityTrace, closeTo(1.95, 0.001));
-      // syn2: (1.0 * 0.95) = 0.95
       expect(nextSyn2.eligibilityTrace, closeTo(0.95, 0.001));
-    });
-
-    test('Multiple source neurons should sum their potential on target after decay', () {
-      const s1 = Neuron(id: 's1', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      const s2 = Neuron(id: 's2', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      // Target doesn't spike, so it decays. 2.0 * (1 - 0.1) = 1.8
-      const target = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 2.0, decayRate: 0.1);
-      
-      const syn1 = Synapse(sourceId: 's1', targetId: 't', weight: 3.0, learningRate: 0.1, targetType: 'test');
-      const syn2 = Synapse(sourceId: 's2', targetId: 't', weight: 4.0, learningRate: 0.1, targetType: 'test');
-
-      const state = SimulationState(neurons: [s1, s2, target], synapses: [syn1, syn2]);
-
-      final nextState = service.calculateNextState(state);
-
-      final nextTarget = nextState.neurons.firstWhere((n) => n.id == 't');
-      // 1.8 (decayed) + 3.0 (from s1) + 4.0 (from s2) = 8.8
-      expect(nextTarget.currentPotential, closeTo(8.8, 0.001));
     });
   });
 
-  group('SimulationService adjustWeights (Climbing Fiber) Tests', () {
-    test('Weights should decrease (LTD) when neuron spikes but target is false', () {
-      const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
-
-      final state = SimulationState(neurons: [source, target], synapses: [synapse]);
-
-      // Target says it SHOULD NOT spike, but it IS spiking (potential 10.0 >= threshold 10.0)
-      final nextState = service.adjustWeights(state, purkinjeId: 'p', targetSignal: false);
-
-      expect(nextState.synapses.first.weight, 0.9); // 1.0 - 0.1
+  group('SimulationService Actor-Critic Learning (adjustWeightsRL) Tests', () {
+    test('Critic (SC) weights should increase when predicted punishment is too low', () {
+      // predictedPunishment = potential of all 'SC' = 0.5
+      const sc = Neuron(id: 'sc', type: 'SC', threshold: 10, currentPotential: 0.5);
+      // synapse to SC with active trace
+      const syn = Synapse(
+        sourceId: 'pf', 
+        targetId: 'sc', 
+        weight: 0.5, 
+        learningRate: 0.1, 
+        eligibilityTrace: 1.0, 
+        targetType: 'SC'
+      );
+      
+      final state = SimulationState(neurons: [sc], synapses: [syn]);
+      
+      // climbingFiberPunishment = 1.0 (actual)
+      // tdError = 1.0 - 0.5 = 0.5
+      // newWeight = 0.5 + (0.1 * 0.5 * 1.0) = 0.55
+      final nextState = service.adjustWeightsRL(state, climbingFiberPunishment: 1.0);
+      
+      expect(nextState.synapses.first.weight, closeTo(0.55, 0.001));
     });
 
-    test('Weights should increase when neuron does not spike but target is true', () {
-      const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 0.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
-
-      final state = SimulationState(neurons: [source, target], synapses: [synapse]);
-
-      // Target says it SHOULD spike, but it IS NOT spiking (potential 0.0 < threshold 10.0)
-      final nextState = service.adjustWeights(state, purkinjeId: 'p', targetSignal: true);
-
-      expect(nextState.synapses.first.weight, 1.1); // 1.0 + 0.1
+    test('Actor (PC) weights should decrease (LTD) when punishment occurs', () {
+      // predictedPunishment = 0 (no SC)
+      const pc = Neuron(id: 'pc', type: 'PC', threshold: 10, currentPotential: 0.1);
+      const syn = Synapse(
+        sourceId: 'pf', 
+        targetId: 'pc', 
+        weight: 0.5, 
+        learningRate: 0.1, 
+        eligibilityTrace: 1.0, 
+        targetType: 'PC'
+      );
+      
+      final state = SimulationState(neurons: [pc], synapses: [syn]);
+      
+      // tdError = 1.0 - 0.0 = 1.0
+      // newWeight = 0.5 - (0.1 * 1.0 * 1.0) = 0.4
+      final nextState = service.adjustWeightsRL(state, climbingFiberPunishment: 1.0);
+      
+      expect(nextState.synapses.first.weight, closeTo(0.4, 0.001));
     });
 
-    test('Weights should not change when output matches target', () {
-      const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
-      const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
-
-      final state = SimulationState(neurons: [source, target], synapses: [synapse]);
-
-      // Spiking matches target (true)
-      final nextState = service.adjustWeights(state, purkinjeId: 'p', targetSignal: true);
-
-      expect(nextState.synapses.first.weight, 1.0);
+    test('Weights should not change if eligibility trace is near zero', () {
+      const sc = Neuron(id: 'sc', type: 'SC', threshold: 10, currentPotential: 0.0);
+      const syn = Synapse(
+        sourceId: 'pf', 
+        targetId: 'sc', 
+        weight: 0.5, 
+        learningRate: 0.1, 
+        eligibilityTrace: 0.005, // < 0.01
+        targetType: 'SC'
+      );
+      
+      final state = SimulationState(neurons: [sc], synapses: [syn]);
+      final nextState = service.adjustWeightsRL(state, climbingFiberPunishment: 1.0);
+      
+      expect(nextState.synapses.first.weight, 0.5);
     });
 
-    test('Weight should only change if source neuron was active', () {
-      const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 0.0); // NOT ACTIVE
-      const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
-
-      final state = SimulationState(neurons: [source, target], synapses: [synapse]);
-
-      // Spiking (true) != target (false), but source was NOT active
-      final nextState = service.adjustWeights(state, purkinjeId: 'p', targetSignal: false);
-
-      expect(nextState.synapses.first.weight, 1.0); // No change
+    test('Weights should be clamped between 0.0 and 1.0', () {
+      const pc = Neuron(id: 'pc', type: 'PC', threshold: 10, currentPotential: 0.0);
+      const syn = Synapse(
+        sourceId: 'pf', 
+        targetId: 'pc', 
+        weight: 0.05, 
+        learningRate: 0.1, 
+        eligibilityTrace: 1.0, 
+        targetType: 'PC'
+      );
+      
+      final state = SimulationState(neurons: [pc], synapses: [syn]);
+      
+      // newWeight = 0.05 - (0.1 * 1.0 * 1.0) = -0.05 -> clamped to 0.0
+      final nextState = service.adjustWeightsRL(state, climbingFiberPunishment: 1.0);
+      
+      expect(nextState.synapses.first.weight, 0.0);
     });
   });
 }

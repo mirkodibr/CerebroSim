@@ -71,16 +71,16 @@ class SimulationNotifier extends Notifier<SimulationState> {
     final nextState = service.calculateNextState(currentState);
     state = nextState;
 
-    // 4. Learning logic (Purkinje cell error correction)
-    // Find the Purkinje cell
+    // 4. Learning logic (Actor-Critic Refactor)
+    // Temporary: Mock punishment signal based on supervised error for compilability
     final purkinje = state.neurons.firstWhere(
       (n) => n.type == 'Purkinje', 
       orElse: () => state.neurons.isNotEmpty ? state.neurons.last : const Neuron(id: '', type: '', threshold: 0, currentPotential: 0)
     );
-    
-    if (purkinje.id.isNotEmpty) {
-      applyLearning(purkinje.id, currentInput);
-    }
+    final isSpiking = purkinje.currentPotential >= purkinje.threshold;
+    final double mockPunishment = (isSpiking != currentInput) ? -1.0 : 0.0;
+
+    applyLearningRL(mockPunishment);
 
     // 5. Update history
     final outputSpike = purkinje.currentPotential >= purkinje.threshold;
@@ -90,10 +90,10 @@ class SimulationNotifier extends Notifier<SimulationState> {
     );
   }
 
-  /// Applies error correction based on a target signal
-  void applyLearning(String purkinjeId, bool targetSignal) {
+  /// Applies RL learning rule with climbing fiber punishment
+  void applyLearningRL(double climbingFiberPunishment) {
     final service = ref.read(simulationServiceProvider);
-    state = service.adjustWeights(state, purkinjeId: purkinjeId, targetSignal: targetSignal);
+    state = service.adjustWeightsRL(state, climbingFiberPunishment: climbingFiberPunishment);
   }
 }
 

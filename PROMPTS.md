@@ -39,7 +39,7 @@
 2. In `Synapse`, add a `double eligibilityTrace` (default 0.0) and a `String targetType` (e.g., 'PC' or 'SC'). 
 Ensure both classes remain completely immutable, update their `copyWith`, `toJson`, and `fromJson` methods, and output the complete code for both files.
 
-[ ] 20. **Leaky Integrate-and-Fire (LIF) Engine:** Read `lib/services/simulation_service.dart`. Update the `calculateNextState` method to support Continuous-Time RL. 
+[x] 20. **Leaky Integrate-and-Fire (LIF) Engine:** Read `lib/services/simulation_service.dart`. Update the `calculateNextState` method to support Continuous-Time RL. 
 1. Instead of simply maintaining potential, non-spiking neurons must multiply their current potential by `(1.0 - neuron.decayRate)` before adding new incoming potential. 
 2. Update synapse eligibility traces: multiply all current traces by a decay factor (e.g., 0.95). If the synapse's `sourceId` just spiked, add 1.0 to its trace. Output the updated method.
 

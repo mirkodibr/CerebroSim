@@ -58,46 +58,46 @@ class SimulationService {
     );
   }
 
-  /// Implements the Climbing Fiber Algorithm (error-correction).
+  /// Implements the Actor-Critic Learning Rule (Continuous-Time RL).
   /// 
   /// Logic:
-  /// 1. Compare the Purkinje neuron's spiking state with the [targetSignal].
-  /// 2. If there's an error (e.g., target says it should spike, but it didn't, or vice-versa),
-  ///    adjust the weights of all active synapses connecting to that Purkinje neuron.
-  /// 3. In the Marr-Albus-Ito theory, a climbing fiber signal typically triggers
-  ///    Long-Term Depression (LTD) when a parallel fiber is active simultaneously.
-  SimulationState adjustWeights(
+  /// 1. Calculate predicted punishment from Stellate Cells (Critic).
+  /// 2. Calculate TD Error.
+  /// 3. Update weights of synapses with active eligibility traces.
+  SimulationState adjustWeightsRL(
     SimulationState currentState, {
-    required String purkinjeId,
-    required bool targetSignal,
+    required double climbingFiberPunishment,
   }) {
-    final purkinjeNeuron = currentState.neurons.firstWhere((n) => n.id == purkinjeId);
-    final isSpiking = purkinjeNeuron.currentPotential >= purkinjeNeuron.threshold;
-
-    // Simplified error logic:
-    // If target is true (should spike) but isSpiking is false -> Increase weights of active inputs
-    // If target is false (should not spike) but isSpiking is true -> Decrease weights of active inputs (LTD)
-    
-    if (isSpiking == targetSignal) {
-      return currentState; // No error, no adjustment
+    // 1. Calculate predictedPunishment from all 'SC' neurons
+    double predictedPunishment = 0.0;
+    for (final neuron in currentState.neurons) {
+      if (neuron.type == 'SC') {
+        predictedPunishment += neuron.currentPotential;
+      }
     }
 
-    final double adjustmentFactor = targetSignal ? 1.0 : -1.0;
+    // 2. Calculate tdError
+    final tdError = climbingFiberPunishment - predictedPunishment;
 
+    // 3. Update weights based on traces and target type
     final List<Synapse> nextSynapses = currentState.synapses.map((synapse) {
-      if (synapse.targetId == purkinjeId) {
-        // Find the source neuron to see if it was active (spiked)
-        final sourceNeuron = currentState.neurons.firstWhere((n) => n.id == synapse.sourceId);
-        final wasSourceActive = sourceNeuron.currentPotential >= sourceNeuron.threshold;
-
-        if (wasSourceActive) {
-          // Adjust weight based on learning rate and direction of error
-          final newWeight = synapse.weight + (synapse.learningRate * adjustmentFactor);
-          // Weights usually don't go below 0 in simple models
-          return synapse.copyWith(weight: newWeight < 0 ? 0.0 : newWeight);
-        }
+      if (synapse.eligibilityTrace < 0.01) {
+        return synapse;
       }
-      return synapse;
+
+      double newWeight = synapse.weight;
+      if (synapse.targetType == 'SC') {
+        // Critic update: reinforce value prediction
+        newWeight += synapse.learningRate * tdError * synapse.eligibilityTrace;
+      } else if (synapse.targetType == 'PC') {
+        // Actor update: LTD-like response to punishment
+        newWeight -= synapse.learningRate * tdError * synapse.eligibilityTrace;
+      }
+
+      // Clamp weights between 0.0 and 1.0
+      newWeight = newWeight.clamp(0.0, 1.0);
+      
+      return synapse.copyWith(weight: newWeight);
     }).toList();
 
     return currentState.copyWith(synapses: nextSynapses);
