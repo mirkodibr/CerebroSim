@@ -65,6 +65,26 @@ void main() {
       expect(nextSyn1.eligibilityTrace, closeTo(1.95, 0.001));
       expect(nextSyn2.eligibilityTrace, closeTo(0.95, 0.001));
     });
+
+    test('DCN neurons should receive baseline excitatory drive', () {
+      const dcn = Neuron(id: 'd1', type: 'DCN', threshold: 10.0, currentPotential: 2.0, decayRate: 0.1);
+      const state = SimulationState(neurons: [dcn], synapses: []);
+
+      final nextState = service.calculateNextState(state);
+
+      // (2.0 * 0.9) + 0.5 = 1.8 + 0.5 = 2.3
+      expect(nextState.neurons.first.currentPotential, closeTo(2.3, 0.001));
+    });
+
+    test('DCN neurons should receive baseline drive even after spiking', () {
+      const dcn = Neuron(id: 'd1', type: 'DCN', threshold: 5.0, currentPotential: 5.0);
+      const state = SimulationState(neurons: [dcn], synapses: []);
+
+      final nextState = service.calculateNextState(state);
+
+      // Reset to 0.0 + 0.5 = 0.5
+      expect(nextState.neurons.first.currentPotential, 0.5);
+    });
   });
 
   group('SimulationService Actor-Critic Learning (adjustWeightsRL) Tests', () {

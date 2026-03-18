@@ -8,6 +8,7 @@ class SimulationService {
   /// Updates for Continuous-Time RL:
   /// 1. LIF Dynamics: Non-spiking neurons decay their potential.
   /// 2. Eligibility Traces: Synapse traces decay and are reinforced by presynaptic spikes.
+  /// 3. DCN Baseline: DCN cells have a constant excitatory drive (+0.5).
   SimulationState calculateNextState(SimulationState currentState) {
     final Map<String, double> potentialDeltas = {};
     final Set<String> spikingNeurons = {};
@@ -47,6 +48,12 @@ class SimulationService {
         // LIF: Decay current potential then add incoming potentials
         final decayedPotential = neuron.currentPotential * (1.0 - neuron.decayRate);
         nextPotential = decayedPotential + (potentialDeltas[neuron.id] ?? 0.0);
+      }
+
+      // Biologically, DCN neurons have a natural baseline firing rate.
+      // We simulate this with an automatic excitatory drive every tick.
+      if (neuron.type == 'DCN') {
+        nextPotential += 0.5;
       }
 
       return neuron.copyWith(currentPotential: nextPotential);

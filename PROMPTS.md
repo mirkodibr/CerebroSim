@@ -65,6 +65,31 @@ Rename/Refactor the signal provider to an `environmentProvider` using Riverpod. 
 2. Create an `EnvironmentNotifier` using Riverpod. Implement `advanceStep()` to loop every 1000ms.
 3. Implement `List<double> getParallelFiberState(int numberOfTiles)` to generate different spatial arrays based on the active task (e.g., a sweeping index for the sine wave, a static block for eyeblink).
 4. Implement `double getClimbingFiberPunishment(String currentAction)` to apply task-specific penalty rules (e.g., -1.0 at step 500 if action is not 'anticlose' for the eyeblink task). Output the complete code.
+### Phase 2.5B: Biological Logic Hotfixes
+
+[ ] 26. **DCN Baseline Excitatory Drive:** Read `lib/services/simulation_service.dart`. Biologically, Deep Cerebellar Nuclei (DCN) have a natural baseline firing rate that Purkinje Cells (PCs) inhibit. If DCNs start at 0.0, the PC inhibition will just drive them negative and the network won't select actions properly. 
+In `calculateNextState`, locate the section where you update neurons with LIF dynamics. Add logic so that if a neuron's type is 'DCN', it receives an automatic baseline excitatory drive (e.g., `nextPotential += 0.5;`) every tick before applying incoming potentials. Output the updated `calculateNextState` method.
+
+[ ] 27. **Sine Wave Tracking Punishment Logic:** Read `lib/providers/environment_provider.dart`. The current punishment logic for the Sine Wave task penalizes *any* movement (`if (lastAction != 'none') return -0.5;`), which will cause the agent to freeze. 
+Update the `SignalTask.sineWave` case inside `getClimbingFiberSignal`. 
+1. Calculate the wave's directional slope: `bool isWaveMovingUp = cos((state.currentStep / 1000.0) * 2.0 * 3.14159) > 0;`. 
+2. Determine the `requiredAction` based on the slope (e.g., if moving up, it should be 'antiopen', otherwise 'anticlose'). 
+3. Return `-0.5` ONLY if `lastAction` is not the `requiredAction` AND `lastAction != 'none'`. Output the updated method.
+
+[ ] 28. **Inhibitory Synapse Initialization:** Read `lib/providers/simulation_provider.dart` (or wherever the initial `SimulationState` is constructed). The lateral inhibition ("dents") and DCN suppression only work if the synapses coming *from* inhibitory cells actually subtract potential. 
+Ensure that when generating the initial list of `Synapse` objects, any synapse where the `sourceId` belongs to a Basket Cell ('BC') or a Purkinje Cell ('PC') is initialized with a negative weight (e.g., `-1.0`), while Granule/Parallel Fiber ('PF') synapses remain positive. Output the updated initialization logic.
+
+### Phase 2.5C: Visualization Updates
+
+[ ] 29. **Neural Canvas Spatial Layout:** Read `lib/widgets/neural_canvas.dart`. We need to update the `CustomPainter` to visually support the new Actor-Critic architecture. 
+1. Update the node rendering logic to assign distinct colors based on the `neuron.type`: PFs (Neon Cyan), SCs (Yellow/Gold for Critic), BCs (Orange for Inhibitor), PCs (Purple for Actor), and DCN (Green for Output). 
+2. Ensure the vertical layout (Y-axis) reflects the biological layers: PFs at the top, SCs and BCs in the middle molecular layer, PCs below them, and DCNs at the very bottom. 
+3. If a neuron's `currentPotential` is high, increase its opacity or glow effect to visualize the Leaky Integrate-and-Fire activity. Output the completely updated widget.
+
+[ ] 30. **Critic Prediction Plotter:** Read `lib/widgets/signal_plotter.dart` and briefly review `lib/providers/environment_provider.dart` to understand the `SignalHistoryNotifier`. 
+1. Refactor `SignalPlotter` to consume the `signalHistoryProvider` via Riverpod. 
+2. Instead of graphing a sine wave target, the plotter must now graph two lines using the `HistoryPoint` data: The actual `climbingFiberPunishment` (the environment's delayed feedback) and the Critic's `predictedPunishment` (from the Stellate Cells). 
+3. Color the actual punishment Red and the predicted punishment Yellow. Add a legend to the UI. Output the completely updated widget.
 
 **Phase 3: Milestone 2 - Full Integration (Auth & Database)**
 
