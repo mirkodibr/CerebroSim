@@ -65,5 +65,24 @@ void main() {
       expect(notifier.getClimbingFiberSignal('none'), -1.0);
       expect(notifier.getClimbingFiberSignal('antiopen'), -1.0);
     });
+
+    test('getClimbingFiberSignal should follow sine wave slope requirements', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(environmentProvider.notifier);
+      notifier.setTask(SignalTask.sineWave);
+
+      // At 0ms, slope is cos(0) = 1.0 (positive) -> Required 'antiopen'
+      expect(notifier.getClimbingFiberSignal('antiopen'), 0.0);
+      expect(notifier.getClimbingFiberSignal('none'), 0.0);
+      expect(notifier.getClimbingFiberSignal('anticlose'), -0.5);
+
+      // At 500ms, slope is cos(pi) = -1.0 (negative) -> Required 'anticlose'
+      notifier.update(500.0);
+      expect(notifier.getClimbingFiberSignal('anticlose'), 0.0);
+      expect(notifier.getClimbingFiberSignal('none'), 0.0);
+      expect(notifier.getClimbingFiberSignal('antiopen'), -0.5);
+    });
   });
 }

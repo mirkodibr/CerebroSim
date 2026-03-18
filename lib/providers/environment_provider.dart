@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum SignalTask { delayEyeblink, sineWave, stepFunction }
@@ -61,8 +62,6 @@ class EnvironmentNotifier extends Notifier<EnvironmentState> {
         
         case SignalTask.sineWave:
           // Sine: A sweeping active index that oscillates
-          final phase = (state.currentStep / 1000.0) * 2.0 * 3.14159;
-          final normalizedSine = (0.5 + 0.5 * 0.9 * (1.0 * (index % 2 == 0 ? 1 : -1))); // Mock complex
           // Simple sweep for sine-like representation
           final sweepIndex = ((state.currentStep / 1000.0) * pfCount).floor();
           return index == sweepIndex % pfCount;
@@ -89,8 +88,15 @@ class EnvironmentNotifier extends Notifier<EnvironmentState> {
         break;
       
       case SignalTask.sineWave:
-        // Mock punishment: penalty if ANY action is taken during sine (trying to keep 0 output)
-        if (lastAction != 'none') return -0.5;
+        // Biologically, tracking involves moving in the direction of the stimulus.
+        // Slope calculation: derivative of sin(x) is cos(x)
+        final bool isWaveMovingUp = math.cos((state.currentStep / 1000.0) * 2.0 * math.pi) > 0;
+        final String requiredAction = isWaveMovingUp ? 'antiopen' : 'anticlose';
+        
+        // Return -0.5 ONLY if lastAction is not requiredAction AND lastAction != 'none'
+        if (lastAction != 'none' && lastAction != requiredAction) {
+          return -0.5;
+        }
         break;
 
       case SignalTask.stepFunction:

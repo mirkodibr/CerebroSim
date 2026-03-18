@@ -67,7 +67,7 @@ Rename/Refactor the signal provider to an `environmentProvider` using Riverpod. 
 4. Implement `double getClimbingFiberPunishment(String currentAction)` to apply task-specific penalty rules (e.g., -1.0 at step 500 if action is not 'anticlose' for the eyeblink task). Output the complete code.
 ### Phase 2.5B: Biological Logic Hotfixes
 
-[ ] 26. **DCN Baseline Excitatory Drive:** Read `lib/services/simulation_service.dart`. Biologically, Deep Cerebellar Nuclei (DCN) have a natural baseline firing rate that Purkinje Cells (PCs) inhibit. If DCNs start at 0.0, the PC inhibition will just drive them negative and the network won't select actions properly. 
+[x] 26. **DCN Baseline Excitatory Drive:** Read `lib/services/simulation_service.dart`. Biologically, Deep Cerebellar Nuclei (DCN) have a natural baseline firing rate that Purkinje Cells (PCs) inhibit. If DCNs start at 0.0, the PC inhibition will just drive them negative and the network won't select actions properly. 
 In `calculateNextState`, locate the section where you update neurons with LIF dynamics. Add logic so that if a neuron's type is 'DCN', it receives an automatic baseline excitatory drive (e.g., `nextPotential += 0.5;`) every tick before applying incoming potentials. Output the updated `calculateNextState` method.
 
 [ ] 27. **Sine Wave Tracking Punishment Logic:** Read `lib/providers/environment_provider.dart`. The current punishment logic for the Sine Wave task penalizes *any* movement (`if (lastAction != 'none') return -0.5;`), which will cause the agent to freeze. 
