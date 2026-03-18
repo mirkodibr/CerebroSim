@@ -33,7 +33,7 @@ void main() {
     test('Spiking neuron should propagate potential through synapse to target', () {
       const source = Neuron(id: 'n1', type: 'Granular', threshold: 10.0, currentPotential: 10.0);
       const target = Neuron(id: 'n2', type: 'Purkinje', threshold: 20.0, currentPotential: 0.0);
-      const synapse = Synapse(sourceId: 'n1', targetId: 'n2', weight: 5.0, learningRate: 0.01);
+      const synapse = Synapse(sourceId: 'n1', targetId: 'n2', weight: 5.0, learningRate: 0.01, targetType: 'test');
       
       const state = SimulationState(neurons: [source, target], synapses: [synapse]);
 
@@ -51,8 +51,8 @@ void main() {
       const s2 = Neuron(id: 's2', type: 'G', threshold: 5.0, currentPotential: 5.0);
       const target = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 2.0);
       
-      const syn1 = Synapse(sourceId: 's1', targetId: 't', weight: 3.0, learningRate: 0.1);
-      const syn2 = Synapse(sourceId: 's2', targetId: 't', weight: 4.0, learningRate: 0.1);
+      const syn1 = Synapse(sourceId: 's1', targetId: 't', weight: 3.0, learningRate: 0.1, targetType: 'test');
+      const syn2 = Synapse(sourceId: 's2', targetId: 't', weight: 4.0, learningRate: 0.1, targetType: 'test');
 
       const state = SimulationState(neurons: [s1, s2, target], synapses: [syn1, syn2]);
 
@@ -70,7 +70,7 @@ void main() {
         
         const s = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
         const t = Neuron(id: 't', type: 'P', threshold: 20.0, currentPotential: 0.0);
-        const syn = Synapse(sourceId: 's', targetId: 't', weight: 25.0, learningRate: 0.1);
+        const syn = Synapse(sourceId: 's', targetId: 't', weight: 25.0, learningRate: 0.1, targetType: 'test');
         
         var state = SimulationState(neurons: [s, t], synapses: [syn]);
         
@@ -86,7 +86,7 @@ void main() {
     test('Weights should decrease (LTD) when neuron spikes but target is false', () {
       const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
       const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1);
+      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
 
       final state = SimulationState(neurons: [source, target], synapses: [synapse]);
 
@@ -99,7 +99,7 @@ void main() {
     test('Weights should increase when neuron does not spike but target is true', () {
       const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
       const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 0.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1);
+      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
 
       final state = SimulationState(neurons: [source, target], synapses: [synapse]);
 
@@ -112,7 +112,7 @@ void main() {
     test('Weights should not change when output matches target', () {
       const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 5.0);
       const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1);
+      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
 
       final state = SimulationState(neurons: [source, target], synapses: [synapse]);
 
@@ -125,7 +125,7 @@ void main() {
     test('Weight should only change if source neuron was active', () {
       const source = Neuron(id: 's', type: 'G', threshold: 5.0, currentPotential: 0.0); // NOT ACTIVE
       const target = Neuron(id: 'p', type: 'P', threshold: 10.0, currentPotential: 10.0);
-      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1);
+      const synapse = Synapse(sourceId: 's', targetId: 'p', weight: 1.0, learningRate: 0.1, targetType: 'test');
 
       final state = SimulationState(neurons: [source, target], synapses: [synapse]);
 

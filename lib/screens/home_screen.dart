@@ -28,7 +28,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Neuron(id: 'n2', type: 'Purkinje', threshold: 5, currentPotential: 0, x: 300, y: 150),
           ],
           synapses: [
-            Synapse(sourceId: 'n1', targetId: 'n2', weight: 0.5, learningRate: 0.05),
+            Synapse(sourceId: 'n1', targetId: 'n2', weight: 0.5, learningRate: 0.05, targetType: 'PC'),
           ],
         ),
       );

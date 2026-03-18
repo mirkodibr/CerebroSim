@@ -5,6 +5,8 @@ class Neuron {
   final double currentPotential;
   final double x;
   final double y;
+  final double decayRate;
+  final String? actionGroup;
 
   const Neuron({
     required this.id,
@@ -13,6 +15,8 @@ class Neuron {
     required this.currentPotential,
     this.x = 0.0,
     this.y = 0.0,
+    this.decayRate = 0.1,
+    this.actionGroup,
   });
 
   Neuron copyWith({
@@ -22,6 +26,8 @@ class Neuron {
     double? currentPotential,
     double? x,
     double? y,
+    double? decayRate,
+    String? actionGroup,
   }) {
     return Neuron(
       id: id ?? this.id,
@@ -30,6 +36,8 @@ class Neuron {
       currentPotential: currentPotential ?? this.currentPotential,
       x: x ?? this.x,
       y: y ?? this.y,
+      decayRate: decayRate ?? this.decayRate,
+      actionGroup: actionGroup ?? this.actionGroup,
     );
   }
 
@@ -41,6 +49,8 @@ class Neuron {
       'currentPotential': currentPotential,
       'x': x,
       'y': y,
+      'decayRate': decayRate,
+      'actionGroup': actionGroup,
     };
   }
 
@@ -52,6 +62,8 @@ class Neuron {
       currentPotential: (json['currentPotential'] as num).toDouble(),
       x: (json['x'] as num?)?.toDouble() ?? 0.0,
       y: (json['y'] as num?)?.toDouble() ?? 0.0,
+      decayRate: (json['decayRate'] as num?)?.toDouble() ?? 0.1,
+      actionGroup: json['actionGroup'] as String?,
     );
   }
 }

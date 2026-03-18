@@ -16,6 +16,7 @@ void main() {
       targetId: 'n2',
       weight: 0.5,
       learningRate: 0.01,
+      targetType: 'test',
     );
 
     test('SimulationState should be correctly initialized', () {

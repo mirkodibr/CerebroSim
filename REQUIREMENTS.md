@@ -25,21 +25,32 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 
 * [x]**Step 2.1: Spiking Neural Data Models:** * [x]**2.1.1:** Define immutable Dart classes for `Neuron` (threshold, potential) and `Synapse` (weight) in `/models`.
     * [x]**2.1.2:** Create a `SimulationState` model to hold snapshots of all active cells.
-* [x]**Step 2.2: Simulation Engine (Logic Layer):** * [x]**2.2.1:** Build `SimulationService` in `/services` to process discrete spiking dynamics.
+* [x]**Step 2.2: Simulation Engine (Logic Layer):** 
+    * [x]**2.2.1:** Build `SimulationService` in `/services` to process discrete spiking dynamics.
     * [x]**2.2.2:** Implement the **Climbing Fiber** error-correction logic to adjust synaptic weights.
-* [x]**Step 2.3: State & Timing:** * [x]**2.3.1:** Create a Riverpod `Notifier` to act as the simulation clock at 60fps.
+* [x]**Step 2.3: State & Timing:** * [x]
+    * [x]**2.3.1:** Create a Riverpod `Notifier` to act as the simulation clock at 60fps.
     * [x]**2.3.2:** Implement a provider to generate target input signals (Sine, Noisy waves).
-* [x]**Step 2.4: The Neural Canvas (UI Layer):** * [x]**2.4.1:** Implement a `CustomPainter` widget to draw the 2D layout of the cerebellar cortex.
-* [x]**2.4.2:** Wrap the canvas in an `InteractiveViewer` for zoom/pan support.
+* [x]**Step 2.4: The Neural Canvas (UI Layer):** * [x]
+    * [x]**2.4.1:** Implement a `CustomPainter` widget to draw the 2D layout of the cerebellar cortex.
+    * [x]**2.4.2:** Wrap the canvas in an `InteractiveViewer` for zoom/pan support.
 * [x]**Step 2.5: Real-Time Signal Plotter:** Build a dedicated graphing widget to visualize input vs. output in real-time.
+### Phase 2.5: Actor-Critic RL Refactor (Kuriyama et al. 2025)
+*Goal: Transition the core simulation engine from classical Supervised Learning to Continuous-Time Reinforcement Learning.*
+
+* [ ]**Step 2.5.1: RL Data Models:** Update `Neuron` with LIF (Leaky Integrate-and-Fire) dynamics (`decayRate`) and `actionGroup`. Update `Synapse` with `eligibilityTrace` and `targetType`.
+* [ ]**Step 2.5.2: State Engine & Traces:** Refactor `SimulationService.calculateNextState` to process potential decay (LIF) and update synapse eligibility traces upon presynaptic spikes.
+* [ ]**Step 2.5.3: Actor-Critic Learning Rule:** Implement `adjustWeightsRL` in `SimulationService`. Calculate predicted value via Stellate Cells (Critic) and action output via Deep Cerebellar Nuclei (DCN). Use TD Error and eligibility traces to update weights.
+* [ ]**Step 2.5.4: Episodic Environment:** Refactor the input provider into an `EnvironmentProvider` that manages episodic runs, outputs state to Parallel Fibers, and triggers continuous Climbing Fiber punishment signals.
+* [ ]**Step 2.5.5: Visualization Updates:** Update `NeuralCanvas` to draw SC, BC, and DCN cells. Update `SignalPlotter` to graph the Critic's value prediction and success rate over episodes.
 
 ### Phase 3: Milestone 2 - Full Stack Integration
 [ ]*Goal: Complete major functionality and replace mock data with live cloud and authentication.*
 
-* [ ]**Step 3.1: Secure Identity (Authentication):** * **3.1.1:** Implement `AuthService` using Firebase Authentication[cite: 32, 101, 153, 222].
+* [ ]**Step 3.1: Secure Identity (Authentication):** * **3.1.1:** Implement `AuthService` using Firebase Authentication.
 * [ ]**3.1.2:** Configure **Google Sign-In** alongside standard Email/Password.
 * [ ]**Step 3.2: The Auth Gate:** Create an `AuthGate` widget to handle automatic redirection based on user login state.
-* [ ]**Step 3.3: Cloud Research Vault (Database):** * **3.3.1:** Implement `DatabaseService` using Firestore for persistent storage[cite: 107, 228].
+* [ ]**Step 3.3: Cloud Research Vault (Database):** * **3.3.1:** Implement `DatabaseService` using Firestore for persistent storage.
 * [ ]**3.3.2:** Create CRUD operations to save/fetch "Brain State" snapshots (weights/maps).
 * **Step 3.4: Cloud Gallery UI:** Build a screen to browse, preview, and load saved simulations from the cloud.
 

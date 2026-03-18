@@ -32,6 +32,34 @@
 
 [x] 18. **Real-Time Signal Plotter:** Build a `SignalPlotter` widget in `/widgets` that graphs the target input wave against the actual output from the simulation to visualize learning progress.
 
+**Phase 2.5: Actor-Critic RL Refactor (Kuriyama et al. 2025)**
+
+[x] 19. **RL Data Models Update:** Read `lib/models/neuron.dart` and `lib/models/synapse.dart`. I am refactoring this project to an Actor-Critic Reinforcement Learning model. 
+1. In `Neuron`, add a `double decayRate` (default 0.1) for Leaky Integrate-and-Fire dynamics, and a `String? actionGroup` to group motor cells. 
+2. In `Synapse`, add a `double eligibilityTrace` (default 0.0) and a `String targetType` (e.g., 'PC' or 'SC'). 
+Ensure both classes remain completely immutable, update their `copyWith`, `toJson`, and `fromJson` methods, and output the complete code for both files.
+
+[ ] 20. **Leaky Integrate-and-Fire (LIF) Engine:** Read `lib/services/simulation_service.dart`. Update the `calculateNextState` method to support Continuous-Time RL. 
+1. Instead of simply maintaining potential, non-spiking neurons must multiply their current potential by `(1.0 - neuron.decayRate)` before adding new incoming potential. 
+2. Update synapse eligibility traces: multiply all current traces by a decay factor (e.g., 0.95). If the synapse's `sourceId` just spiked, add 1.0 to its trace. Output the updated method.
+
+[ ] 21. **Actor-Critic Learning Rule:** Read `lib/services/simulation_service.dart`. Delete the `adjustWeights` method. Write a new method `SimulationState adjustWeightsRL(SimulationState currentState, {required double climbingFiberPunishment})`. 
+1. Calculate `predictedPunishment` by summing the potential of all 'SC' (Stellate Cell) neurons. 
+2. Calculate `tdError = climbingFiberPunishment - predictedPunishment`. 
+3. Loop through synapses. If `eligibilityTrace < 0.01`, skip. 
+4. If target is 'SC' (Critic), `newWeight += learningRate * tdError * eligibilityTrace`. 
+5. If target is 'PC' (Actor), `newWeight -= learningRate * tdError * eligibilityTrace`. Clamp weights between 0.0 and 1.0. Output the updated method.
+
+[ ] 22. **DCN Action Selection:** Read `lib/services/simulation_service.dart`. Add a new method `String getExecutedAction(SimulationState currentState)`. 
+Filter the state for 'DCN' (Deep Cerebellar Nuclei) neurons. Find the DCN neuron with the highest `currentPotential` (using argmax). Return its `actionGroup` string (e.g., 'antiopen' or 'anticlose'). If no DCN cells exist or potentials are tied at 0, return 'none'. Output the new method.
+
+[ ] 23. **Environment Provider Refactor:** Read `lib/providers/signal_provider.dart` and `lib/providers/simulation_provider.dart`. We are replacing the supervised "target wave" with an episodic RL environment. 
+Rename/Refactor the signal provider to an `environmentProvider` using Riverpod. It should hold state for an `episodeNumber` and `currentStep` (0 to 1000ms). It should expose a method to get the current state vector for the Parallel Fibers, and a method `double getClimbingFiberSignal()` that returns a negative punishment (e.g., -1.0) only if the wrong action is taken at step 500. Output the complete new provider code.
+
+[ ] 24. **UI Canvas & Plotter Updates:** Read `lib/widgets/neural_canvas.dart` and `lib/widgets/signal_plotter.dart`. 
+1. Update the `CustomPainter` to assign specific colors and vertical layers to the new cell types: SC (Critic), BC (Inhibitor), and DCN (Output). 
+2. Update the `SignalPlotter` to stop comparing "Target vs Output". Instead, plot the SC group's `predictedPunishment` against the actual `climbingFiberPunishment` over the 1000ms episode to visualize the Critic's learning. Output the updated widget code.
+
 **Phase 3: Milestone 2 - Full Integration (Auth & Database)**
 
 [ ] 19. **Authentication Service:** Implement `AuthService` in `/services` using Firebase Authentication. Include methods for Email/Password sign-up, login, and sign-out.
