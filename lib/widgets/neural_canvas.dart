@@ -28,15 +28,15 @@ class _NeuralPainter extends CustomPainter {
   Color _getNeuronColor(String type) {
     switch (type) {
       case 'Purkinje':
-        return CerebroTheme.neonCyan; // Actor
+        return Colors.deepPurpleAccent; // Actor
       case 'SC':
-        return Colors.purpleAccent; // Critic (Stellate Cell)
+        return Colors.amberAccent; // Critic (Stellate Cell)
       case 'DCN':
-        return Colors.orangeAccent; // Output (Deep Cerebellar Nuclei)
+        return Colors.greenAccent; // Output (Deep Cerebellar Nuclei)
       case 'BC':
-        return Colors.redAccent; // Inhibitor (Basket Cell)
+        return Colors.orangeAccent; // Inhibitor (Basket Cell)
       case 'Granular':
-        return Colors.tealAccent; // Input (Parallel Fiber)
+        return CerebroTheme.neonCyan; // Input (Parallel Fiber)
       default:
         return Colors.grey.shade600;
     }
@@ -63,9 +63,10 @@ class _NeuralPainter extends CustomPainter {
 
       // Color synapse by target type
       final targetColor = _getNeuronColor(target.type);
-      synapsePaint.color = targetColor.withValues(
-        alpha: (synapse.weight * 0.4).clamp(0.05, 0.6),
-      );
+      
+      // Weight contributes to opacity
+      final double alpha = (synapse.weight.abs() * 0.4).clamp(0.05, 0.6);
+      synapsePaint.color = targetColor.withValues(alpha: alpha);
       
       canvas.drawLine(
         Offset(source.x, source.y),
@@ -79,18 +80,24 @@ class _NeuralPainter extends CustomPainter {
       final isSpiking = neuron.currentPotential >= neuron.threshold && neuron.threshold > 0;
       final baseColor = _getNeuronColor(neuron.type);
       
+      // Potential contributes to glow/opacity (LIF visualization)
+      final double activityRatio = (neuron.currentPotential / (neuron.threshold > 0 ? neuron.threshold : 1.0)).clamp(0.0, 1.0);
+      
       // Spiking neurons glow with their cell-type color, others are dimmed
       neuronPaint.color = isSpiking 
           ? baseColor 
-          : baseColor.withValues(alpha: 0.2);
+          : baseColor.withValues(alpha: 0.2 + (activityRatio * 0.4));
 
-      // Draw shadow/glow for spiking neurons
-      if (isSpiking) {
+      // Draw shadow/glow for spiking or high-activity neurons
+      if (isSpiking || activityRatio > 0.5) {
+        final double glowSize = isSpiking ? 10.0 : 6.0;
+        final double glowAlpha = isSpiking ? 0.6 : activityRatio * 0.3;
+        
         canvas.drawCircle(
           Offset(neuron.x, neuron.y),
-          8.0,
+          glowSize,
           Paint()
-            ..color = baseColor.withValues(alpha: 0.4)
+            ..color = baseColor.withValues(alpha: glowAlpha)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
         );
       }
