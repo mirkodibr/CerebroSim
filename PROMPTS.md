@@ -86,7 +86,7 @@ Ensure that when generating the initial list of `Synapse` objects, any synapse w
 2. Ensure the vertical layout (Y-axis) reflects the biological layers: PFs at the top, SCs and BCs in the middle molecular layer, PCs below them, and DCNs at the very bottom. 
 3. If a neuron's `currentPotential` is high, increase its opacity or glow effect to visualize the Leaky Integrate-and-Fire activity. Output the completely updated widget.
 
-[ ] 30. **Critic Prediction Plotter:** Read `lib/widgets/signal_plotter.dart` and briefly review `lib/providers/environment_provider.dart` to understand the `SignalHistoryNotifier`. 
+[x] 30. **Critic Prediction Plotter:** Read `lib/widgets/signal_plotter.dart` and briefly review `lib/providers/environment_provider.dart` to understand the `SignalHistoryNotifier`. 
 1. Refactor `SignalPlotter` to consume the `signalHistoryProvider` via Riverpod. 
 2. Instead of graphing a sine wave target, the plotter must now graph two lines using the `HistoryPoint` data: The actual `climbingFiberPunishment` (the environment's delayed feedback) and the Critic's `predictedPunishment` (from the Stellate Cells). 
 3. Color the actual punishment Red and the predicted punishment Yellow. Add a legend to the UI. Output the completely updated widget.
