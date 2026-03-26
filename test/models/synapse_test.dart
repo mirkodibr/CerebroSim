@@ -1,80 +1,42 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cerebrosim/models/synapse.dart';
+import 'package:cerebrosim/models/synapse_model.dart';
 
 void main() {
-  group('Synapse Model Tests', () {
-    test('Synapse should be correctly initialized', () {
-      const synapse = Synapse(
-        sourceId: 'n1',
-        targetId: 'n2',
+  group('SynapseModel Tests', () {
+    test('should be correctly initialized', () {
+      const synapse = SynapseModel(
+        id: 's1',
+        fromNeuronId: 'n1',
+        toNeuronId: 'n2',
         weight: 0.5,
-        learningRate: 0.01,
-        eligibilityTrace: 0.2,
-        targetType: 'PC',
+        eligibility: 0.1,
+        isInhibitory: false,
       );
 
-      expect(synapse.sourceId, 'n1');
-      expect(synapse.targetId, 'n2');
+      expect(synapse.id, 's1');
+      expect(synapse.fromNeuronId, 'n1');
+      expect(synapse.toNeuronId, 'n2');
       expect(synapse.weight, 0.5);
-      expect(synapse.learningRate, 0.01);
-      expect(synapse.eligibilityTrace, 0.2);
-      expect(synapse.targetType, 'PC');
+      expect(synapse.eligibility, 0.1);
+      expect(synapse.isInhibitory, false);
     });
 
-    test('Synapse should have default eligibilityTrace', () {
-      const synapse = Synapse(
-        sourceId: 'n1',
-        targetId: 'n2',
-        weight: 0.5,
-        learningRate: 0.01,
-        targetType: 'SC',
-      );
-      expect(synapse.eligibilityTrace, 0.0);
-      expect(synapse.targetType, 'SC');
+    test('initial factory should set correct weight based on inhibition', () {
+      final exc = SynapseModel.initial(fromId: 'n1', toId: 'n2', isInhibitory: false);
+      final inh = SynapseModel.initial(fromId: 'n1', toId: 'n3', isInhibitory: true);
+
+      expect(exc.weight, 0.1);
+      expect(inh.weight, -0.1);
+      expect(exc.id, 'n1->n2');
     });
 
     test('copyWith should return a new object with updated values', () {
-      const synapse = Synapse(
-        sourceId: 'n1',
-        targetId: 'n2',
-        weight: 0.5,
-        learningRate: 0.01,
-        targetType: 'PC',
-      );
+      final synapse = SynapseModel.initial(fromId: 'n1', toId: 'n2', isInhibitory: false);
+      final updated = synapse.copyWith(weight: 0.8, eligibility: 0.5);
 
-      final updatedSynapse = synapse.copyWith(
-        weight: 0.6,
-        eligibilityTrace: 0.3,
-        targetType: 'SC',
-      );
-
-      expect(updatedSynapse.weight, 0.6);
-      expect(updatedSynapse.eligibilityTrace, 0.3);
-      expect(updatedSynapse.targetType, 'SC');
-      expect(updatedSynapse.sourceId, synapse.sourceId);
-      expect(updatedSynapse.targetId, synapse.targetId);
-      expect(updatedSynapse.learningRate, synapse.learningRate);
-    });
-
-    test('toJson and fromJson should be consistent', () {
-      const synapse = Synapse(
-        sourceId: 'n1',
-        targetId: 'n2',
-        weight: 0.5,
-        learningRate: 0.01,
-        eligibilityTrace: 0.2,
-        targetType: 'PC',
-      );
-
-      final json = synapse.toJson();
-      final fromJson = Synapse.fromJson(json);
-
-      expect(fromJson.sourceId, synapse.sourceId);
-      expect(fromJson.targetId, synapse.targetId);
-      expect(fromJson.weight, synapse.weight);
-      expect(fromJson.learningRate, synapse.learningRate);
-      expect(fromJson.eligibilityTrace, synapse.eligibilityTrace);
-      expect(fromJson.targetType, synapse.targetType);
+      expect(updated.weight, 0.8);
+      expect(updated.eligibility, 0.5);
+      expect(updated.id, synapse.id);
     });
   });
 }
