@@ -1,68 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cerebrosim/models/neuron.dart';
-import 'package:cerebrosim/models/synapse.dart';
 import 'package:cerebrosim/models/simulation_state.dart';
+import 'package:cerebrosim/models/neuron_model.dart';
+import 'package:cerebrosim/models/synapse_model.dart';
 
 void main() {
-  group('SimulationState Model Tests', () {
-    const neuron1 = Neuron(
-      id: 'n1',
-      type: 'Granular',
-      threshold: 10.0,
-      currentPotential: 0.0,
-    );
-    const synapse1 = Synapse(
-      sourceId: 'n1',
-      targetId: 'n2',
-      weight: 0.5,
-      learningRate: 0.01,
-      targetType: 'test',
-    );
+  group('SimulationState Tests', () {
+    test('initial factory should create correct structure', () {
+      final state = SimulationState.initial();
 
-    test('SimulationState should be correctly initialized', () {
-      const state = SimulationState(
-        neurons: [neuron1],
-        synapses: [synapse1],
-      );
-
-      expect(state.neurons.length, 1);
-      expect(state.synapses.length, 1);
-      expect(state.neurons.first.id, 'n1');
-      expect(state.synapses.first.sourceId, 'n1');
+      expect(state.neurons.length, 5);
+      expect(state.synapses.length, 4);
+      expect(state.isRunning, false);
+      expect(state.episodeStep, 0);
+      expect(state.episodeCount, 0);
+      
+      final cellTypes = state.neurons.map((n) => n.cellType).toSet();
+      expect(cellTypes.contains('GC'), true);
+      expect(cellTypes.contains('PC'), true);
+      expect(cellTypes.contains('BC'), true);
+      expect(cellTypes.contains('DCN'), true);
+      expect(cellTypes.contains('CF'), true);
     });
 
-    test('copyWith should return a new object with updated lists', () {
-      const state = SimulationState(
-        neurons: [neuron1],
-        synapses: [synapse1],
+    test('copyWith should return updated state', () {
+      final state = SimulationState.initial();
+      final updated = state.copyWith(
+        isRunning: true,
+        episodeCount: 1,
+        criticPrediction: 0.5,
       );
 
-      const neuron2 = Neuron(
-        id: 'n2',
-        type: 'Purkinje',
-        threshold: 20.0,
-        currentPotential: 0.0,
-      );
-
-      final updatedState = state.copyWith(neurons: [neuron1, neuron2]);
-
-      expect(updatedState.neurons.length, 2);
-      expect(updatedState.synapses.length, 1);
-    });
-
-    test('toJson and fromJson should be consistent', () {
-      const state = SimulationState(
-        neurons: [neuron1],
-        synapses: [synapse1],
-      );
-
-      final json = state.toJson();
-      final fromJson = SimulationState.fromJson(json);
-
-      expect(fromJson.neurons.length, state.neurons.length);
-      expect(fromJson.synapses.length, state.synapses.length);
-      expect(fromJson.neurons.first.id, state.neurons.first.id);
-      expect(fromJson.synapses.first.sourceId, state.synapses.first.sourceId);
+      expect(updated.isRunning, true);
+      expect(updated.episodeCount, 1);
+      expect(updated.criticPrediction, 0.5);
+      expect(updated.neurons, state.neurons);
     });
   });
 }
