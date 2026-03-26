@@ -1,134 +1,89 @@
 import 'package:flutter/material.dart';
-import '../models/neuron.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
-import '../theme.dart';
+import '../models/neuron_model.dart';
+import '../providers/simulation_provider.dart';
+import 'neuron_detail_sheet.dart';
+import 'neural_canvas_painter.dart';
 
-class NeuralCanvas extends StatelessWidget {
-  final SimulationState state;
+class NeuralCanvas extends ConsumerStatefulWidget {
+  const NeuralCanvas({super.key});
 
-  const NeuralCanvas({
-    super.key,
-    required this.state,
-  });
+  @override
+  ConsumerState<NeuralCanvas> createState() => _NeuralCanvasState();
+}
+
+class _NeuralCanvasState extends ConsumerState<NeuralCanvas> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  final double _canvasWidth = 800;
+  final double _canvasHeight = 600;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _handleTap(TapDownDetails details, SimulationState state) {
+    final RenderBox box = context.findRenderObject() as RenderBox;
+    final Offset localPos = box.globalToLocal(details.globalPosition);
+    
+    NeuronModel? nearest;
+    double minDistance = 20.0;
+
+    for (final n in state.neurons) {
+      final pos = NeuralCanvasPainter.getNeuronPos(n, Size(_canvasWidth, _canvasHeight));
+      final distance = (localPos - pos).distance;
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = n;
+      }
+    }
+
+    if (nearest != null) {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => NeuronDetailSheet(neuron: nearest!),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.infinite,
-      painter: _NeuralPainter(state: state),
-    );
-  }
-}
+    final state = ref.watch(simulationProvider);
 
-class _NeuralPainter extends CustomPainter {
-  final SimulationState state;
-
-  _NeuralPainter({required this.state});
-
-  Color _getNeuronColor(String type) {
-    switch (type) {
-      case 'Purkinje':
-        return Colors.deepPurpleAccent; // Actor
-      case 'SC':
-        return Colors.amberAccent; // Critic (Stellate Cell)
-      case 'DCN':
-        return Colors.greenAccent; // Output (Deep Cerebellar Nuclei)
-      case 'BC':
-        return Colors.orangeAccent; // Inhibitor (Basket Cell)
-      case 'Granular':
-        return CerebroTheme.neonCyan; // Input (Parallel Fiber)
-      default:
-        return Colors.grey.shade600;
-    }
-  }
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final synapsePaint = Paint()
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    final neuronPaint = Paint()
-      ..style = PaintingStyle.fill;
-
-    // 1. Draw Synapses (Lines)
-    for (final synapse in state.synapses) {
-      // Find source and target safely
-      final source = state.neurons.firstWhere((n) => n.id == synapse.sourceId, 
-          orElse: () => Neuron(id: '', type: '', threshold: 0, currentPotential: 0));
-      final target = state.neurons.firstWhere((n) => n.id == synapse.targetId,
-          orElse: () => Neuron(id: '', type: '', threshold: 0, currentPotential: 0));
-
-      if (source.id.isEmpty || target.id.isEmpty) continue;
-
-      // Color synapse by target type
-      final targetColor = _getNeuronColor(target.type);
-      
-      // Weight contributes to opacity
-      final double alpha = (synapse.weight.abs() * 0.4).clamp(0.05, 0.6);
-      synapsePaint.color = targetColor.withValues(alpha: alpha);
-      
-      canvas.drawLine(
-        Offset(source.x, source.y),
-        Offset(target.x, target.y),
-        synapsePaint,
-      );
-    }
-
-    // 2. Draw Neurons (Circles)
-    for (final neuron in state.neurons) {
-      final isSpiking = neuron.currentPotential >= neuron.threshold && neuron.threshold > 0;
-      final baseColor = _getNeuronColor(neuron.type);
-      
-      // Potential contributes to glow/opacity (LIF visualization)
-      final double activityRatio = (neuron.currentPotential / (neuron.threshold > 0 ? neuron.threshold : 1.0)).clamp(0.0, 1.0);
-      
-      // Spiking neurons glow with their cell-type color, others are dimmed
-      neuronPaint.color = isSpiking 
-          ? baseColor 
-          : baseColor.withValues(alpha: 0.2 + (activityRatio * 0.4));
-
-      // Draw shadow/glow for spiking or high-activity neurons
-      if (isSpiking || activityRatio > 0.5) {
-        final double glowSize = isSpiking ? 10.0 : 6.0;
-        final double glowAlpha = isSpiking ? 0.6 : activityRatio * 0.3;
-        
-        canvas.drawCircle(
-          Offset(neuron.x, neuron.y),
-          glowSize,
-          Paint()
-            ..color = baseColor.withValues(alpha: glowAlpha)
-            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0),
-        );
-      }
-
-      // Draw the main neuron body
-      canvas.drawCircle(
-        Offset(neuron.x, neuron.y),
-        5.0,
-        neuronPaint,
-      );
-
-      // Add a small label for cell types (optional, subtle)
-      if (neuron.type == 'DCN') {
-        _drawSmallLabel(canvas, neuron.actionGroup ?? 'DCN', Offset(neuron.x + 8, neuron.y - 8), baseColor);
-      }
-    }
-  }
-
-  void _drawSmallLabel(Canvas canvas, String text, Offset offset, Color color) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 8, fontWeight: FontWeight.bold),
+    return InteractiveViewer(
+      minScale: 0.5,
+      maxScale: 3.0,
+      boundaryMargin: const EdgeInsets.all(200),
+      child: Center(
+        child: GestureDetector(
+          onTapDown: (details) => _handleTap(details, state),
+          child: SizedBox(
+            width: _canvasWidth,
+            height: _canvasHeight,
+            child: CustomPaint(
+              painter: NeuralCanvasPainter(
+                state: state,
+                repaint: _animationController,
+              ),
+            ),
+          ),
+        ),
       ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, offset);
-  }
-
-  @override
-  bool shouldRepaint(covariant _NeuralPainter oldDelegate) {
-    return oldDelegate.state != state;
+    );
   }
 }
