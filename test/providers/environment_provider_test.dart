@@ -1,88 +1,27 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/providers/environment_provider.dart';
+import 'package:cerebrosim/models/cerebellar_task.dart';
 
 void main() {
-  group('EnvironmentNotifier Tests', () {
-    test('currentStep should increment correctly', () {
+  group('EnvironmentNotifier', () {
+    test('starts with eyeblink task', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final notifier = container.read(environmentProvider.notifier);
-      
-      notifier.update(100.0);
-      expect(container.read(environmentProvider).currentStep, 100.0);
-      
-      notifier.update(150.0);
-      expect(container.read(environmentProvider).currentStep, 250.0);
+      final task = container.read(environmentProvider);
+      expect(task, CerebellarTask.eyeblink);
     });
 
-    test('episode should roll over at 1000ms', () {
+    test('selectTask updates state and active environment', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
       final notifier = container.read(environmentProvider.notifier);
-      
-      notifier.update(900.0);
-      expect(container.read(environmentProvider).episodeNumber, 0);
-      expect(container.read(environmentProvider).currentStep, 900.0);
-      
-      notifier.update(100.0);
-      expect(container.read(environmentProvider).episodeNumber, 1);
-      expect(container.read(environmentProvider).currentStep, 0.0);
-    });
+      notifier.selectTask(CerebellarTask.sineWave);
 
-    test('getPFStateVector should have only one active window', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      final notifier = container.read(environmentProvider.notifier);
-      
-      // Step 50ms should be in the first window (0-100ms) for pfCount=10
-      notifier.update(50.0);
-      final pfs = notifier.getPFStateVector(pfCount: 10);
-      
-      expect(pfs[0], true);
-      expect(pfs.where((b) => b).length, 1);
-    });
-
-    test('getClimbingFiberSignal should return punishment at 500ms if wrong action', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      final notifier = container.read(environmentProvider.notifier);
-      
-      // At 0ms, no punishment
-      expect(notifier.getClimbingFiberSignal('anticlose'), 0.0);
-      
-      // At 500ms
-      notifier.update(500.0);
-      
-      // Correct action -> 0.0
-      expect(notifier.getClimbingFiberSignal('anticlose'), 0.0);
-      
-      // Wrong action -> -1.0
-      expect(notifier.getClimbingFiberSignal('none'), -1.0);
-      expect(notifier.getClimbingFiberSignal('antiopen'), -1.0);
-    });
-
-    test('getClimbingFiberSignal should follow sine wave slope requirements', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
-      final notifier = container.read(environmentProvider.notifier);
-      notifier.setTask(SignalTask.sineWave);
-
-      // At 0ms, slope is cos(0) = 1.0 (positive) -> Required 'antiopen'
-      expect(notifier.getClimbingFiberSignal('antiopen'), 0.0);
-      expect(notifier.getClimbingFiberSignal('none'), 0.0);
-      expect(notifier.getClimbingFiberSignal('anticlose'), -0.5);
-
-      // At 500ms, slope is cos(pi) = -1.0 (negative) -> Required 'anticlose'
-      notifier.update(500.0);
-      expect(notifier.getClimbingFiberSignal('anticlose'), 0.0);
-      expect(notifier.getClimbingFiberSignal('none'), 0.0);
-      expect(notifier.getClimbingFiberSignal('antiopen'), -0.5);
+      expect(container.read(environmentProvider), CerebellarTask.sineWave);
+      expect(notifier.activeEnv.taskName, 'Sine Wave Tracking');
     });
   });
 }

@@ -1,42 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/plot_point.dart';
+import '../models/cerebellar_task.dart';
+import '../providers/simulation_provider.dart';
 import '../providers/environment_provider.dart';
+
+class PlotBufferNotifier extends Notifier<List<PlotPoint>> {
+  @override
+  List<PlotPoint> build() => [];
+
+  void addPoint(PlotPoint point) {
+    final nextBuffer = List<PlotPoint>.from(state)..add(point);
+    if (nextBuffer.length > 200) {
+      nextBuffer.removeAt(0);
+    }
+    state = nextBuffer;
+  }
+}
+
+final plotBufferProvider = NotifierProvider<PlotBufferNotifier, List<PlotPoint>>(() {
+  return PlotBufferNotifier();
+});
 
 class SignalPlotter extends ConsumerWidget {
   const SignalPlotter({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(signalHistoryProvider);
+    final state = ref.watch(simulationProvider);
+    final task = ref.watch(environmentProvider);
+
+    // Update buffer
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final newPoint = PlotPoint(
+        criticPrediction: state.criticPrediction,
+        actualSignal: state.climbingFiberSignal,
+        gainRatio: state.rollingGainRatio,
+      );
+      
+      ref.read(plotBufferProvider.notifier).addPoint(newPoint);
+    });
+
+    final buffer = ref.watch(plotBufferProvider);
 
     return Container(
-      height: 150,
-      padding: const EdgeInsets.all(8),
+      height: 180,
+      padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
+        color: Colors.black45,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: Colors.white10),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Actor-Critic Performance',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-              _buildLegend(),
-            ],
-          ),
-          const SizedBox(height: 4),
+          _buildLegend(task),
           Expanded(
-            child: ClipRect(
-              child: CustomPaint(
-                painter: _SignalPainter(history),
-                size: Size.infinite,
-              ),
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: SignalPlotterPainter(buffer: buffer, isVor: task == CerebellarTask.vor),
             ),
           ),
         ],
@@ -44,12 +65,17 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildLegend(CerebellarTask task) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _legendItem('Predicted', Colors.amberAccent),
-        const SizedBox(width: 8),
-        _legendItem('Actual CF', Colors.redAccent),
+        _legendItem('Critic', const Color(0xFF00FFFF)),
+        const SizedBox(width: 16),
+        _legendItem('Actual', const Color(0xFFEF9F27)),
+        if (task == CerebellarTask.vor) ...[
+          const SizedBox(width: 16),
+          _legendItem('Gain', const Color(0xFF8A2BE2)),
+        ],
       ],
     );
   }
@@ -57,84 +83,58 @@ class SignalPlotter extends ConsumerWidget {
   Widget _legendItem(String label, Color color) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 9, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
       ],
     );
   }
 }
 
-class _SignalPainter extends CustomPainter {
-  final List<HistoryPoint> history;
+class SignalPlotterPainter extends CustomPainter {
+  final List<PlotPoint> buffer;
+  final bool isVor;
 
-  _SignalPainter(this.history);
+  SignalPlotterPainter({required this.buffer, required this.isVor});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (history.isEmpty) return;
+    if (buffer.isEmpty) return;
 
-    final predictedPaint = Paint()
-      ..color = Colors.amberAccent.withValues(alpha: 0.8)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
+    final paintCritic = Paint()..color = const Color(0xFF00FFFF)..strokeWidth = 2.0..style = PaintingStyle.stroke;
+    final paintActual = Paint()..color = const Color(0xFFEF9F27)..strokeWidth = 2.0..style = PaintingStyle.stroke;
+    final paintGain = Paint()..color = const Color(0xFF8A2BE2)..strokeWidth = 2.0..style = PaintingStyle.stroke;
 
-    final actualPaint = Paint()
-      ..color = Colors.redAccent.withValues(alpha: 0.8)
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke;
+    final pathCritic = Path();
+    final pathActual = Path();
+    final pathGain = Path();
 
-    final predictedPath = Path();
-    final actualPath = Path();
-
-    const int maxPoints = 200;
-    final double stepX = size.width / (maxPoints - 1);
-    final double midY = size.height / 2;
-    final double trackHeight = size.height / 2.5;
-
-    for (int i = 0; i < history.length; i++) {
+    final double stepX = size.width / (buffer.length > 1 ? buffer.length - 1 : 1);
+    
+    for (int i = 0; i < buffer.length; i++) {
       final x = i * stepX;
-      
-      // Predicted Punishment (Critic output)
-      final py = (midY / 2) - (history[i].input * trackHeight / 2);
-      if (i == 0) {
-        predictedPath.moveTo(x, py);
-      } else {
-        predictedPath.lineTo(x, py);
-      }
+      double mapY(double val) => size.height / 2 - (val * size.height / 2);
 
-      // Actual Punishment (Environment CF signal)
-      final ay = (size.height * 0.75) - (history[i].output * trackHeight / 2);
-       if (i == 0) {
-        actualPath.moveTo(x, ay);
+      if (i == 0) {
+        pathCritic.moveTo(x, mapY(buffer[i].criticPrediction));
+        pathActual.moveTo(x, mapY(buffer[i].actualSignal));
+        pathGain.moveTo(x, mapY(buffer[i].gainRatio));
       } else {
-        actualPath.lineTo(x, ay);
+        pathCritic.lineTo(x, mapY(buffer[i].criticPrediction));
+        pathActual.lineTo(x, mapY(buffer[i].actualSignal));
+        pathGain.lineTo(x, mapY(buffer[i].gainRatio));
       }
     }
 
-    canvas.drawPath(predictedPath, predictedPaint);
-    canvas.drawPath(actualPath, actualPaint);
-
-    _drawLabel(canvas, "Predicted (SC)", const Offset(0, 0), Colors.amberAccent);
-    _drawLabel(canvas, "Actual (CF)", Offset(0, midY), Colors.redAccent);
-    
-    final dividerPaint = Paint()
-      ..color = Colors.white10
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset(0, midY), Offset(size.width, midY), dividerPaint);
-  }
-
-  void _drawLabel(Canvas canvas, String text, Offset offset, Color color) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(color: color.withValues(alpha: 0.6), fontSize: 9, fontWeight: FontWeight.bold),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, offset);
+    canvas.drawPath(pathCritic, paintCritic);
+    canvas.drawPath(pathActual, paintActual);
+    if (isVor) {
+      canvas.drawPath(pathGain, paintGain);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _SignalPainter oldDelegate) => true;
+  bool shouldRepaint(covariant SignalPlotterPainter oldDelegate) {
+    return oldDelegate.buffer != buffer;
+  }
 }
