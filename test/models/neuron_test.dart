@@ -1,78 +1,54 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cerebrosim/models/neuron.dart';
+import 'package:cerebrosim/models/neuron_model.dart';
 
 void main() {
-  group('Neuron Model Tests', () {
-    test('Neuron should be correctly initialized', () {
-      const neuron = Neuron(
+  group('NeuronModel Tests', () {
+    test('should be correctly initialized', () {
+      const neuron = NeuronModel(
         id: 'n1',
-        type: 'Purkinje',
-        threshold: 15.0,
-        currentPotential: 0.0,
+        cellType: 'PC',
+        threshold: 1.0,
+        membranePotential: 0.5,
         decayRate: 0.2,
-        actionGroup: 'motor_x',
+        isInhibitory: true,
       );
 
       expect(neuron.id, 'n1');
-      expect(neuron.type, 'Purkinje');
-      expect(neuron.threshold, 15.0);
-      expect(neuron.currentPotential, 0.0);
+      expect(neuron.cellType, 'PC');
+      expect(neuron.threshold, 1.0);
+      expect(neuron.membranePotential, 0.5);
       expect(neuron.decayRate, 0.2);
-      expect(neuron.actionGroup, 'motor_x');
+      expect(neuron.isInhibitory, true);
+      expect(neuron.isFiring, false);
     });
 
-    test('Neuron should have default decayRate', () {
-      const neuron = Neuron(
-        id: 'n1',
-        type: 'Purkinje',
-        threshold: 15.0,
-        currentPotential: 0.0,
-      );
-      expect(neuron.decayRate, 0.1);
-      expect(neuron.actionGroup, isNull);
+    test('initial factory should set correct inhibitory status', () {
+      final pc = NeuronModel.initial(id: 'pc1', cellType: 'PC');
+      final gc = NeuronModel.initial(id: 'gc1', cellType: 'GC');
+      final bc = NeuronModel.initial(id: 'bc1', cellType: 'BC');
+
+      expect(pc.isInhibitory, true);
+      expect(gc.isInhibitory, false);
+      expect(bc.isInhibitory, true);
+      expect(pc.membranePotential, 0.0);
     });
 
     test('copyWith should return a new object with updated values', () {
-      const neuron = Neuron(
+      const neuron = NeuronModel(
         id: 'n1',
-        type: 'Purkinje',
-        threshold: 15.0,
-        currentPotential: 0.0,
+        cellType: 'GC',
+        isInhibitory: false,
       );
 
-      final updatedNeuron = neuron.copyWith(
-        currentPotential: 5.0,
-        decayRate: 0.3,
-        actionGroup: 'motor_y',
+      final updated = neuron.copyWith(
+        membranePotential: 0.8,
+        isFiring: true,
       );
 
-      expect(updatedNeuron.currentPotential, 5.0);
-      expect(updatedNeuron.decayRate, 0.3);
-      expect(updatedNeuron.actionGroup, 'motor_y');
-      expect(updatedNeuron.id, neuron.id);
-      expect(updatedNeuron.type, neuron.type);
-      expect(updatedNeuron.threshold, neuron.threshold);
-    });
-
-    test('toJson and fromJson should be consistent', () {
-      const neuron = Neuron(
-        id: 'n1',
-        type: 'Purkinje',
-        threshold: 15.0,
-        currentPotential: 0.0,
-        decayRate: 0.2,
-        actionGroup: 'motor_x',
-      );
-
-      final json = neuron.toJson();
-      final fromJson = Neuron.fromJson(json);
-
-      expect(fromJson.id, neuron.id);
-      expect(fromJson.type, neuron.type);
-      expect(fromJson.threshold, neuron.threshold);
-      expect(fromJson.currentPotential, neuron.currentPotential);
-      expect(fromJson.decayRate, neuron.decayRate);
-      expect(fromJson.actionGroup, neuron.actionGroup);
+      expect(updated.membranePotential, 0.8);
+      expect(updated.isFiring, true);
+      expect(updated.id, neuron.id);
+      expect(updated.cellType, neuron.cellType);
     });
   });
 }
