@@ -32,7 +32,7 @@ class NeuronDetailSheet extends StatelessWidget {
                   neuron.isInhibitory ? 'Inhibitory' : 'Excitatory',
                   style: const TextStyle(color: Colors.white),
                 ),
-                backgroundColor: neuron.isInhibitory ? Colors.red.withOpacity(0.3) : Colors.cyan.withOpacity(0.3),
+                backgroundColor: neuron.isInhibitory ? Colors.red.withValues(alpha: 0.3) : Colors.cyan.withValues(alpha: 0.3),
               ),
             ],
           ),

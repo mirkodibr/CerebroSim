@@ -12,7 +12,7 @@ class SnapshotCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white.withOpacity(0.05),
+      color: Colors.white.withValues(alpha: 0.05),
       child: ListTile(
         onTap: onTap,
         title: Text(snapshot.title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
@@ -24,14 +24,14 @@ class SnapshotCard extends StatelessWidget {
                 Chip(
                   label: Text(snapshot.taskName, style: const TextStyle(fontSize: 10)),
                   visualDensity: VisualDensity.compact,
-                  backgroundColor: Colors.blue.withOpacity(0.3),
+                  backgroundColor: Colors.blue.withValues(alpha: 0.3),
                 ),
                 const SizedBox(width: 8),
                 if (snapshot.isPublic)
                   Chip(
                     label: const Text('PUBLIC', style: TextStyle(fontSize: 10)),
                     visualDensity: VisualDensity.compact,
-                    backgroundColor: Colors.green.withOpacity(0.3),
+                    backgroundColor: Colors.green.withValues(alpha: 0.3),
                   ),
               ],
             ),

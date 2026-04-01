@@ -73,10 +73,10 @@ class NeuralCanvasPainter extends CustomPainter {
         ..style = PaintingStyle.stroke;
 
       if (s.isInhibitory) {
-        paint.color = const Color(0xFFFF4444).withOpacity(0.6);
+        paint.color = const Color(0xFFFF4444).withValues(alpha: 0.6);
         _drawDashedLine(canvas, fromPos, toPos, paint);
       } else {
-        paint.color = const Color(0xFF00FFFF).withOpacity(0.4);
+        paint.color = const Color(0xFF00FFFF).withValues(alpha: 0.4);
         canvas.drawLine(fromPos, toPos, paint);
       }
     }
