@@ -24,9 +24,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// Controller for the [PageView] that handles navigation between onboarding steps.
   final _pageController = PageController();
 
+  /// Tracks the current step of the onboarding process.
+  int _currentPage = 0;
+
   /// Advances the user to the next step in the onboarding process.
   void _onNext() {
     _pageController.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  /// Returns the user to the previous step in the onboarding process.
+  void _onBack() {
+    _pageController.previousPage(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
@@ -59,6 +70,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: Visibility(
+          visible: _currentPage > 0,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white70),
+            onPressed: _onBack,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: _onComplete,
@@ -70,6 +88,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (index) => setState(() => _currentPage = index),
         children: [
           WatchModeStep(onNext: _onNext),
           ControlStep(onNext: _onNext),
