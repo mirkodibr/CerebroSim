@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/main.dart';
@@ -5,15 +6,17 @@ import 'package:cerebrosim/main.dart';
 void main() {
   testWidgets('App initialization smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    // We wrap it in ProviderScope because it's required for Riverpod
     await tester.pumpWidget(
       const ProviderScope(
         child: CerebroSimApp(),
       ),
     );
 
-    // Verify that our home screen displays the correct title.
-    // Updated in Prompt 23 to 'CerebroSim RL Lab'
-    expect(find.text('CerebroSim RL Lab'), findsOneWidget);
+    // Wait for the auth state stream to emit its initial value (null)
+    // and for any animations to complete.
+    await tester.pumpAndSettle();
+
+    // Should start at Login Screen
+    expect(find.text('Login'), findsOneWidget);
   });
 }
