@@ -1,38 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-/// Service that handles all Firebase Authentication operations
 class AuthService {
-  final FirebaseAuth _auth;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
-
-  /// Stream of user auth state changes
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  /// Current user
-  User? get currentUser => _auth.currentUser;
-
-  /// Sign up with email and password
-  Future<UserCredential?> signUpWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      return await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  /// Log in with email and password
-  Future<UserCredential?> loginWithEmail({
-    required String email,
-    required String password,
-  }) async {
+  Future<UserCredential> signInWithEmail(String email, String password) async {
     try {
       return await _auth.signInWithEmailAndPassword(
         email: email,
@@ -43,18 +16,42 @@ class AuthService {
     }
   }
 
-  /// Sign out
+  Future<UserCredential> registerWithEmail(String email, String password) async {
+    try {
+      return await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        throw FirebaseAuthException(code: 'sign-in-cancelled');
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      return await _auth.signInWithCredential(credential);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
-    await _auth.signOut();
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+    } catch (e) {
+      rethrow;
+    }
   }
 }
-
-/// Provider for the AuthService
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
-});
-
-/// StreamProvider for the auth state
-final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.watch(authServiceProvider).authStateChanges;
-});
