@@ -1,30 +1,36 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/services/auth_service.dart';
-import 'package:cerebrosim/providers/auth_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
-class MockAuthService extends Mock implements AuthService {}
-class MockUser extends Mock implements User {}
+class MockFirebaseAuth extends Mock implements FirebaseAuth {}
+class MockGoogleSignIn extends Mock implements GoogleSignIn {}
 
 void main() {
-  late MockAuthService mockAuthService;
+  late MockFirebaseAuth mockAuth;
+  late MockGoogleSignIn mockGoogleSignIn;
+  late AuthService authService;
 
   setUp(() {
-    mockAuthService = MockAuthService();
+    mockAuth = MockFirebaseAuth();
+    mockGoogleSignIn = MockGoogleSignIn();
+    authService = AuthService(auth: mockAuth, googleSignIn: mockGoogleSignIn);
   });
 
-  test('authProvider should emit a User when logged in', () async {
-    final container = ProviderContainer(
-      overrides: [
-        authServiceProvider.overrideWithValue(mockAuthService),
-      ],
-    );
-    addTearDown(container.dispose);
+  group('AuthService Tests', () {
+    test('signOut() should call signOut on both FirebaseAuth and GoogleSignIn', () async {
+      // Setup mock behaviors
+      when(() => mockAuth.signOut()).thenAnswer((_) async => {});
+      when(() => mockGoogleSignIn.signOut()).thenAnswer((_) async => null);
 
-    // Initial state is null (from build())
-    expect(container.read(authProvider).value, null);
+      // Execute signOut()
+      await authService.signOut();
+
+      // Verify that signOut() was called on both services
+      verify(() => mockAuth.signOut()).called(1);
+      verify(() => mockGoogleSignIn.signOut()).called(1);
+    });
   });
 }

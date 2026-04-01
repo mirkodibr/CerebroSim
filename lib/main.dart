@@ -42,21 +42,33 @@ void main() async {
 /// - Managing high-level routing based on the user's authentication state ([authProvider]).
 /// - Determining whether to show the [LoginScreen], [OnboardingScreen], or the main [AppShell]
 ///   based on whether the user is logged in and has completed the onboarding process.
-class CerebroSimApp extends ConsumerWidget {
+class CerebroSimApp extends ConsumerStatefulWidget {
   const CerebroSimApp({super.key});
 
-  /// Builds the top-level [MaterialApp] and configures the routing and theme state.
-  ///
-  /// This method uses [WidgetRef] to watch:
-  /// - [themeNotifierProvider] for reactive theme changes.
-  /// - [authProvider] for authentication state updates.
-  /// - [onboardingCompleteProvider] to determine if the user should see the onboarding flow.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CerebroSimApp> createState() => _CerebroSimAppState();
+}
+
+class _CerebroSimAppState extends ConsumerState<CerebroSimApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeNotifierProvider);
     final authState = ref.watch(authProvider);
 
+    // Listen for auth state changes to ensure the navigation stack is cleared on sign-out
+    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
+      if (previous?.value != null && next.value == null) {
+        _navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    });
+
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'CerebroSim',
       theme: ThemeService.presentationTheme,
       darkTheme: ThemeService.cyberLabTheme,

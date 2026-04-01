@@ -6,8 +6,16 @@ import 'package:google_sign_in/google_sign_in.dart';
 /// It supports email/password authentication and Google Sign-In, 
 /// providing methods to sign in, register, and sign out users.
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth _auth;
+  final GoogleSignIn _googleSignIn;
+
+  /// Creates a new [AuthService]. 
+  /// If no [auth] or [googleSignIn] is provided, it uses the default instances.
+  AuthService({
+    FirebaseAuth? auth,
+    GoogleSignIn? googleSignIn,
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _googleSignIn = googleSignIn ?? GoogleSignIn();
 
   /// Signs in a user using their [email] and [password].
   ///
