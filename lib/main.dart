@@ -6,6 +6,7 @@ import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/prefs_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -37,7 +38,7 @@ void main() async {
 
 /// The root widget of the CerebroSim application.
 ///
-/// This [ConsumerWidget] is responsible for:
+/// This [ConsumerStatefulWidget] is responsible for:
 /// - Configuring the application-wide theme (light/dark) via [ThemeService] and [themeNotifierProvider].
 /// - Managing high-level routing based on the user's authentication state ([authProvider]).
 /// - Determining whether to show the [LoginScreen], [OnboardingScreen], or the main [AppShell]
@@ -59,7 +60,7 @@ class _CerebroSimAppState extends ConsumerState<CerebroSimApp> {
 
     // Listen for auth state changes to ensure the navigation stack is cleared on sign-out
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
-      if (previous?.value != null && next.value == null) {
+      if (previous?.hasValue == true && previous?.value != null && next.hasValue && next.value == null) {
         _navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginScreen()),
           (route) => false,
