@@ -10,6 +10,12 @@ import 'screens/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_screen.dart';
 
+/// The entry point of the CerebroSim application.
+///
+/// This function handles the initial setup of the application by:
+/// 1. Ensuring Flutter framework bindings are initialized.
+/// 2. Initializing Firebase with platform-specific options.
+/// 3. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -29,9 +35,22 @@ void main() async {
   );
 }
 
+/// The root widget of the CerebroSim application.
+///
+/// This [ConsumerWidget] is responsible for:
+/// - Configuring the application-wide theme (light/dark) via [ThemeService] and [themeNotifierProvider].
+/// - Managing high-level routing based on the user's authentication state ([authProvider]).
+/// - Determining whether to show the [LoginScreen], [OnboardingScreen], or the main [AppShell]
+///   based on whether the user is logged in and has completed the onboarding process.
 class CerebroSimApp extends ConsumerWidget {
   const CerebroSimApp({super.key});
 
+  /// Builds the top-level [MaterialApp] and configures the routing and theme state.
+  ///
+  /// This method uses [WidgetRef] to watch:
+  /// - [themeNotifierProvider] for reactive theme changes.
+  /// - [authProvider] for authentication state updates.
+  /// - [onboardingCompleteProvider] to determine if the user should see the onboarding flow.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeNotifierProvider);

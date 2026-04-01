@@ -5,10 +5,16 @@ import '../models/cerebellar_task.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/environment_provider.dart';
 
+/// A [Notifier] that manages a sliding buffer of [PlotPoint]s for real-time visualization.
+///
+/// It maintains a maximum of 200 points to ensure smooth performance while
+/// providing enough history for the user to observe trends in the simulation.
 class PlotBufferNotifier extends Notifier<List<PlotPoint>> {
   @override
   List<PlotPoint> build() => [];
 
+  /// Adds a new [point] to the buffer and removes the oldest point if the
+  /// limit is exceeded.
   void addPoint(PlotPoint point) {
     final nextBuffer = List<PlotPoint>.from(state)..add(point);
     if (nextBuffer.length > 200) {
@@ -18,10 +24,15 @@ class PlotBufferNotifier extends Notifier<List<PlotPoint>> {
   }
 }
 
+/// Provider for the [PlotBufferNotifier].
 final plotBufferProvider = NotifierProvider<PlotBufferNotifier, List<PlotPoint>>(() {
   return PlotBufferNotifier();
 });
 
+/// A widget that displays a real-time line chart of simulation signals.
+///
+/// It visualizes the relationship between the cerebellar 'Critic' prediction,
+/// the 'Actual' climbing fiber signal, and (for VOR tasks) the resulting 'Gain'.
 class SignalPlotter extends ConsumerWidget {
   const SignalPlotter({super.key});
 
@@ -30,7 +41,7 @@ class SignalPlotter extends ConsumerWidget {
     final state = ref.watch(simulationProvider);
     final task = ref.watch(environmentProvider);
 
-    // Update buffer
+    // Update buffer with the latest data from the simulation state.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final newPoint = PlotPoint(
         criticPrediction: state.criticPrediction,
@@ -65,6 +76,7 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
+  /// Builds a color-coded legend indicating which signal each line represents.
   Widget _buildLegend(CerebellarTask task) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -80,6 +92,7 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
+  /// Helper for creating a single labeled legend item.
   Widget _legendItem(String label, Color color) {
     return Row(
       children: [
@@ -91,6 +104,10 @@ class SignalPlotter extends ConsumerWidget {
   }
 }
 
+/// A [CustomPainter] that draws the signal paths on the canvas.
+///
+/// It maps normalized signal values (-1.0 to 1.0) to the vertical space of the
+/// widget, where 0.0 is the vertical center.
 class SignalPlotterPainter extends CustomPainter {
   final List<PlotPoint> buffer;
   final bool isVor;
@@ -113,6 +130,9 @@ class SignalPlotterPainter extends CustomPainter {
     
     for (int i = 0; i < buffer.length; i++) {
       final x = i * stepX;
+      
+      /// Maps a value between -1 and 1 to a Y coordinate on the canvas.
+      /// 1.0 maps to top, -1.0 maps to bottom, 0.0 maps to center.
       double mapY(double val) => size.height / 2 - (val * size.height / 2);
 
       if (i == 0) {
@@ -138,3 +158,4 @@ class SignalPlotterPainter extends CustomPainter {
     return oldDelegate.buffer != buffer;
   }
 }
+

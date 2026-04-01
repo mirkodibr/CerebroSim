@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/neuron_model.dart';
 import '../models/cell_type_descriptions.dart';
 
+/// A modal bottom sheet that displays real-time state and anatomical details for a selected neuron.
+///
+/// It provides technical data such as membrane potential and eligibility traces,
+/// as well as a descriptive overview of the neuron's role in the cerebellum.
 class NeuronDetailSheet extends StatelessWidget {
   final NeuronModel neuron;
 
@@ -57,6 +61,7 @@ class NeuronDetailSheet extends StatelessWidget {
     );
   }
 
+  /// Builds a stylized row for displaying a labeled data point.
   Widget _buildDataRow(BuildContext context, String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -79,3 +84,4 @@ class NeuronDetailSheet extends StatelessWidget {
     );
   }
 }
+

@@ -2,7 +2,27 @@ import '../models/neuron_model.dart';
 import '../models/synapse_model.dart';
 import '../models/simulation_state.dart';
 
+/// Helper class for setting up various neural network configurations.
+/// 
+/// It centralizes the logic for creating the initial neurons and their 
+/// synaptic connections for specific cerebellar tasks.
 class NetworkInitializer {
+  /// Creates a mock cerebellar network suitable for reinforcement learning tasks.
+  /// 
+  /// The network contains:
+  /// - **10 Parallel Fibers (GC):** Provide the sensory input (Context).
+  /// - **5 Basket Cells (BC):** Provide lateral inhibition to Purkinje Cells.
+  /// - **2 Purkinje Cells (PC):** The main integrative unit, inhibitory to DCN.
+  /// - **1 Stellate Cell (SC):** Provides local inhibition within the molecular layer.
+  /// - **2 Deep Cerebellar Nuclei (DCN):** The output of the circuit.
+  /// 
+  /// Synaptic setup:
+  /// - GC -> PC, BC, SC (Excitatory)
+  /// - BC -> PC (Inhibitory)
+  /// - PC -> DCN (Inhibitory)
+  /// 
+  /// All weights are initialized with standard values (0.2 - 0.5 for excitatory,
+  /// -1.0 to -2.0 for inhibitory) to allow for subsequent plasticity.
   static SimulationState createRLMockNetwork() {
     final neurons = <NeuronModel>[];
     final synapses = <SynapseModel>[];

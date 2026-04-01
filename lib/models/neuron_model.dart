@@ -1,15 +1,28 @@
 import 'package:meta/meta.dart';
 
+/// A mathematical representation of a single neuron in the cerebellar model.
+///
+/// This model tracks membrane potential, firing state, and eligibility traces
+/// used for temporal difference (TD) learning or other synaptic plasticity rules.
 @immutable
 class NeuronModel {
+  /// Unique identifier for the neuron.
   final String id;
+  /// The biological type of the cell (e.g., "GC", "PC", "BC").
   final String cellType;
+  /// The current electrical potential of the neuron's membrane.
   final double membranePotential;
+  /// The potential the membrane returns to in the absence of input.
   final double restingPotential;
+  /// The potential at which the neuron triggers a spike or firing event.
   final double threshold;
+  /// The rate at which the membrane potential returns to resting state.
   final double decayRate;
+  /// A value used in reinforcement learning to bridge the gap between stimulus and reward/error.
   final double eligibilityTrace;
+  /// Indicates if this neuron releases inhibitory neurotransmitters (e.g., GABA).
   final bool isInhibitory;
+  /// Whether the neuron is currently in a firing (spiking) state.
   final bool isFiring;
 
   const NeuronModel({
@@ -24,6 +37,7 @@ class NeuronModel {
     this.isFiring = false,
   });
 
+  /// Creates a [NeuronModel] with default parameters based on its [cellType].
   factory NeuronModel.initial({
     required String id,
     required String cellType,
@@ -42,6 +56,7 @@ class NeuronModel {
     );
   }
 
+  /// Returns a copy of this neuron with updated fields.
   NeuronModel copyWith({
     String? id,
     String? cellType,

@@ -3,13 +3,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 
+/// A provider that exposes an instance of [AuthService].
+/// This service handles the low-level authentication logic with Firebase.
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
 
+/// A notifier that manages the authentication state of the application.
+/// It uses [FirebaseAuth] to listen to authentication changes and provides
+/// methods for signing in, registering, and signing out.
 class AuthNotifier extends AsyncNotifier<User?> {
   StreamSubscription<User?>? _subscription;
 
+  /// Initializes the notifier by listening to [FirebaseAuth] state changes.
+  /// Returns the current user if available.
   @override
   FutureOr<User?> build() {
     _subscription?.cancel();
@@ -22,6 +29,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
     return FirebaseAuth.instance.currentUser;
   }
 
+  /// Signs in a user using an email and password via the [AuthService].
+  /// Updates the state to [AsyncLoading] during the process and [AsyncError] on failure.
   Future<void> signIn(String email, String password) async {
     state = const AsyncLoading();
     try {
@@ -31,6 +40,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
     }
   }
 
+  /// Registers a new user using an email and password via the [AuthService].
+  /// Updates the state to [AsyncLoading] during the process and [AsyncError] on failure.
   Future<void> register(String email, String password) async {
     state = const AsyncLoading();
     try {
@@ -40,6 +51,9 @@ class AuthNotifier extends AsyncNotifier<User?> {
     }
   }
 
+  /// Signs in a user using Google authentication via the [AuthService].
+  /// Updates the state to [AsyncLoading] during the process and [AsyncError] on failure,
+  /// unless the sign-in was cancelled by the user.
   Future<void> signInWithGoogle() async {
     state = const AsyncLoading();
     try {
@@ -54,6 +68,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
     }
   }
 
+  /// Signs out the current user via the [AuthService].
+  /// Updates the state to [AsyncLoading] during the process and [AsyncError] on failure.
   Future<void> signOut() async {
     state = const AsyncLoading();
     try {
@@ -64,6 +80,8 @@ class AuthNotifier extends AsyncNotifier<User?> {
   }
 }
 
+/// A global provider for the [AuthNotifier], allowing widgets to observe and
+/// interact with the current user's authentication state.
 final authProvider = AsyncNotifierProvider<AuthNotifier, User?>(() {
   return AuthNotifier();
 });

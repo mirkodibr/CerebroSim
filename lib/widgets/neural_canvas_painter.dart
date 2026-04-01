@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import '../models/simulation_state.dart';
 import '../models/neuron_model.dart';
 
+/// A [CustomPainter] responsible for rendering the cerebellar microcircuitry visualization.
+///
+/// It draws the distinct layers of the cerebellum (Molecular, Purkinje, Granular),
+/// the neurons at fixed representative positions, and the synaptic connections
+/// between them. It listens to a [repaint] object to trigger visual updates
+/// (e.g., neuron firing animations).
 class NeuralCanvasPainter extends CustomPainter {
   final SimulationState state;
 
@@ -10,6 +16,8 @@ class NeuralCanvasPainter extends CustomPainter {
     required Listenable repaint,
   }) : super(repaint: repaint);
 
+  /// Normalized positions (0.0 to 1.0) for each cell type in the canvas.
+  /// These are used to position neurons in their respective anatomical layers.
   static const Map<String, Offset> _fixedPositions = {
     'CF': Offset(0.15, 0.15),
     'GC': Offset(0.30, 0.80),
@@ -19,6 +27,7 @@ class NeuralCanvasPainter extends CustomPainter {
     'SC': Offset(0.45, 0.35), // Added SC position
   };
 
+  /// Colors used to represent different neuron types in the visualization.
   static const Map<String, Color> _typeColors = {
     'GC': Color(0xFFEF9F27),
     'PC': Color(0xFF8A2BE2),
@@ -35,6 +44,7 @@ class NeuralCanvasPainter extends CustomPainter {
     _drawNeurons(canvas, size);
   }
 
+  /// Draws the three background rectangles representing the cerebellar cortex layers.
   void _drawLayers(Canvas canvas, Size size) {
     final h = size.height;
     final w = size.width;
@@ -48,6 +58,7 @@ class NeuralCanvasPainter extends CustomPainter {
     _drawLayerLabel(canvas, 'Granular layer', 20, 5 * h / 6);
   }
 
+  /// Helper to paint layer labels with horizontal alignment.
   void _drawLayerLabel(Canvas canvas, String text, double x, double y) {
     final textPainter = TextPainter(
       text: TextSpan(
@@ -60,6 +71,11 @@ class NeuralCanvasPainter extends CustomPainter {
     textPainter.paint(canvas, Offset(x, y - textPainter.height / 2));
   }
 
+  /// Draws all synapses between neurons in the current simulation state.
+  ///
+  /// Excitatory synapses are drawn as solid cyan lines, while inhibitory
+  /// synapses are drawn as dashed red lines. The stroke width correlates with
+  /// the absolute synaptic weight.
   void _drawSynapses(Canvas canvas, Size size) {
     for (final s in state.synapses) {
       final fromNeuron = state.neurons.firstWhere((n) => n.id == s.fromNeuronId, orElse: () => state.neurons.first);
@@ -82,6 +98,7 @@ class NeuralCanvasPainter extends CustomPainter {
     }
   }
 
+  /// Helper method to draw a dashed line for inhibitory synapses.
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
     const dashWidth = 5.0;
     const dashSpace = 3.0;
@@ -97,6 +114,10 @@ class NeuralCanvasPainter extends CustomPainter {
     }
   }
 
+  /// Draws neurons as colored circles.
+  ///
+  /// If a neuron's [isFiring] state is true, a white glow/stroke is added around it.
+  /// The neuron's cell type name is painted below its position.
   void _drawNeurons(Canvas canvas, Size size) {
     for (final n in state.neurons) {
       final pos = getNeuronPos(n, size);
@@ -116,6 +137,9 @@ class NeuralCanvasPainter extends CustomPainter {
     }
   }
 
+  /// Calculates the absolute screen position of a neuron given its type and canvas size.
+  ///
+  /// Uses the [_fixedPositions] map to translate cell types into canvas-relative offsets.
   static Offset getNeuronPos(NeuronModel n, Size size) {
     final normPos = _fixedPositions[n.cellType] ?? Offset.zero;
     return Offset(normPos.dx * size.width, normPos.dy * size.height);
@@ -126,3 +150,4 @@ class NeuralCanvasPainter extends CustomPainter {
     return true;
   }
 }
+

@@ -4,6 +4,11 @@ import '../models/cerebellar_task.dart';
 import '../providers/environment_provider.dart';
 import '../providers/simulation_provider.dart';
 
+/// A widget that allows users to switch between different [CerebellarTask] environments.
+///
+/// It uses a [SegmentedButton] to select the task. If a simulation is currently
+/// running, it prompts the user for confirmation before resetting the state.
+/// For the VOR task, it also reveals a [VorConfigPanel] for parameter tuning.
 class TaskSelector extends ConsumerWidget {
   const TaskSelector({super.key});
 
@@ -49,6 +54,10 @@ class TaskSelector extends ConsumerWidget {
   }
 }
 
+/// A configuration panel for the Vestibulo-Ocular Reflex (VOR) task.
+///
+/// It provides sliders to adjust the target gain, signal amplitude, and
+/// frequency of the simulation, allowing users to model healthy or pathological states.
 class VorConfigPanel extends ConsumerWidget {
   const VorConfigPanel({super.key});
 
@@ -83,12 +92,14 @@ class VorConfigPanel extends ConsumerWidget {
     );
   }
 
+  /// Maps the current gain value to a descriptive semantic color.
   Color _getStatusColor(double gain) {
     if (gain < 0.6) return Colors.redAccent;
     if (gain > 1.4) return Colors.blueAccent;
     return Colors.greenAccent;
   }
 
+  /// Helper for building a slider row with a label and its current value.
   Widget _buildSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
     return Row(
       children: [
@@ -106,3 +117,4 @@ class VorConfigPanel extends ConsumerWidget {
     );
   }
 }
+

@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Central provider for the application's visual themes.
+/// 
+/// It offers distinct [ThemeData] presets that can be toggled to 
+/// change the app's aesthetic from high-tech to standard.
 class ThemeService {
+  /// A high-contrast, dark theme with a "cyberpunk" aesthetic.
+  /// 
+  /// Uses a pure black background and neon cyan/purple accents.
+  /// The [GoogleFonts.spaceMono] font is used to reinforce the 
+  /// technical, laboratory-like atmosphere.
   static ThemeData get cyberLabTheme {
     return ThemeData(
       brightness: Brightness.dark,
@@ -18,6 +27,10 @@ class ThemeService {
     );
   }
 
+  /// A clean, professional light theme suitable for general use.
+  /// 
+  /// Uses the [GoogleFonts.inter] font for high legibility 
+  /// and more traditional color schemes (blue and teal).
   static ThemeData get presentationTheme {
     return ThemeData(
       brightness: Brightness.light,

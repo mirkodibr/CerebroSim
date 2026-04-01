@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/experiment_snapshot.dart';
 
+/// A card widget that displays a summary of a saved experiment snapshot.
+///
+/// It shows the snapshot's title, the associated [CerebellarTask], public status,
+/// final error rates, and the creation timestamp. Tapping the card triggers
+/// the [onTap] callback, typically used to load or view the snapshot.
 class SnapshotCard extends StatelessWidget {
   final ExperimentSnapshot snapshot;
   final VoidCallback onTap;
@@ -50,3 +55,4 @@ class SnapshotCard extends StatelessWidget {
     );
   }
 }
+

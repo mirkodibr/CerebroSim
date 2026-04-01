@@ -2,18 +2,33 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 import 'simulation_state.dart';
 
+/// Represents a saved state of a cerebellar simulation experiment.
+///
+/// This class is used to persist simulation results, including synaptic weights
+/// and performance metrics, to Firestore and to reload them for later analysis.
 @immutable
 class ExperimentSnapshot {
+  /// Unique identifier for the snapshot.
   final String id;
+  /// The ID of the user who created the snapshot.
   final String userId;
+  /// The email of the user who created the snapshot.
   final String userEmail;
+  /// The name of the task being simulated (e.g., "VOR").
   final String taskName;
+  /// The final error rate achieved at the end of the experiment.
   final double finalErrorRate;
+  /// The final VOR gain ratio, specifically for VOR tasks.
   final double? finalVorGain;
+  /// The list of synaptic weights across the network at the time of the snapshot.
   final List<double> synapticWeights;
+  /// The total number of episodes completed in the experiment.
   final int episodeCount;
+  /// Whether this experiment result is visible to other users.
   final bool isPublic;
+  /// A descriptive title for the experiment.
   final String title;
+  /// The timestamp when the snapshot was created.
   final DateTime createdAt;
 
   const ExperimentSnapshot({
@@ -30,6 +45,7 @@ class ExperimentSnapshot {
     required this.createdAt,
   });
 
+  /// Converts the snapshot into a Map suitable for storage in Cloud Firestore.
   Map<String, dynamic> toFirestore() {
     return {
       'userId': userId,
@@ -45,6 +61,7 @@ class ExperimentSnapshot {
     };
   }
 
+  /// Creates an [ExperimentSnapshot] from a Firestore [DocumentSnapshot].
   factory ExperimentSnapshot.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ExperimentSnapshot(
@@ -62,6 +79,9 @@ class ExperimentSnapshot {
     );
   }
 
+  /// Creates a snapshot from the current [SimulationState] and user metadata.
+  ///
+  /// This captures the current performance and weights to be saved.
   factory ExperimentSnapshot.fromSimulation({
     required String userId,
     required String userEmail,
@@ -85,6 +105,7 @@ class ExperimentSnapshot {
     );
   }
 
+  /// Returns a copy of this snapshot with updated fields.
   ExperimentSnapshot copyWith({
     String? id,
     String? userId,

@@ -4,17 +4,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import 'app_shell.dart';
 
+/// A screen for new users to create a CerebroSim account.
+/// 
+/// This screen provides an interface for registration via email and password,
+/// including a confirmation field. It utilizes [authProvider] for the registration 
+/// process and transitions users directly to the [AppShell] upon successful 
+/// account creation.
 class RegisterScreen extends ConsumerStatefulWidget {
+  /// Creates a new [RegisterScreen] instance.
   const RegisterScreen({super.key});
 
   @override
   ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+/// The state for [RegisterScreen], handling form validation and registration logic.
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  /// Global key used to validate and manage the registration form's state.
   final _formKey = GlobalKey<FormState>();
+
+  /// Controller for the email input field.
   final _emailController = TextEditingController();
+
+  /// Controller for the initial password input field.
   final _passwordController = TextEditingController();
+
+  /// Controller for the password confirmation field to ensure match accuracy.
   final _confirmPasswordController = TextEditingController();
 
   @override
@@ -27,9 +42,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    /// Monitors the registration status to manage loading indicators.
     final authState = ref.watch(authProvider);
     final isLoading = authState is AsyncLoading;
 
+    /// Listens for registration success or failure.
+    /// 
+    /// On success, it clears the navigation stack and transitions to [AppShell].
+    /// On failure, it shows an error message via [SnackBar].
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       next.when(
         data: (user) {

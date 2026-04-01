@@ -4,7 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/simulation_provider.dart';
 import '../neural_canvas.dart';
 
+/// An onboarding step that allows users to observe the neural network in action.
+///
+/// It automatically starts the simulation upon entry and provides a passive
+/// viewing experience (via [AbsorbPointer] on the canvas) to help users
+/// visualize the firing patterns and adaptation process.
 class WatchModeStep extends ConsumerStatefulWidget {
+  /// Callback triggered when the user advances to the next step.
   final VoidCallback onNext;
   const WatchModeStep({super.key, required this.onNext});
 
@@ -13,16 +19,18 @@ class WatchModeStep extends ConsumerStatefulWidget {
 }
 
 class _WatchModeStepState extends ConsumerState<WatchModeStep> {
+  /// A timer that automatically advances the onboarding after a fixed duration.
   Timer? _autoAdvanceTimer;
 
   @override
   void initState() {
     super.initState();
-    // Start simulation automatically
+    // Automatically start the simulation to demonstrate activity.
     Future.microtask(() {
       ref.read(simulationProvider.notifier).startSimulation();
     });
     
+    // Set a 30-second timeout for automatic progression.
     _autoAdvanceTimer = Timer(const Duration(seconds: 30), () {
       if (mounted) widget.onNext();
     });
@@ -31,7 +39,7 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
   @override
   void dispose() {
     _autoAdvanceTimer?.cancel();
-    // Stop simulation when leaving step
+    // Ensure the simulation is stopped when navigating away from this step.
     ref.read(simulationProvider.notifier).stopSimulation();
     super.dispose();
   }
@@ -75,3 +83,4 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
     );
   }
 }
+

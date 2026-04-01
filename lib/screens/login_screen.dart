@@ -5,16 +5,28 @@ import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'app_shell.dart';
 
+/// The entry point for existing users to authenticate with CerebroSim.
+/// 
+/// This screen provides an interface for logging in via email/password or Google
+/// authentication. It utilizes [authProvider] to manage authentication state and
+/// directs users to the [AppShell] upon successful login.
 class LoginScreen extends ConsumerStatefulWidget {
+  /// Creates a new [LoginScreen] instance.
   const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
+/// The state for [LoginScreen], handling form validation and authentication interactions.
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  /// Global key used to validate and manage the login form's state.
   final _formKey = GlobalKey<FormState>();
+  
+  /// Controller for the email input field.
   final _emailController = TextEditingController();
+  
+  /// Controller for the password input field.
   final _passwordController = TextEditingController();
 
   @override
@@ -24,11 +36,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  /// Builds the login UI, including form fields and authentication buttons.
+  /// 
+  /// It listens to [authProvider] to handle navigation on successful login
+  /// or to show error messages if authentication fails.
   @override
   Widget build(BuildContext context) {
+    /// Monitors the current authentication state to handle loading indicators.
     final authState = ref.watch(authProvider);
     final isLoading = authState is AsyncLoading;
 
+    /// Listens for changes in the [authProvider] to handle navigation and errors.
+    /// 
+    /// If authentication is successful, it replaces the current screen with [AppShell].
+    /// If an error occurs, it displays a [SnackBar] with the error message.
     ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
       next.when(
         data: (user) {

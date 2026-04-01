@@ -9,12 +9,24 @@ import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../models/experiment_snapshot.dart';
 
+/// The primary experimental workspace for CerebroSim.
+/// 
+/// This screen serves as the central hub for interacting with the cerebellar 
+/// Reinforcement Learning (RL) simulation. It provides controls to start, stop, 
+/// and reset episodes, as well as tools to select different tasks, visualize 
+/// neural activity, and monitor real-time performance signals.
 class SimulateScreen extends ConsumerWidget {
+  /// Creates a new [SimulateScreen] instance.
   const SimulateScreen({super.key});
 
+  /// Builds the simulation interface, including the task selector, neural canvas, 
+  /// and signal plotter. It also integrates simulation control buttons in the AppBar.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    /// Monitors the current state of the simulation (running status, progress, etc.).
     final state = ref.watch(simulationProvider);
+    
+    /// Provides access to simulation control methods.
     final notifier = ref.read(simulationProvider.notifier);
 
     return Scaffold(
@@ -46,17 +58,29 @@ class SimulateScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
           const TaskSelector(),
+          
+          /// Interactive 2D visualization of the neural network architecture and activity.
           const Expanded(
             child: NeuralCanvas(),
           ),
+          
+          /// Real-time plotting component for monitoring simulation signals and performance.
           const SignalPlotter(),
+          
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
+  /// Displays a modal dialog to capture metadata and save the current simulation state.
+  /// 
+  /// The dialog collects a title and visibility preference (public/private).
+  /// Upon confirmation, it constructs an [ExperimentSnapshot] from the current
+  /// [simulationProvider] and [environmentProvider] states and persists it
+  /// using the [vaultProvider].
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     bool isPublic = false;

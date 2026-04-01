@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../neural_canvas.dart';
 import '../task_selector.dart';
 
+/// An onboarding step that encourages users to explore the interactive components.
+///
+/// It provides access to the [TaskSelector] and [NeuralCanvas], allowing
+/// users to experiment with switching tasks and inspecting individual neurons
+/// before concluding the onboarding process.
 class ExploreStep extends ConsumerWidget {
+  /// Callback triggered when the user finishes exploring and starts the full research experience.
   final VoidCallback onComplete;
   const ExploreStep({super.key, required this.onComplete});
 
@@ -44,3 +50,4 @@ class ExploreStep extends ConsumerWidget {
     );
   }
 }
+

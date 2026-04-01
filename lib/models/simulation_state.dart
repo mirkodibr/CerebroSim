@@ -2,16 +2,29 @@ import 'package:meta/meta.dart';
 import 'neuron_model.dart';
 import 'synapse_model.dart';
 
+/// The complete snapshot of the simulation's current state at any given tick.
+///
+/// It contains the status of every neuron and synapse, as well as high-level
+/// metrics like prediction error and overall progress through an experiment.
 @immutable
 class SimulationState {
+  /// The list of all neurons in the current network architecture.
   final List<NeuronModel> neurons;
+  /// The list of all synaptic connections between neurons.
   final List<SynapseModel> synapses;
+  /// The current output of the cerebellar "critic" or prediction unit.
   final double criticPrediction;
+  /// The Temporal Difference (TD) error representing the difference between prediction and reality.
   final double tdError;
+  /// The current signal level being carried by the climbing fibers (the error signal).
   final double climbingFiberSignal;
+  /// A moving average of the gain ratio performance metric.
   final double rollingGainRatio;
+  /// The current time step index within the active episode.
   final int episodeStep;
+  /// The total number of episodes that have been completed in this session.
   final int episodeCount;
+  /// Whether the simulation is currently active and processing ticks.
   final bool isRunning;
 
   const SimulationState({
@@ -26,6 +39,10 @@ class SimulationState {
     this.isRunning = false,
   });
 
+  /// Creates a default initial state for a new simulation.
+  ///
+  /// This defines a basic cerebellar circuit with Granule, Purkinje, Basket,
+  /// Deep Cerebellar Nucleus, and Climbing Fiber neurons.
   factory SimulationState.initial() {
     final neurons = [
       NeuronModel.initial(id: 'GC_01', cellType: 'GC'),
@@ -55,6 +72,7 @@ class SimulationState {
     );
   }
 
+  /// Returns a copy of the simulation state with updated fields.
   SimulationState copyWith({
     List<NeuronModel>? neurons,
     List<SynapseModel>? synapses,

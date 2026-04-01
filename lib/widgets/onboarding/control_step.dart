@@ -3,7 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/learning_rate_provider.dart';
 import '../signal_plotter.dart';
 
+/// An onboarding step that introduces the simulation's dynamic controls.
+///
+/// This step focuses on the 'Learning Rate' parameter, demonstrating how it
+/// influences the cerebellar network's adaptation speed. It requires the
+/// user to interact with the slider before proceeding to the next step.
 class ControlStep extends ConsumerStatefulWidget {
+  /// Callback triggered when the user completes this step.
   final VoidCallback onNext;
   const ControlStep({super.key, required this.onNext});
 
@@ -12,6 +18,7 @@ class ControlStep extends ConsumerStatefulWidget {
 }
 
 class _ControlStepState extends ConsumerState<ControlStep> {
+  /// Tracks if the user has interacted with the learning rate slider.
   bool _interacted = false;
 
   @override
@@ -68,3 +75,4 @@ class _ControlStepState extends ConsumerState<ControlStep> {
     );
   }
 }
+
