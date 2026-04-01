@@ -1,60 +1,84 @@
 # Project Requirements: CerebroSim Mobile Lab
 **Developer:** Mirko Dibra
-**Description:** A professional-grade mobile neural research lab that simulates cerebellar learning and motor coordination based on the Marr-Albus-Ito theory.
+**Description:** A professional-grade mobile neural research lab that simulates cerebellar learning and motor coordination based on the Marr-Albus-Ito theory using Temporal Difference (TD) learning and Leaky Integrate-and-Fire (LIF) dynamics.
 
 ## AI Assistant Guardrails
 Gemini: When reading this file to implement a step, you MUST adhere to the following architectural rules:
-1. [ ]**State Management:** Use `flutter_riverpod` exclusively. [cite_start]Do not use `setState` for complex logic.
-2. [ ]**Architecture:** Maintain strict separation of concerns into `/models` (data classes), `/services` (backend/logic), `/providers` (Riverpod logic), and `/screens` (UI) .
-3. [ ]**Local Storage:** Use `shared_preferences` for theme toggles and onboarding status.
-4. [ ]**Database:** Use **Firebase Firestore** for persistent cloud research data.
-5. **Stepwise Execution:** Only implement the specific sub-step requested. [cite_start]Do not jump ahead.
+1. **State Management:** Use `flutter_riverpod` exclusively. Do not use `setState` for complex logic or data mutations.
+2. **Architecture:** Maintain strict separation of concerns:
+   * `/models`: Pure Dart, immutable data classes (`@immutable`, `copyWith`).
+   * `/services`: Pure Dart backend/logic (no Flutter dependencies, no Riverpod).
+   * `/providers`: Riverpod Notifiers that bridge Services and UI.
+   * `/screens` & `/widgets`: Flutter UI components (`ConsumerWidget`, `ConsumerStatefulWidget`).
+3. **Local Storage:** Use `shared_preferences` for theme toggles and onboarding status.
+4. **Database:** Use **Firebase Firestore** for persistent cloud research data and snapshots.
+5. **Stepwise Execution:** Only implement the specific sub-step requested in the current prompt. Do not jump ahead.
 
 ---
 
 ## Implementation Roadmap
 
+### Phase 0: Project Reset & Data Models
+*Goal: Establish strict, immutable data structures for the simulation.*
+* [x] **Neuron & Synapse Models:** Define immutable Dart classes `NeuronModel` (LIF dynamics, eligibility traces) and `SynapseModel` (weights).
+* [x] **Simulation Constants:** Centralize learning rates, decay rates, and thresholds in a static class.
+* [x] **State Model:** Create `SimulationState` to hold snapshots of all active cells, TD error, and punishment signals.
+
 ### Phase 1: Project Setup & Core Infrastructure
-* [x]**Step 1.1: Environment Configuration:** Add `flutter_riverpod`, `firebase_core`, `firebase_auth`, `cloud_firestore`, and `shared_preferences` to `pubspec.yaml`.
-* [x]**Step 1.2: Platform Initialization:** Configure Firebase for Android/iOS and initialize it in `main.dart`.
-* [x]**Step 1.3: Visual Foundation:** Create a centralized `ThemeData` class in `lib/theme.dart` for consistent typography and colors.
-* [x]**Step 1.4: Base Architecture:** Set up the folder structure [x] and wrap the root widget in a `ProviderScope` [x].
+*Goal: Initialize the app, inject dependencies, and start the engine.*
+* [x] **Dependencies:** Integrate `flutter_riverpod`, `firebase_core`, `cloud_firestore`, and `shared_preferences`.
+* [x] **App Initialization:** Ensure `WidgetsFlutterBinding` and `Firebase.initializeApp` run asynchronously before `runApp`.
+* [x] **Provider Scope:** Wrap the root widget in a `ProviderScope`.
 
-### Phase 2: Milestone 1 - The Minimum Viable Product (MVP)
-*Goal: The core defining feature (Neural Simulation) must function with local state.*
+### Phase 2: Theming & Navigation Shell
+*Goal: Build the foundational UI wrapper and routing mechanism.*
+* [x] **Theme Service:** Create a dual-theme system (Cyber Lab Dark Mode vs. Presentation Light Mode).
+* [x] **Theme Persistence:** Persist user theme choices using `shared_preferences`.
+* [x] **App Shell:** Implement a `BottomNavigationBar` routing to Simulate, Vault, and Profile screens.
 
-* [x]**Step 2.1: Spiking Neural Data Models:** * [x]**2.1.1:** Define immutable Dart classes for `Neuron` (threshold, potential) and `Synapse` (weight) in `/models`.
-    * [x]**2.1.2:** Create a `SimulationState` model to hold snapshots of all active cells.
-* [x]**Step 2.2: Simulation Engine (Logic Layer):** 
-    * [x]**2.2.1:** Build `SimulationService` in `/services` to process discrete spiking dynamics.
-    * [x]**2.2.2:** Implement the **Climbing Fiber** error-correction logic to adjust synaptic weights.
-* [x]**Step 2.3: State & Timing:** * [x]
-    * [x]**2.3.1:** Create a Riverpod `Notifier` to act as the simulation clock at 60fps.
-    * [x]**2.3.2:** Implement a provider to generate target input signals (Sine, Noisy waves).
-* [x]**Step 2.4: The Neural Canvas (UI Layer):** * [x]
-    * [x]**2.4.1:** Implement a `CustomPainter` widget to draw the 2D layout of the cerebellar cortex.
-    * [x]**2.4.2:** Wrap the canvas in an `InteractiveViewer` for zoom/pan support.
-* [x]**Step 2.5: Real-Time Signal Plotter:** Build a dedicated graphing widget to visualize input vs. output in real-time.
-### Phase 2.5: Actor-Critic RL Refactor (Kuriyama et al. 2025)
-*Goal: Transition the core simulation engine from classical Supervised Learning to Continuous-Time Reinforcement Learning.*
+### Phase 3: Identity & Authentication
+*Goal: Secure the application and prepare for cloud syncing.*
+* [x] **Auth Service:** Implement Firebase Authentication for Email/Password and Google Sign-In.
+* [x] **Auth Provider:** Create a Riverpod state watcher for the current user session.
+* [x] **Auth UI:** Build robust Login and Register screens with form validation.
+* [x] **Route Guard:** Automatically redirect users to the AppShell or Login screen based on auth state.
 
-* [x]**Step 2.5.1: RL Data Models:** Update `Neuron` with LIF (Leaky Integrate-and-Fire) dynamics (`decayRate`) and `actionGroup`. Update `Synapse` with `eligibilityTrace` and `targetType`.
-* [x]**Step 2.5.2: State Engine & Traces:** Refactor `SimulationService.calculateNextState` to process potential decay (LIF) and update synapse eligibility traces upon presynaptic spikes.
-* [x]**Step 2.5.3: Actor-Critic Learning Rule:** Implement `adjustWeightsRL` in `SimulationService`. Calculate predicted value via Stellate Cells (Critic) and action output via Deep Cerebellar Nuclei (DCN). Use TD Error and eligibility traces to update weights.
-* [x]**Step 2.5.4: Episodic Environment:** Refactor the input provider into an `EnvironmentProvider` that manages episodic runs, outputs state to Parallel Fibers, and triggers continuous Climbing Fiber punishment signals.
-* [x]**Step 2.5.5: Visualization Updates:** Update `NeuralCanvas` to draw SC, BC, and DCN cells. Update `SignalPlotter` to graph the Critic's value prediction and success rate over episodes.
+### Phase 4: Simulation Engine (Logic Layer)
+*Goal: Build a highly performant, pure-Dart simulation engine.*
+* [x] **Environment Interface:** Define `EnvironmentStep` for tasks to communicate with the engine.
+* [x] **LIF & Eligibility:** Implement Leaky Integrate-and-Fire membrane decay and eligibility trace tracking.
+* [x] **TD Learning:** Implement Temporal Difference error calculations using Climbing Fiber (actual) and DCN/Critic (predicted) signals.
+* [x] **Clock & Ticker:** Create a `SimulationNotifier` that ticks the engine at 60Hz.
 
-### Phase 3: Milestone 2 - Full Stack Integration
-[ ]*Goal: Complete major functionality and replace mock data with live cloud and authentication.*
+### Phase 5: Neural Canvas Visualisation
+*Goal: Render the cerebellar microcircuit interactively.*
+* [x] **Custom Painter:** Build `NeuralCanvasPainter` to draw neurons (GC, PC, BC, DCN, CF) and synapses.
+* [x] **Layer Rendering:** Color-code layers (Molecular, Purkinje, Granular) and visually indicate firing states and synaptic weights.
+* [x] **Tap-to-Inspect:** Implement an interactive bottom sheet to view real-time membrane potentials and traces of tapped cells.
 
-* [ ]**Step 3.1: Secure Identity (Authentication):** * **3.1.1:** Implement `AuthService` using Firebase Authentication.
-* [ ]**3.1.2:** Configure **Google Sign-In** alongside standard Email/Password.
-* [ ]**Step 3.2: The Auth Gate:** Create an `AuthGate` widget to handle automatic redirection based on user login state.
-* [ ]**Step 3.3: Cloud Research Vault (Database):** * **3.3.1:** Implement `DatabaseService` using Firestore for persistent storage.
-* [ ]**3.3.2:** Create CRUD operations to save/fetch "Brain State" snapshots (weights/maps).
-* **Step 3.4: Cloud Gallery UI:** Build a screen to browse, preview, and load saved simulations from the cloud.
+### Phase 6: Task Environments & Telemetry
+*Goal: Expose the network to biological learning scenarios.*
+* [x] **Eyeblink Conditioning:** Implement delay fear conditioning (Tone -> Airpuff).
+* [x] **Sine Wave Tracking:** Implement continuous target tracking with directional punishment.
+* [x] **VOR Adaptation:** Implement Vestibulo-Ocular Reflex calibration with variable gain setups.
+* [x] **Signal Plotter:** Build a real-time rolling graph comparing Critic Prediction, Actual Punishment, and Task Gain.
+* [x] **Task Selector:** Allow users to dynamically swap environments while the simulation runs.
 
-### Phase 4: Polish & Professional Persistence
-* [ ]**Step 4.1: Local Persistence:** Use `shared_preferences` to implement a "Dark Mode" toggle
-* [ ]**Step 4.2: Robust UX:** Implement `AsyncValue.when()` across all UI to handle loading and error states.
-* [ ]**Step 4.3: Final Refactoring:** Break down any files larger than 200 lines by extracting widgets into `/widgets`.
+### Phase 7: Guided Onboarding
+*Goal: Explain complex neurobiology to first-time users.*
+* [x] **Watch Mode:** Introduce the concept of error-driven learning with an auto-playing simulation.
+* [x] **Control Mode:** Allow users to manipulate the learning rate and observe the plotter.
+* [x] **Explore Mode:** Teach the user how to inspect cells using tooltips and descriptions.
+
+### Phase 8: Cloud Research Vault
+*Goal: Allow users to save, share, and reload their experiments.*
+* [x] **Experiment Snapshot:** Create a model to serialize network weights, error rates, and task parameters.
+* [x] **Database Service:** Wire up Firestore to save to private user collections and public galleries.
+* [x] **Vault UI:** Build a tabbed interface to browse personal history vs. community experiments.
+* [x] **Load State:** Allow users to load a snapshot from the Vault directly back into the live Simulation Engine.
+
+### Phase 9: Polish & Submission Prep
+*Goal: Finalize the app for portfolio/production readiness.*
+* [x] **Error Handling:** Ensure all async operations have `try/catch` blocks and user-facing SnackBars.
+* [x] **Loading States:** Implement `CircularProgressIndicator` or shimmers for all `AsyncLoading` states.
+* [x] **Code Audit:** Ensure no file exceeds 200 lines; extract complex UI into dedicated widgets.

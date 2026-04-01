@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cerebrosim/models/simulation_state.dart';
-import 'package:cerebrosim/models/neuron_model.dart';
-import 'package:cerebrosim/models/synapse_model.dart';
 
 void main() {
   group('SimulationState Tests', () {
