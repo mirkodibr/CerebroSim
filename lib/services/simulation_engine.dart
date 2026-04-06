@@ -30,7 +30,13 @@ class SimulationEngine {
   /// 4. **Apply Plasticity:** Use [updateWeights] to modify synapses based on
   ///    the TD error.
   /// 5. **Update State:** Manage episode counting and step tracking.
-  SimulationState tick(SimulationState current, EnvironmentStep env, double dt) {
+  SimulationState tick(
+    SimulationState current,
+    EnvironmentStep env,
+    double dt, {
+    required double learningRate,
+    required double gamma,
+  }) {
     // Step 1: compute input currents
     final Map<String, double> inputCurrents = {};
     
@@ -57,7 +63,7 @@ class SimulationEngine {
     // Apply baseline tonic firing to DCN neurons to represent spontaneous activity.
     for (final n in current.neurons) {
       if (n.cellType == 'DCN') {
-        inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + 0.5;
+        inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + SimulationConstants.kDcnBaselineDrive;
       }
     }
 
@@ -89,14 +95,14 @@ class SimulationEngine {
     final oldDcn = current.neurons.firstWhere((n) => n.cellType == 'DCN', orElse: () => current.neurons.first);
     final nextDcn = nextNeurons.firstWhere((n) => n.id == oldDcn.id);
     
-    final td = tdError(1.0 - env.punishment, nextDcn.membranePotential, oldDcn.membranePotential);
+    final td = tdError(1.0 - env.punishment, nextDcn.membranePotential, oldDcn.membranePotential, gamma: gamma);
 
     // Step 4: call updateWeights to adjust synaptic strengths based on learning.
     final List<SynapseModel> nextSynapses = updateWeights(
       current.synapses,
       nextNeurons, // Use updated neurons for eligibility trace
       td,
-      SimulationConstants.kDefaultLearningRate,
+      learningRate: learningRate,
     );
 
     // Step 5: handle episode logic and counter increments.
@@ -145,9 +151,9 @@ class SimulationEngine {
   List<SynapseModel> updateWeights(
     List<SynapseModel> synapses,
     List<NeuronModel> neurons,
-    double tdError,
-    double learningRate,
-  ) {
+    double tdError, {
+    required double learningRate,
+  }) {
     return synapses.map((synapse) {
       final preNeuron = neurons.firstWhere((n) => n.id == synapse.fromNeuronId);
       final sign = synapse.isInhibitory ? -1.0 : 1.0;

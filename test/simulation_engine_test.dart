@@ -17,7 +17,13 @@ void main() {
       final state = SimulationState.initial();
       const env = EnvironmentStep(stateVector: [1.0], punishment: 0.0, isEpisodeEnd: false);
       
-      final nextState = engine.tick(state, env, 0.016);
+      final nextState = engine.tick(
+        state, 
+        env, 
+        0.016, 
+        learningRate: 0.01, 
+        gamma: 0.95,
+      );
       
       expect(nextState.episodeStep, state.episodeStep + 1);
     });
@@ -26,7 +32,13 @@ void main() {
       final state = SimulationState.initial().copyWith(episodeStep: 10, episodeCount: 5);
       const env = EnvironmentStep(stateVector: [1.0], punishment: 0.0, isEpisodeEnd: true);
       
-      final nextState = engine.tick(state, env, 0.016);
+      final nextState = engine.tick(
+        state, 
+        env, 
+        0.016, 
+        learningRate: 0.01, 
+        gamma: 0.95,
+      );
       
       expect(nextState.episodeStep, 0);
       expect(nextState.episodeCount, 6);
@@ -70,8 +82,18 @@ void main() {
     test('excitatory synapse weight=0.1, eligibilityTrace=0.5, tdError=0.2, learningRate=0.01 -> expect ≈ 0.101', () {
       final synapse = SynapseModel.initial(fromId: 'n1', toId: 'n2', isInhibitory: false).copyWith(weight: 0.1);
       final neuron = NeuronModel.initial(id: 'n1', cellType: 'GC').copyWith(eligibilityTrace: 0.5);
-      final result = engine.updateWeights([synapse], [neuron], 0.2, 0.01);
+      final result = engine.updateWeights([synapse], [neuron], 0.2, learningRate: 0.01);
       expect(result.first.weight, closeTo(0.101, 0.00001));
+    });
+
+    test('when learningRate is 0.0, updateWeights returns original synapses unchanged', () {
+      final synapses = SimulationState.initial().synapses;
+      final neurons = SimulationState.initial().neurons;
+      final result = engine.updateWeights(synapses, neurons, 1.0, learningRate: 0.0);
+      
+      for (int i = 0; i < synapses.length; i++) {
+        expect(result[i].weight, equals(synapses[i].weight));
+      }
     });
   });
 }

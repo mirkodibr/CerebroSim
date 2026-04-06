@@ -19,4 +19,10 @@ class SimulationConstants {
   static const double kHealthyVorGain = 1.0;
   /// Benchmark gain ratio representing an uncompensated or ataxic VOR system.
   static const double kAtaxiaVorGain = 0.4;
+  /// Default discount factor for TD learning, representing the weight of
+  /// future predictions.
+  static const double kDefaultGamma = 0.95;
+  /// Baseline current injected into Deep Cerebellar Nuclei (DCN) neurons
+  /// to prevent total inhibition collapse.
+  static const double kDcnBaselineDrive = 0.5;
 }
