@@ -13,7 +13,7 @@ final databaseServiceProvider = Provider<DatabaseService>((ref) {
 /// A notifier that manages the "Vault" of experiment snapshots for the current user.
 /// It synchronizes with Firestore to provide a real-time list of saved cerebellar network states.
 class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
-  StreamSubscription? _subscription;
+  StreamSubscription? _vaultSubscription;
 
   /// Initializes the vault by listening to the user's experiment snapshots in Firestore.
   /// Automatically re-syncs when the authenticated user changes.
@@ -24,8 +24,8 @@ class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
 
     final completer = Completer<List<ExperimentSnapshot>>();
     
-    _subscription?.cancel();
-    _subscription = ref.read(databaseServiceProvider).watchUserSnapshots(user.uid).listen((snaps) {
+    await _vaultSubscription?.cancel();
+    _vaultSubscription = ref.read(databaseServiceProvider).watchUserSnapshots(user.uid).listen((snaps) {
       if (!completer.isCompleted) {
         completer.complete(snaps);
       } else {
@@ -39,7 +39,7 @@ class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
       }
     });
 
-    ref.onDispose(() => _subscription?.cancel());
+    ref.onDispose(() => _vaultSubscription?.cancel());
 
     return completer.future;
   }
@@ -54,8 +54,13 @@ class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
       await ref.read(databaseServiceProvider).saveSnapshot(snap);
     } catch (e, s) {
       state = AsyncError(e, s);
-      await Future.delayed(const Duration(seconds: 3));
-      state = previousState;
+      // Restore previous state after an error to prevent permanent loading indicators
+      if (previousState.hasValue) {
+        state = AsyncData(previousState.value!);
+      } else {
+        state = previousState;
+      }
+      rethrow;
     }
   }
 }
