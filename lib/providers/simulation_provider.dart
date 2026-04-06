@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
 import '../models/simulation_constants.dart';
+import '../models/plot_point.dart';
 import '../services/simulation_engine.dart';
 import 'environment_provider.dart';
+import 'plot_buffer_provider.dart';
 
 /// A provider that exposes an instance of [SimulationEngine].
 /// The engine contains the core logic for updating the neural network state.
@@ -72,6 +74,15 @@ class SimulationNotifier extends Notifier<SimulationState> {
     
     final dt = 1.0 / SimulationConstants.kTickRateHz;
     state = _engine.tick(state, env, dt);
+
+    // Update plot buffer with latest simulation data
+    ref.read(plotBufferProvider.notifier).addPoint(
+      PlotPoint(
+        criticPrediction: state.criticPrediction,
+        actualSignal: state.climbingFiberSignal,
+        gainRatio: state.rollingGainRatio,
+      ),
+    );
   }
 }
 

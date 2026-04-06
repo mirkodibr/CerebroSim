@@ -4,30 +4,7 @@ import '../models/plot_point.dart';
 import '../models/cerebellar_task.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/environment_provider.dart';
-
-/// A [Notifier] that manages a sliding buffer of [PlotPoint]s for real-time visualization.
-///
-/// It maintains a maximum of 200 points to ensure smooth performance while
-/// providing enough history for the user to observe trends in the simulation.
-class PlotBufferNotifier extends Notifier<List<PlotPoint>> {
-  @override
-  List<PlotPoint> build() => [];
-
-  /// Adds a new [point] to the buffer and removes the oldest point if the
-  /// limit is exceeded.
-  void addPoint(PlotPoint point) {
-    final nextBuffer = List<PlotPoint>.from(state)..add(point);
-    if (nextBuffer.length > 200) {
-      nextBuffer.removeAt(0);
-    }
-    state = nextBuffer;
-  }
-}
-
-/// Provider for the [PlotBufferNotifier].
-final plotBufferProvider = NotifierProvider<PlotBufferNotifier, List<PlotPoint>>(() {
-  return PlotBufferNotifier();
-});
+import '../providers/plot_buffer_provider.dart';
 
 /// A widget that displays a real-time line chart of simulation signals.
 ///
@@ -38,20 +15,7 @@ class SignalPlotter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(simulationProvider);
     final task = ref.watch(environmentProvider);
-
-    // Update buffer with the latest data from the simulation state.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final newPoint = PlotPoint(
-        criticPrediction: state.criticPrediction,
-        actualSignal: state.climbingFiberSignal,
-        gainRatio: state.rollingGainRatio,
-      );
-      
-      ref.read(plotBufferProvider.notifier).addPoint(newPoint);
-    });
-
     final buffer = ref.watch(plotBufferProvider);
 
     return Container(

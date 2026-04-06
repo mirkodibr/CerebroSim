@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cerebrosim/widgets/signal_plotter.dart';
+import 'package:cerebrosim/providers/plot_buffer_provider.dart';
 import 'package:cerebrosim/models/plot_point.dart';
 
 void main() {
