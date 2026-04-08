@@ -25,4 +25,11 @@ class SimulationConstants {
   /// Baseline current injected into Deep Cerebellar Nuclei (DCN) neurons
   /// to prevent total inhibition collapse.
   static const double kDcnBaselineDrive = 0.5;
+
+  /// Normal simulation speed multiplier.
+  static const double kSpeedNormal = 1.0;
+  /// Fast simulation speed multiplier (5x).
+  static const double kSpeedFast = 5.0;
+  /// Very fast simulation speed multiplier (10x).
+  static const double kSpeedVeryFast = 10.0;
 }

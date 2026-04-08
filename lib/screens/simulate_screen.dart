@@ -7,6 +7,7 @@ import '../providers/environment_provider.dart';
 import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
+import '../widgets/convergence_chart.dart';
 import '../models/experiment_snapshot.dart';
 
 /// The primary experimental workspace for CerebroSim.
@@ -39,15 +40,31 @@ class SimulateScreen extends ConsumerWidget {
             tooltip: 'Reset Simulation',
           ),
           IconButton(
-            icon: Icon(state.isRunning ? Icons.stop : Icons.play_arrow),
+            icon: Icon(state.isRunning ? Icons.pause : Icons.play_arrow),
             onPressed: () {
               if (state.isRunning) {
-                notifier.stopSimulation();
+                notifier.pauseSimulation();
               } else {
                 notifier.startSimulation();
               }
             },
-            tooltip: state.isRunning ? 'Stop' : 'Start',
+            tooltip: state.isRunning ? 'Pause' : 'Start/Resume',
+          ),
+          if (state.isRunning || (state.episodeStep > 0 || state.episodeCount > 0))
+            IconButton(
+              icon: const Icon(Icons.stop),
+              onPressed: () => notifier.stopSimulation(),
+              tooltip: 'Stop',
+            ),
+          PopupMenuButton<double>(
+            icon: const Icon(Icons.speed),
+            tooltip: 'Simulation Speed',
+            onSelected: (speed) => notifier.setSpeed(speed),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: SimulationConstants.kSpeedNormal, child: Text('1x Speed')),
+              const PopupMenuItem(value: SimulationConstants.kSpeedFast, child: Text('5x Speed')),
+              const PopupMenuItem(value: SimulationConstants.kSpeedVeryFast, child: Text('10x Speed')),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.save),
@@ -68,6 +85,12 @@ class SimulateScreen extends ConsumerWidget {
           
           /// Real-time plotting component for monitoring simulation signals and performance.
           const SignalPlotter(),
+
+          /// Chart showing performance convergence across multiple episodes.
+          const SizedBox(
+            height: 140,
+            child: ConvergenceChart(),
+          ),
           
           const SizedBox(height: 16),
         ],
