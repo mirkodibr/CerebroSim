@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/simulation_state.dart';
 import '../providers/simulation_provider.dart';
 import '../services/neural_3d_projection.dart';
 import 'neuron_info_overlay.dart';

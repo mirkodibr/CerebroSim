@@ -17,7 +17,7 @@ void main() {
     );
 
     expect(find.byType(TaskSelector), findsOneWidget);
-    expect(find.byType(NeuralCanvas), findsOneWidget);
+    expect(find.byType(NeuralCanvas3D), findsOneWidget);
     expect(find.byType(SignalPlotter), findsOneWidget);
   });
 }
