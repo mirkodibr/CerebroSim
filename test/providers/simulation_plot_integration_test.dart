@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/providers/simulation_provider.dart';
 import 'package:cerebrosim/providers/plot_buffer_provider.dart';
-import 'package:cerebrosim/models/simulation_constants.dart';
 
 void main() {
   test('SimulationNotifier appends PlotPoint to plotBufferProvider on tick', () async {

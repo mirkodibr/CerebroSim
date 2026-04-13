@@ -100,6 +100,8 @@ class SimulationNotifier extends Notifier<SimulationState> {
     final previousEpisodeCount = state.episodeCount;
     final env = ref.read(environmentProvider.notifier).step(state);
     final learningRate = ref.read(learningRateProvider);
+    final gamma = ref.read(gammaProvider);
+    final dcnBaseline = ref.read(dcnBaselineProvider);
     
     final dt = 1.0 / SimulationConstants.kTickRateHz;
     state = _engine.tick(
@@ -107,7 +109,8 @@ class SimulationNotifier extends Notifier<SimulationState> {
       env, 
       dt, 
       learningRate: learningRate,
-      gamma: SimulationConstants.kDefaultGamma,
+      gamma: gamma,
+      dcnBaseline: dcnBaseline,
     );
 
     // Track statistics for convergence history

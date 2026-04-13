@@ -8,6 +8,7 @@ import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
+import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 
 /// The primary experimental workspace for CerebroSim.

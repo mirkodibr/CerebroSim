@@ -20,7 +20,7 @@ class ConvergenceChart extends ConsumerWidget {
         child: Text(
           'Run episodes to see convergence',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.5),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
             fontStyle: FontStyle.italic,
           ),
         ),
@@ -56,7 +56,7 @@ class ConvergenceChartPainter extends CustomPainter {
     final double height = size.height;
 
     final Paint axisPaint = Paint()
-      ..color = Colors.grey.withOpacity(0.3)
+      ..color = Colors.grey.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
     // Draw axes

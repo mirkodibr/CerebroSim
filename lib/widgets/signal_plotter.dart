@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/plot_point.dart';
 import '../models/cerebellar_task.dart';
-import '../providers/simulation_provider.dart';
 import '../providers/environment_provider.dart';
 import '../providers/plot_buffer_provider.dart';
 

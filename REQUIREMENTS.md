@@ -82,3 +82,23 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x] **Error Handling:** Ensure all async operations have `try/catch` blocks and user-facing SnackBars.
 * [x] **Loading States:** Implement `CircularProgressIndicator` or shimmers for all `AsyncLoading` states.
 * [x] **Code Audit:** Ensure no file exceeds 200 lines; extract complex UI into dedicated widgets.
+### Phase 10: Architectural Hardening & Data Integrity
+*Goal: Secure the simulation against state drift and ensure atomic cloud operations.*
+* [ ] **State Synchronization:** Decouple `SignalPlotter` telemetry from the Flutter build cycle to ensure data points are only generated on biological ticks.
+* [ ] **Parameter Injection:** Refactor the `SimulationEngine` to accept learning rates, gamma, and DCN baseline values as dynamic inputs from providers rather than hardcoded constants.
+* [ ] **Atomic Research Vault:** Implement `WriteBatch` for all Firestore operations to ensure experiments are saved to personal history and public galleries simultaneously or not at all.
+* [ ] **Resource Safety:** Audit all `AsyncNotifiers` to ensure `StreamSubscriptions` and `Timers` are explicitly cancelled via `ref.onDispose` to prevent memory leaks.
+
+### Phase 11: Longitudinal Analytics & Simulation Control
+*Goal: Visualize long-term learning curves and enable high-speed experimentation.*
+* [ ] **Convergence Tracking:** Create an `EpisodeHistoryProvider` to track `Mean Punishment` and `Final TD-Error` across multiple simulation runs.
+* [ ] **Episode Records:** Implement an immutable `EpisodeRecord` model to store performance telemetry for a sliding window of the last 50 episodes.
+* [ ] **Convergence Chart:** Build a dual-line visualizer (Red: Punishment, Cyan: TD-Error) to show how the network converges toward a solution over time.
+* [ ] **Time Dilation:** Implement variable simulation speeds (1×, 5×, 10×) and a non-resetting "Pause" state for precise observation mid-episode.
+
+### Phase 12: 3D Visualization & Interactive Projection
+*Goal: Transform the simulation into a spatial, depth-aware neurobiological model.*
+* [ ] **Projection Utilities:** Implement a pure-Dart 3D math engine with rotation matrices and perspective divide logic ($S = \text{zoom} / (z + 4.0)$).
+* [ ] **3D Neural Canvas:** Replace the 2D painter with a 3D version that utilizes the Painter’s Algorithm for depth-sorted rendering of neurons and synapses.
+* [ ] **Gesture-Based Navigation:** Enable interactive rotation (X/Y axes) and pinch-to-zoom using `ScaleGestureDetector` on the 3D workspace.
+* [ ] **Biological Overlays:** Add live 3D electrical "charge arcs" on each cell and a smart-positioning `NeuronInfoOverlay` card that tracks selected neurons in 3D space.

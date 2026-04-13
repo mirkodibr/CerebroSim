@@ -36,6 +36,7 @@ class SimulationEngine {
     double dt, {
     required double learningRate,
     required double gamma,
+    required double dcnBaseline,
   }) {
     // Step 1: compute input currents
     final Map<String, double> inputCurrents = {};
@@ -63,7 +64,7 @@ class SimulationEngine {
     // Apply baseline tonic firing to DCN neurons to represent spontaneous activity.
     for (final n in current.neurons) {
       if (n.cellType == 'DCN') {
-        inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + SimulationConstants.kDcnBaselineDrive;
+        inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + dcnBaseline;
       }
     }
 
