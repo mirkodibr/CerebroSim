@@ -49,7 +49,7 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
     return Stack(
       children: [
         const AbsorbPointer(
-          child: NeuralCanvas(),
+          child: NeuralCanvas3D(),
         ),
         Container(
           color: Colors.black45,

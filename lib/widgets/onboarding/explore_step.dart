@@ -34,7 +34,7 @@ class ExploreStep extends ConsumerWidget {
           const SizedBox(height: 24),
           const TaskSelector(),
           const Expanded(
-            child: NeuralCanvas(),
+            child: NeuralCanvas3D(),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
