@@ -17,14 +17,22 @@ import '../models/experiment_snapshot.dart';
 /// Reinforcement Learning (RL) simulation. It provides controls to start, stop, 
 /// and reset episodes, as well as tools to select different tasks, visualize 
 /// neural activity, and monitor real-time performance signals.
-class SimulateScreen extends ConsumerWidget {
+class SimulateScreen extends ConsumerStatefulWidget {
   /// Creates a new [SimulateScreen] instance.
   const SimulateScreen({super.key});
+
+  @override
+  ConsumerState<SimulateScreen> createState() => _SimulateScreenState();
+}
+
+class _SimulateScreenState extends ConsumerState<SimulateScreen> {
+  /// Key to access the state of the 3D neural canvas (for resetting view).
+  final GlobalKey<NeuralCanvas3DState> _canvasKey = GlobalKey<NeuralCanvas3DState>();
 
   /// Builds the simulation interface, including the task selector, neural canvas, 
   /// and signal plotter. It also integrates simulation control buttons in the AppBar.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     /// Monitors the current state of the simulation (running status, progress, etc.).
     final state = ref.watch(simulationProvider);
     
@@ -74,37 +82,66 @@ class SimulateScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
-          const TaskSelector(),
-          
-          /// Interactive 3D visualization of the neural network architecture and activity.
-          const Expanded(
-            child: NeuralCanvas3D(),
-          ),
-          
-          /// Real-time plotting component for monitoring simulation signals and performance.
-          const SignalPlotter(),
+          Column(
+            children: [
+              /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
+              const TaskSelector(),
+              
+              /// Interactive 3D visualization of the neural network architecture and activity.
+              Expanded(
+                child: NeuralCanvas3D(key: _canvasKey),
+              ),
+              
+              /// Real-time plotting component for monitoring simulation signals and performance.
+              const SignalPlotter(),
 
-          /// Chart showing performance convergence across multiple episodes.
-          const SizedBox(
-            height: 140,
-            child: ConvergenceChart(),
+              /// Chart showing performance convergence across multiple episodes.
+              const SizedBox(
+                height: 140,
+                child: ConvergenceChart(),
+              ),
+              
+              const SizedBox(height: 16),
+            ],
           ),
           
-          const SizedBox(height: 16),
+          /// Floating reset and hint controls for the 3D canvas.
+          Positioned(
+            bottom: 250, // Positioned above the chart and plotter
+            right: 16,
+            child: Column(
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'reset_view',
+                  onPressed: () => _canvasKey.currentState?.resetView(),
+                  tooltip: 'Reset 3D View',
+                  child: const Icon(Icons.center_focus_strong),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton.small(
+                  heroTag: 'rotation_hint',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Swipe to rotate, pinch to zoom, tap to inspect.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  tooltip: 'Interaction Hint',
+                  child: const Icon(Icons.help_outline),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
   /// Displays a modal dialog to capture metadata and save the current simulation state.
-  /// 
-  /// The dialog collects a title and visibility preference (public/private).
-  /// Upon confirmation, it constructs an [ExperimentSnapshot] from the current
-  /// [simulationProvider] and [environmentProvider] states and persists it
-  /// using the [vaultProvider].
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     bool isPublic = false;
