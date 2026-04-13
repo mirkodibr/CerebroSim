@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
-import '../models/neuron_model.dart';
 import '../providers/simulation_provider.dart';
+import '../services/neural_3d_projection.dart';
 import 'neuron_detail_sheet.dart';
-import 'neural_canvas_painter.dart';
 
-/// A widget that provides an interactive, zoomable canvas for visualizing the neural network.
-///
-/// It uses [InteractiveViewer] to allow panning and zooming, and [CustomPaint]
-/// with [NeuralCanvasPainter] to render the cerebellar layers, neurons, and synapses.
-class NeuralCanvas extends ConsumerStatefulWidget {
-  const NeuralCanvas({super.key});
+/// An interactive 3D visualization of the cerebellar microcircuit.
+/// 
+/// This widget allows users to rotate and zoom into the neural model using
+/// touch gestures. It leverages [Neural3DProjection] for math and a custom
+/// painter for rendering neurons and synapses.
+class NeuralCanvas3D extends ConsumerStatefulWidget {
+  const NeuralCanvas3D({super.key});
 
   @override
-  ConsumerState<NeuralCanvas> createState() => _NeuralCanvasState();
+  ConsumerState<NeuralCanvas3D> createState() => NeuralCanvas3DState();
 }
 
-class _NeuralCanvasState extends ConsumerState<NeuralCanvas> with SingleTickerProviderStateMixin {
+class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  final double _canvasWidth = 800;
-  final double _canvasHeight = 600;
+  
+  // State fields for 3D view
+  double _rotX = 0.4;
+  double _rotY = 0.6;
+  double _zoom = 120.0;
+  String? _selectedNeuronId;
+
+  // For zoom tracking
+  double _baseZoom = 120.0;
 
   @override
   void initState() {
@@ -37,35 +44,60 @@ class _NeuralCanvasState extends ConsumerState<NeuralCanvas> with SingleTickerPr
     super.dispose();
   }
 
-  /// Handles tap events on the canvas to detect if a neuron was selected.
-  ///
-  /// Converts the global tap position to local canvas coordinates and finds
-  /// the nearest neuron within a fixed threshold (20 pixels). If a neuron is
-  /// found, it displays a [NeuronDetailSheet] in a modal bottom sheet.
-  void _handleTap(TapDownDetails details, SimulationState state) {
+  /// Resets the view to the default rotation and zoom.
+  void resetView() {
+    setState(() {
+      _rotX = 0.4;
+      _rotY = 0.6;
+      _zoom = 120.0;
+    });
+  }
+
+  /// Handles tap events to select a neuron in 3D space.
+  void _handleTapUp(TapUpDetails details) {
     final RenderBox box = context.findRenderObject() as RenderBox;
     final Offset localPos = box.globalToLocal(details.globalPosition);
-    
-    NeuronModel? nearest;
-    double minDistance = 20.0;
+    final Size size = box.size;
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+
+    final state = ref.read(simulationProvider);
+    String? nearestId;
+    double minDistance = 28.0;
 
     for (final n in state.neurons) {
-      final pos = NeuralCanvasPainter.getNeuronPos(n, Size(_canvasWidth, _canvasHeight));
-      final distance = (localPos - pos).distance;
+      final pos3d = Neural3DProjection.kNeuronPositions[n.id];
+      if (pos3d == null) continue;
+
+      final projected = Neural3DProjection.project(
+        pos3d,
+        rotX: _rotX,
+        rotY: _rotY,
+        zoom: _zoom,
+        centerX: centerX,
+        centerY: centerY,
+      );
+
+      final distance = (localPos - Offset(projected.x, projected.y)).distance;
       if (distance < minDistance) {
         minDistance = distance;
-        nearest = n;
+        nearestId = n.id;
       }
     }
 
-    if (nearest != null) {
+    setState(() {
+      _selectedNeuronId = nearestId;
+    });
+
+    if (nearestId != null) {
+      final neuron = state.neurons.firstWhere((n) => n.id == nearestId);
       showModalBottomSheet(
         context: context,
         backgroundColor: const Color(0xFF1E1E1E),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        builder: (context) => NeuronDetailSheet(neuron: nearest!),
+        builder: (context) => NeuronDetailSheet(neuron: neuron),
       );
     }
   }
@@ -74,25 +106,85 @@ class _NeuralCanvasState extends ConsumerState<NeuralCanvas> with SingleTickerPr
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
 
-    return InteractiveViewer(
-      minScale: 0.5,
-      maxScale: 3.0,
-      boundaryMargin: const EdgeInsets.all(200),
-      child: Center(
-        child: GestureDetector(
-          onTapDown: (details) => _handleTap(details, state),
-          child: SizedBox(
-            width: _canvasWidth,
-            height: _canvasHeight,
-            child: CustomPaint(
-              painter: NeuralCanvasPainter(
-                state: state,
-                repaint: _animationController,
-              ),
-            ),
-          ),
+    return GestureDetector(
+      onTapUp: _handleTapUp,
+      onScaleStart: (details) {
+        _baseZoom = _zoom;
+      },
+      onScaleUpdate: (details) {
+        setState(() {
+          // Implement rotation logic: delta.dx * 0.008
+          if (details.pointerCount == 1) {
+            _rotY += details.focalPointDelta.dx * 0.008;
+            _rotX -= details.focalPointDelta.dy * 0.008;
+          }
+          
+          // Implement pinch-to-zoom logic: clamp 60–280
+          if (details.pointerCount > 1) {
+            _zoom = (_baseZoom * details.scale).clamp(60.0, 280.0);
+          }
+        });
+      },
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: NeuralCanvas3DStubPainter(
+          state: state,
+          rotX: _rotX,
+          rotY: _rotY,
+          zoom: _zoom,
+          selectedNeuronId: _selectedNeuronId,
+          repaint: _animationController,
         ),
       ),
     );
+  }
+}
+
+/// A stub painter to satisfy the compiler until Prompt 58 is executed.
+class NeuralCanvas3DStubPainter extends CustomPainter {
+  final SimulationState state;
+  final double rotX;
+  final double rotY;
+  final double zoom;
+  final String? selectedNeuronId;
+
+  NeuralCanvas3DStubPainter({
+    required this.state,
+    required this.rotX,
+    required this.rotY,
+    required this.zoom,
+    this.selectedNeuronId,
+    super.repaint,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+
+    for (final n in state.neurons) {
+      final pos3d = Neural3DProjection.kNeuronPositions[n.id];
+      if (pos3d == null) continue;
+
+      final projected = Neural3DProjection.project(
+        pos3d,
+        rotX: rotX,
+        rotY: rotY,
+        zoom: zoom,
+        centerX: centerX,
+        centerY: centerY,
+      );
+
+      final paint = Paint()
+        ..color = (n.id == selectedNeuronId) ? Colors.white : Colors.blue
+        ..style = PaintingStyle.fill;
+
+      canvas.drawCircle(Offset(projected.x, projected.y), 10.0 * projected.scale / 30.0, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant NeuralCanvas3DStubPainter oldDelegate) {
+    return true;
   }
 }

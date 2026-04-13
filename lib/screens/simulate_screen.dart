@@ -79,9 +79,9 @@ class SimulateScreen extends ConsumerWidget {
           /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
           const TaskSelector(),
           
-          /// Interactive 2D visualization of the neural network architecture and activity.
+          /// Interactive 3D visualization of the neural network architecture and activity.
           const Expanded(
-            child: NeuralCanvas(),
+            child: NeuralCanvas3D(),
           ),
           
           /// Real-time plotting component for monitoring simulation signals and performance.
