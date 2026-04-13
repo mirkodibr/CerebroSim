@@ -130,6 +130,10 @@
 
 - [x] **51. Environment Logic & Punishment Unit Tests:** Create `test/environment_logic_test.dart` to validate the "Teacher" signals driving neural plasticity. 1. **Eyeblink Test:** Verify `punishment` is `1.0` if the US window is reached without a preceding DCN spike, and `0.0` if a spike occurred. 2. **SineWave Test:** Verify punishment is only non-zero when the DCN output direction is opposite to the wave's derivative. 3. **VOR Test:** Verify `imageSlip` correctly incorporates `targetGain` from `VorConfig`. 4. All environment tests must achieve 100% logic coverage before moving to Phase 11.
 
+- [x] **51.5. Firestore Security Rules Audit:** Perform a comprehensive audit of the `firestore.rules` file to transition from Test Mode to Production. 1. Identify all collections, specifically `users/{uid}/snapshots/` and `public_snapshots/`. 2. Verify that the current rules allow read/write access to any unauthenticated user (the vulnerability). 3. Create a `FIRESTORE_RULES.md` at the project root to document the intended logic: users may only read/write their own data, and the public gallery is read-only for others.
+
+- [x] **51.6. Secure Research Vault Implementation:** Deploy strong security rules to the Firebase Console. 1. Implement a rule for `match /users/{userId}/snapshots/{snapshotId}` that only allows `read` and `write` if `request.auth != null && request.auth.uid == userId`. 2. Implement a rule for `match /public_snapshots/{snapshotId}` that allows `read` to any authenticated user but restricts `create` and `delete` to the owner of the snapshot (checking `request.resource.data.userId`). 3. Validate these rules by attempting to read another user's private snapshot via a manual test and confirming a "Permission Denied" error occurs.
+
 ---
 
 ## Phase 11: Advanced Analytics & Simulation Control
