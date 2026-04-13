@@ -9,6 +9,8 @@ import 'environment_provider.dart';
 import 'plot_buffer_provider.dart';
 import 'learning_rate_provider.dart';
 import 'episode_history_provider.dart';
+import 'gamma_provider.dart';
+import 'dcn_baseline_provider.dart';
 
 /// A provider that exposes an instance of [SimulationEngine].
 /// The engine contains the core logic for updating the neural network state.

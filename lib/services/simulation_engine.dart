@@ -3,7 +3,6 @@ import '../models/simulation_state.dart';
 import '../models/neuron_model.dart';
 import '../models/synapse_model.dart';
 import '../models/environment.dart';
-import '../models/simulation_constants.dart';
 
 /// The core computational engine of the cerebellar simulation.
 /// 

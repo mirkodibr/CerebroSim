@@ -23,6 +23,7 @@ void main() {
         0.016, 
         learningRate: 0.01, 
         gamma: 0.95,
+        dcnBaseline: 0.5,
       );
       
       expect(nextState.episodeStep, state.episodeStep + 1);
@@ -38,6 +39,7 @@ void main() {
         0.016, 
         learningRate: 0.01, 
         gamma: 0.95,
+        dcnBaseline: 0.5,
       );
       
       expect(nextState.episodeStep, 0);
