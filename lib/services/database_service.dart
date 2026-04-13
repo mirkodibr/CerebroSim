@@ -20,8 +20,16 @@ class DatabaseService {
     try {
       final batch = _db.batch();
       
+      // Reference to the user's private snapshot
       final userSnapRef = _db.collection('users').doc(snap.userId).collection('snapshots').doc();
       batch.set(userSnapRef, snap.toFirestore());
+
+      // Update the user's profile with the last snapshot timestamp for rate limiting
+      final userRef = _db.collection('users').doc(snap.userId);
+      batch.set(userRef, {
+        'lastSnapshotAt': FieldValue.serverTimestamp(),
+        'email': snap.userEmail,
+      }, SetOptions(merge: true));
 
       if (snap.isPublic) {
         final publicSnapRef = _db.collection('public_snapshots').doc(userSnapRef.id);

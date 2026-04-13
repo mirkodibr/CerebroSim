@@ -134,6 +134,12 @@
 
 - [x] **51.6. Secure Research Vault Implementation:** Deploy strong security rules to the Firebase Console. 1. Implement a rule for `match /users/{userId}/snapshots/{snapshotId}` that only allows `read` and `write` if `request.auth != null && request.auth.uid == userId`. 2. Implement a rule for `match /public_snapshots/{snapshotId}` that allows `read` to any authenticated user but restricts `create` and `delete` to the owner of the snapshot (checking `request.resource.data.userId`). 3. Validate these rules by attempting to read another user's private snapshot via a manual test and confirming a "Permission Denied" error occurs.
 
+- [x] **51.7. Firestore Data Schema Validation:** Update `firestore.rules` to enforce strict data types for the `ExperimentSnapshot` model. 1. Add validation logic ensuring that `synapticWeights` is always a `list` of `float` or `int` types. 2. Enforce that `finalErrorRate` is a `number` between `0.0` and `1.0`. 3. Require that the `taskName` field matches one of the allowed enums: 'eyeblink', 'sineWave', or 'vor'. 4. Validate that `createdAt` is a `timestamp` and matches `request.time` to prevent users from spoofing simulation dates.
+
+- [x] **51.8. Rate Limiting & Resource Protection:** Implement rules to prevent database abuse and spamming in the Research Vault. 1. Limit the creation of snapshots to prevent a single user from flooding the `public_snapshots` gallery (e.g., using a custom function to check recent write timestamps). 2. Add an `allow delete: if false` rule to the `public_snapshots` collection for all users except designated admin UIDs to prevent data loss. 3. Ensure that the `title` field in any new snapshot is a `string` with a length between 3 and 50 characters to maintain gallery quality.
+
+- [x] **51.9. Atomic Batch Verification:** Audit the `DatabaseService.saveSnapshot` method to confirm it correctly utilizes the `WriteBatch` defined in Prompt 50. 1. Verify that the batch logic correctly handles the dual-write to both `users/{uid}/snapshots/` and `public_snapshots/`. 2. Implement a manual test where the second part of the batch is forced to fail (via temporary rule restriction) to confirm that the first write is correctly rolled back. 3. Document the rollback behavior in `FIRESTORE_RULES.md` to ensure future contributors maintain atomicity.
+
 ---
 
 ## Phase 11: Advanced Analytics & Simulation Control

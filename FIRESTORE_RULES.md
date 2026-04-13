@@ -1,28 +1,27 @@
-# Firestore Security Rules: Production Audit
+# Firestore Security & Data Integrity
 
-## 1. Identified Collections
-*   **`users/{uid}/snapshots/`**: Contains private research history and simulation snapshots for individual users.
-*   **`public_snapshots/`**: A global collection for snapshots shared with the community.
+## Architecture
+The Research Vault utilizes a dual-write pattern to ensure that experiments are both privately archived and publicly shareable.
 
-## 2. Security Vulnerability Assessment
-*   **Initial State (Test Mode)**: Most Firebase projects start with "Test Mode" rules that allow any unauthenticated user to read/write all data (`allow read, write: if true;`). This is a critical vulnerability that would allow data theft or corruption.
-*   **Production Transition**: We have transitioned to granular, identity-based rules to ensure data integrity and privacy.
+## Atomic Operations
+All experiment saves MUST use `FirebaseFirestore.instance.batch()` to ensure atomicity. 
+A single `saveSnapshot` call performs the following operations:
+1.  Creates a new document in `users/{uid}/snapshots/`.
+2.  Updates the `lastSnapshotAt` field in `users/{uid}/` for rate limiting.
+3.  (Optional) Creates a new document in `public_snapshots/` if `isPublic` is true.
 
-## 3. Implemented Logic (Production Rules)
+### Rollback Behavior
+If any of the above operations fail (e.g., due to security rule violations or network errors), the ENTIRE batch is rolled back by Firestore. This prevents "partial saves" where an experiment might be public but missing from the user's private history, or vice versa.
 
-### Private Research History
-*   **Collection**: `/users/{userId}/snapshots/{snapshotId}`
-*   **Logic**: A user can only access this collection if they are authenticated AND their `uid` matches the `{userId}` in the path.
-*   **Benefit**: Ensures that one researcher cannot view or modify the experiments of another.
+## Security Rules
+The `firestore.rules` file enforces:
+- **Ownership:** Users can only read/write their own `users/{uid}` documents.
+- **Validation:** snapshots must contain valid `synapticWeights`, `finalErrorRate` (0.0-1.0), and a `taskName` enum.
+- **Rate Limiting:** Users are restricted to one snapshot every 60 seconds to prevent gallery flooding.
+- **Data Integrity:** `public_snapshots` are immutable after creation and can only be deleted by administrators.
 
-### Public Community Gallery
-*   **Collection**: `/public_snapshots/{snapshotId}`
-*   **Read Access**: Any authenticated user can browse the public gallery.
-*   **Create Access**: Any authenticated user can share a snapshot, but the rule verifies that the `userId` field in the document matches the sender's `uid`.
-*   **Delete Access**: Only the original uploader (the owner) can remove their snapshot from the public gallery.
-*   **Update Access**: Disabled. Public snapshots are considered immutable records of a specific simulation state.
-
-## 4. Validation Plan
-*   [x] Attempt to read another user's private snapshot: **Expect Permission Denied**.
-*   [x] Attempt to write to `public_snapshots` without authentication: **Expect Permission Denied**.
-*   [x] Attempt to delete a public snapshot owned by someone else: **Expect Permission Denied**.
+## Manual Verification of Atomicity
+To verify the rollback behavior:
+1.  Temporarily modify `firestore.rules` to reject all writes to `public_snapshots`.
+2.  Attempt to save a public experiment from the app.
+3.  Observe that neither the private snapshot nor the public snapshot is created, confirming the batch rollback.

@@ -3,21 +3,56 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Helper to check if the user is an administrator
+    function isAdmin() {
+      return request.auth != null && 
+        request.auth.uid in ['ADMIN_UID_1', 'ADMIN_UID_2']; // Replace with real admin UIDs
+    }
+
+    // Schema Validation for ExperimentSnapshot
+    function isValidSnapshot(data) {
+      return data.userId == request.auth.uid &&
+             data.userEmail is string &&
+             data.title is string && 
+             data.title.size() >= 3 && 
+             data.title.size() <= 50 &&
+             data.taskName in ['eyeblink', 'sineWave', 'vor'] &&
+             data.finalErrorRate is number &&
+             data.finalErrorRate >= 0.0 &&
+             data.finalErrorRate <= 1.0 &&
+             data.synapticWeights is list &&
+             data.createdAt is timestamp &&
+             data.createdAt == request.time;
+    }
+
+    // Rate Limiting: Ensure at least 60 seconds between snapshots
+    function isNotSpamming() {
+      let lastSnapshot = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastSnapshotAt;
+      return lastSnapshot == null || request.time > lastSnapshot + duration.value(60, 's');
+    }
+
+    // User Profile: Used for rate limiting
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
     // User-specific snapshots: Private research history
-    // Only the owner can read or write to their own snapshot collection.
     match /users/{userId}/snapshots/{snapshotId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId && 
+                      isValidSnapshot(request.resource.data) && isNotSpamming();
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
     }
     
     // Public gallery: Shared simulation results
-    // - Any authenticated user can read public snapshots.
-    // - Any authenticated user can create a public snapshot, but only if they assign themselves as the owner.
-    // - Only the owner of the snapshot can delete it.
     match /public_snapshots/{snapshotId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow update: if false; // Public records are immutable after creation
+      allow create: if request.auth != null && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidSnapshot(request.resource.data) && isNotSpamming();
+      allow delete: if isAdmin();
+      allow update: if false; // Public records are immutable
     }
   }
 }
