@@ -4,12 +4,13 @@ import '../models/simulation_state.dart';
 import '../providers/simulation_provider.dart';
 import '../services/neural_3d_projection.dart';
 import 'neuron_detail_sheet.dart';
+import 'neural_canvas_3d_painter.dart';
 
 /// An interactive 3D visualization of the cerebellar microcircuit.
 /// 
 /// This widget allows users to rotate and zoom into the neural model using
-/// touch gestures. It leverages [Neural3DProjection] for math and a custom
-/// painter for rendering neurons and synapses.
+/// touch gestures. It leverages [Neural3DProjection] for math and 
+/// [NeuralCanvas3DPainter] for rendering depth-sorted neurons and synapses.
 class NeuralCanvas3D extends ConsumerStatefulWidget {
   const NeuralCanvas3D({super.key});
 
@@ -127,7 +128,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       },
       child: CustomPaint(
         size: Size.infinite,
-        painter: NeuralCanvas3DStubPainter(
+        painter: NeuralCanvas3DPainter(
           state: state,
           rotX: _rotX,
           rotY: _rotY,
@@ -140,51 +141,3 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
   }
 }
 
-/// A stub painter to satisfy the compiler until Prompt 58 is executed.
-class NeuralCanvas3DStubPainter extends CustomPainter {
-  final SimulationState state;
-  final double rotX;
-  final double rotY;
-  final double zoom;
-  final String? selectedNeuronId;
-
-  NeuralCanvas3DStubPainter({
-    required this.state,
-    required this.rotX,
-    required this.rotY,
-    required this.zoom,
-    this.selectedNeuronId,
-    super.repaint,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-
-    for (final n in state.neurons) {
-      final pos3d = Neural3DProjection.kNeuronPositions[n.id];
-      if (pos3d == null) continue;
-
-      final projected = Neural3DProjection.project(
-        pos3d,
-        rotX: rotX,
-        rotY: rotY,
-        zoom: zoom,
-        centerX: centerX,
-        centerY: centerY,
-      );
-
-      final paint = Paint()
-        ..color = (n.id == selectedNeuronId) ? Colors.white : Colors.blue
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(Offset(projected.x, projected.y), 10.0 * projected.scale / 30.0, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant NeuralCanvas3DStubPainter oldDelegate) {
-    return true;
-  }
-}
