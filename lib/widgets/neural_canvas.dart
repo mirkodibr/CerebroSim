@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
 import '../providers/simulation_provider.dart';
 import '../services/neural_3d_projection.dart';
-import 'neuron_detail_sheet.dart';
+import 'neuron_info_overlay.dart';
 import 'neural_canvas_3d_painter.dart';
 
 /// An interactive 3D visualization of the cerebellar microcircuit.
@@ -26,6 +26,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
   double _rotY = 0.6;
   double _zoom = 120.0;
   String? _selectedNeuronId;
+  Offset? _selectedNeuronPos;
 
   // For zoom tracking
   double _baseZoom = 120.0;
@@ -51,6 +52,8 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       _rotX = 0.4;
       _rotY = 0.6;
       _zoom = 120.0;
+      _selectedNeuronId = null;
+      _selectedNeuronPos = null;
     });
   }
 
@@ -64,6 +67,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
 
     final state = ref.read(simulationProvider);
     String? nearestId;
+    Offset? nearestPos;
     double minDistance = 28.0;
 
     for (final n in state.neurons) {
@@ -79,65 +83,89 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
         centerY: centerY,
       );
 
-      final distance = (localPos - Offset(projected.x, projected.y)).distance;
+      final screenPos = Offset(projected.x, projected.y);
+      final distance = (localPos - screenPos).distance;
       if (distance < minDistance) {
         minDistance = distance;
         nearestId = n.id;
+        nearestPos = screenPos;
       }
     }
 
     setState(() {
       _selectedNeuronId = nearestId;
+      _selectedNeuronPos = nearestPos;
     });
-
-    if (nearestId != null) {
-      final neuron = state.neurons.firstWhere((n) => n.id == nearestId);
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (context) => NeuronDetailSheet(neuron: neuron),
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
 
-    return GestureDetector(
-      onTapUp: _handleTapUp,
-      onScaleStart: (details) {
-        _baseZoom = _zoom;
-      },
-      onScaleUpdate: (details) {
-        setState(() {
-          // Implement rotation logic: delta.dx * 0.008
-          if (details.pointerCount == 1) {
-            _rotY += details.focalPointDelta.dx * 0.008;
-            _rotX -= details.focalPointDelta.dy * 0.008;
-          }
-          
-          // Implement pinch-to-zoom logic: clamp 60–280
-          if (details.pointerCount > 1) {
-            _zoom = (_baseZoom * details.scale).clamp(60.0, 280.0);
-          }
-        });
-      },
-      child: CustomPaint(
-        size: Size.infinite,
-        painter: NeuralCanvas3DPainter(
-          state: state,
-          rotX: _rotX,
-          rotY: _rotY,
-          zoom: _zoom,
-          selectedNeuronId: _selectedNeuronId,
-          repaint: _animationController,
+    // Re-calculate selected neuron position for overlay tracking
+    Offset? overlayPos = _selectedNeuronPos;
+    if (_selectedNeuronId != null) {
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        final centerX = box.size.width / 2;
+        final centerY = box.size.height / 2;
+        final pos3d = Neural3DProjection.kNeuronPositions[_selectedNeuronId!];
+        if (pos3d != null) {
+          final projected = Neural3DProjection.project(
+            pos3d,
+            rotX: _rotX,
+            rotY: _rotY,
+            zoom: _zoom,
+            centerX: centerX,
+            centerY: centerY,
+          );
+          overlayPos = Offset(projected.x, projected.y);
+        }
+      }
+    }
+
+    return Stack(
+      children: [
+        GestureDetector(
+          onTapUp: _handleTapUp,
+          onScaleStart: (details) {
+            _baseZoom = _zoom;
+          },
+          onScaleUpdate: (details) {
+            setState(() {
+              if (details.pointerCount == 1) {
+                _rotY += details.focalPointDelta.dx * 0.008;
+                _rotX -= details.focalPointDelta.dy * 0.008;
+              }
+              if (details.pointerCount > 1) {
+                _zoom = (_baseZoom * details.scale).clamp(60.0, 280.0);
+              }
+            });
+          },
+          child: CustomPaint(
+            size: Size.infinite,
+            painter: NeuralCanvas3DPainter(
+              state: state,
+              rotX: _rotX,
+              rotY: _rotY,
+              zoom: _zoom,
+              selectedNeuronId: _selectedNeuronId,
+              repaint: _animationController,
+            ),
+          ),
         ),
-      ),
+        if (_selectedNeuronId != null && overlayPos != null)
+          NeuronInfoOverlay(
+            neuron: state.neurons.firstWhere((n) => n.id == _selectedNeuronId),
+            position: overlayPos,
+            onClose: () => setState(() {
+              _selectedNeuronId = null;
+              _selectedNeuronPos = null;
+            }),
+          ),
+      ],
     );
   }
 }
+
 
