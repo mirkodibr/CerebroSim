@@ -100,5 +100,5 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 *Goal: Transform the simulation into a spatial, depth-aware neurobiological model.*
 * [x] **Projection Utilities:** Implement a pure-Dart 3D math engine with rotation matrices and perspective divide logic ($S = \text{zoom} / (z + 4.0)$).
 * [ ] **3D Neural Canvas:** Replace the 2D painter with a 3D version that utilizes the Painter’s Algorithm for depth-sorted rendering of neurons and synapses.
-* [ ] **Gesture-Based Navigation:** Enable interactive rotation (X/Y axes) and pinch-to-zoom using `ScaleGestureDetector` on the 3D workspace.
+* [x] **Gesture-Based Navigation:** Enable interactive rotation (X/Y axes) and pinch-to-zoom using `ScaleGestureDetector` on the 3D workspace.
 * [ ] **Biological Overlays:** Add live 3D electrical "charge arcs" on each cell and a smart-positioning `NeuronInfoOverlay` card that tracks selected neurons in 3D space.
