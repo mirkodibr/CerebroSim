@@ -25,6 +25,70 @@ class NeuralCanvas3DPainter extends CustomPainter {
     super.repaint,
   });
 
+  /// Calculates a procedural 3D position for a neuron based on its cell type.
+  /// 
+  /// Rules:
+  /// - GC: Distributed grid at Y = -100 (Deep/Granular)
+  /// - PC: Evenly spaced row at Y = 0 (Middle/Purkinje)
+  /// - DCN: Clustered at Y = 100 (Top/Molecular context - inverted for visual depth)
+  /// - BC/SC: Floating near PC layer.
+  /// - CF: Rising from below.
+  static Offset3D calculateProceduralPosition(NeuronModel n, Map<String, List<NeuronModel>> grouped) {
+    final sameType = grouped[n.cellType] ?? [];
+    final index = sameType.indexWhere((element) => element.id == n.id);
+    final count = sameType.length;
+
+    double x = 0;
+    double y = 0;
+    double z = 0;
+
+    switch (n.cellType) {
+      case 'GC':
+        y = -1.2; // Granular layer (Bottom)
+        // Arrange in a grid
+        final side = math.sqrt(count).ceil();
+        final row = index ~/ side;
+        final col = index % side;
+        x = (col - (side - 1) / 2) * 0.8;
+        z = (row - (side - 1) / 2) * 0.8;
+        break;
+      case 'PC':
+        y = 0.0; // Purkinje layer (Middle)
+        // Horizontal row
+        x = count > 1 ? (index - (count - 1) / 2) * 1.5 : 0.0;
+        z = 0.0;
+        break;
+      case 'BC':
+        y = 0.4; // Slightly above PC layer
+        x = count > 1 ? (index - (count - 1) / 2) * 1.2 : 0.4;
+        z = -0.5;
+        break;
+      case 'SC':
+        y = 0.8; // High molecular layer
+        x = count > 1 ? (index - (count - 1) / 2) * 1.0 : -0.4;
+        z = 0.5;
+        break;
+      case 'DCN':
+        y = -2.0; // Very deep output nuclei
+        x = count > 1 ? (index - (count - 1) / 2) * 1.0 : 0.0;
+        z = 0.2;
+        break;
+      case 'CF':
+        y = -1.8;
+        x = -1.5;
+        z = 0.0;
+        break;
+    }
+
+    // Add organic jitter based on ID hash (deterministic)
+    final random = math.Random(n.id.hashCode);
+    x += (random.nextDouble() - 0.5) * 0.15;
+    y += (random.nextDouble() - 0.5) * 0.15;
+    z += (random.nextDouble() - 0.5) * 0.15;
+
+    return Offset3D(x, y, z);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
@@ -33,11 +97,16 @@ class NeuralCanvas3DPainter extends CustomPainter {
     // 1. Draw Background Layers (40% opacity)
     _drawLayers(canvas, size);
 
+    // Group neurons for layout calculation
+    final Map<String, List<NeuronModel>> grouped = {};
+    for (final n in state.neurons.values) {
+      grouped.putIfAbsent(n.cellType, () => []).add(n);
+    }
+
     // 2. Project all neurons to determine 2D positions and depth
     final Map<String, ProjectedPoint> projectedNeurons = {};
     for (final n in state.neurons.values) {
-      final pos3d = Neural3DProjection.kNeuronPositions[n.id];
-      if (pos3d == null) continue;
+      final pos3d = calculateProceduralPosition(n, grouped);
       projectedNeurons[n.id] = Neural3DProjection.project(
         pos3d,
         rotX: rotX,
@@ -69,7 +138,6 @@ class NeuralCanvas3DPainter extends CustomPainter {
     }
 
     // 4. Painter's Algorithm: Sort by depth (furthest first)
-    // In our projection, larger zDepth means further away from the camera.
     items.sort((a, b) => b.depth.compareTo(a.depth));
 
     // 5. Draw items in order
@@ -92,7 +160,6 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant NeuralCanvas3DPainter oldDelegate) {
-    // Repaint on every tick for smooth real-time activity visualization
     return true;
   }
 }
@@ -117,17 +184,14 @@ class _NeuronItem extends _DepthItem {
   @override
   void draw(Canvas canvas) {
     final pos = Offset(projected.x, projected.y);
-    // Base radius 12.0 scaled by perspective
     final radius = 12.0 * projected.scale / 30.0;
     
     final paint = Paint()
       ..color = _getNeuronColor(neuron.cellType)
       ..style = PaintingStyle.fill;
 
-    // Draw core neuron body
     canvas.drawCircle(pos, radius, paint);
 
-    // Selection/Firing indicator
     if (neuron.isFiring || isSelected) {
       canvas.drawCircle(
         pos,
@@ -139,8 +203,6 @@ class _NeuronItem extends _DepthItem {
       );
     }
 
-    // Live electrical activity arc (60% white)
-    // Sweep angle is proportional to membrane potential (0 to 2*PI)
     final double sweepAngle = 2 * math.pi * neuron.membranePotential.clamp(0.0, 1.0);
     canvas.drawArc(
       Rect.fromCircle(center: pos, radius: radius * 0.85),
@@ -162,6 +224,7 @@ class _NeuronItem extends _DepthItem {
       case 'BC': return const Color(0xFFD85A30);
       case 'DCN': return const Color(0xFF1D9E75);
       case 'CF': return const Color(0xFFE24B4A);
+      case 'SC': return const Color(0xFF00FFFF);
       default: return Colors.grey;
     }
   }
@@ -181,8 +244,6 @@ class _SynapseItem extends _DepthItem {
   @override
   void draw(Canvas canvas) {
     final baseColor = synapse.isInhibitory ? const Color(0xFFFF4444) : const Color(0xFF00FFFF);
-    
-    // Alpha-fading based on average scale (depth proxy)
     final avgScale = (from.scale + to.scale) / 2;
     final opacity = (avgScale / 60.0).clamp(0.1, 0.8);
     
@@ -198,11 +259,11 @@ class _SynapseItem extends _DepthItem {
     }
   }
 
-  /// Helper to draw dashed lines for inhibitory synapses.
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
     const dashWidth = 6.0;
     const dashSpace = 4.0;
     final distance = (p2 - p1).distance;
+    if (distance == 0) return;
     final direction = (p2 - p1) / distance;
     double currentPos = 0.0;
     

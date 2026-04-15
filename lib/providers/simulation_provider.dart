@@ -4,6 +4,7 @@ import '../models/simulation_state.dart';
 import '../models/simulation_constants.dart';
 import '../models/plot_point.dart';
 import '../models/episode_record.dart';
+import '../models/network_config.dart';
 import '../services/simulation_engine.dart';
 import 'environment_provider.dart';
 import 'plot_buffer_provider.dart';
@@ -74,13 +75,13 @@ class SimulationNotifier extends Notifier<SimulationState> {
   }
 
   /// Resets the simulation to its initial state and stops any running simulation.
-  void resetEpisode() {
+  void resetEpisode({NetworkConfig? config}) {
     stopSimulation();
     _episodePunishmentSum = 0.0;
     _episodeTickCount = 0;
     _engine.clearBuffer();
     ref.read(episodeHistoryProvider.notifier).clear();
-    state = _engine.initialState();
+    state = _engine.initialState(config: config);
   }
 
   /// Loads a previously saved snapshot of synaptic weights into the current simulation state.

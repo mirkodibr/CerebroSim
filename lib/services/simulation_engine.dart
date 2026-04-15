@@ -130,20 +130,27 @@ class SimulationEngine {
     // Step 3: compute tdError
     // In this cerebellar context, reward is defined as (1.0 - punishment).
     // The DCN neuron acts as the state-value estimator.
-    NeuronModel? oldDcn;
-    oldDcn = current.neurons['dcn_open'] ?? current.neurons['DCN_01'];
-    if (oldDcn == null || oldDcn.cellType != 'DCN') {
-       for (final n in current.neurons.values) {
-         if (n.cellType == 'DCN') {
-           oldDcn = n;
-           break;
-         }
-       }
-    }
-    oldDcn ??= current.neurons.values.first;
+    // For tasks with multiple DCNs (like ArmReaching), we use the average 
+    // membrane potential to estimate the state value.
+    final dcns = current.neurons.values.where((n) => n.cellType == 'DCN').toList();
+    
+    double oldV = 0.0;
+    double nextV = 0.0;
 
-    final nextDcn = nextNeurons[oldDcn.id] ?? oldDcn;
-    final td = tdError(1.0 - env.punishment, nextDcn.membranePotential, oldDcn.membranePotential, gamma: gamma);
+    if (dcns.isNotEmpty) {
+      for (final dcn in dcns) {
+        oldV += dcn.membranePotential;
+        nextV += nextNeurons[dcn.id]?.membranePotential ?? 0.0;
+      }
+      oldV /= dcns.length;
+      nextV /= dcns.length;
+    } else {
+      // Fallback
+      oldV = current.neurons.values.first.membranePotential;
+      nextV = nextNeurons.values.first.membranePotential;
+    }
+    
+    final td = tdError(1.0 - env.punishment, nextV, oldV, gamma: gamma);
 
     // Step 4: call updateWeights to adjust synaptic strengths based on learning.
     final List<SynapseModel> nextSynapses = updateWeights(

@@ -5,5 +5,7 @@ enum CerebellarTask {
   /// A task where the system learns to predict or track a sine wave signal.
   sineWave,
   /// Vestibulo-Ocular Reflex (VOR) task, simulating the stabilization of gaze during head movement.
-  vor
+  vor,
+  /// A complex 2D motor control task where the agent must move an arm to a target.
+  armReaching
 }

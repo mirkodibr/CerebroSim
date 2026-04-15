@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/simulation_provider.dart';
 import '../services/neural_3d_projection.dart';
+import '../models/neuron_model.dart';
 import 'neuron_info_overlay.dart';
 import 'neural_canvas_3d_painter.dart';
 
@@ -65,13 +66,19 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
     final centerY = size.height / 2;
 
     final state = ref.read(simulationProvider);
+    
+    // Group neurons for procedural position calculation
+    final Map<String, List<NeuronModel>> grouped = {};
+    for (final n in state.neurons.values) {
+      grouped.putIfAbsent(n.cellType, () => []).add(n);
+    }
+
     String? nearestId;
     Offset? nearestPos;
     double minDistance = 28.0;
 
     for (final n in state.neurons.values) {
-      final pos3d = Neural3DProjection.kNeuronPositions[n.id];
-      if (pos3d == null) continue;
+      final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(n, grouped);
 
       final projected = Neural3DProjection.project(
         pos3d,
@@ -108,8 +115,16 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       if (box != null && box.hasSize) {
         final centerX = box.size.width / 2;
         final centerY = box.size.height / 2;
-        final pos3d = Neural3DProjection.kNeuronPositions[_selectedNeuronId!];
-        if (pos3d != null) {
+        
+        final neuron = state.neurons[_selectedNeuronId!];
+        if (neuron != null) {
+          // Group neurons for procedural position calculation
+          final Map<String, List<NeuronModel>> grouped = {};
+          for (final n in state.neurons.values) {
+            grouped.putIfAbsent(n.cellType, () => []).add(n);
+          }
+
+          final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(neuron, grouped);
           final projected = Neural3DProjection.project(
             pos3d,
             rotX: _rotX,

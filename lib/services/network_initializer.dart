@@ -50,10 +50,16 @@ class NetworkInitializer {
     }
 
     // 5. DCN Cells
-    // We maintain 'dcn_open' and 'dcn_close' naming for task compatibility if count is 2
+    // We maintain 'dcn_open' and 'dcn_close' naming for task compatibility if count is 2.
+    // For ArmReaching, we expect x_pos, x_neg, y_pos, y_neg (count 4).
     if (cfg.dcnCount == 2) {
       neurons['dcn_open'] = NeuronModel.initial(id: 'dcn_open', cellType: 'DCN');
       neurons['dcn_close'] = NeuronModel.initial(id: 'dcn_close', cellType: 'DCN');
+    } else if (cfg.dcnCount == 4) {
+      neurons['x_pos'] = NeuronModel.initial(id: 'x_pos', cellType: 'DCN');
+      neurons['x_neg'] = NeuronModel.initial(id: 'x_neg', cellType: 'DCN');
+      neurons['y_pos'] = NeuronModel.initial(id: 'y_pos', cellType: 'DCN');
+      neurons['y_neg'] = NeuronModel.initial(id: 'y_neg', cellType: 'DCN');
     } else {
       for (int i = 0; i < cfg.dcnCount; i++) {
         final id = 'dcn_$i';

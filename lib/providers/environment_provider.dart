@@ -3,9 +3,11 @@ import '../models/cerebellar_task.dart';
 import '../models/environment.dart';
 import '../models/simulation_state.dart';
 import '../models/vor_config.dart';
+import '../models/network_config.dart';
 import '../services/eyeblink_environment.dart';
 import '../services/sine_wave_environment.dart';
 import '../services/vor_environment.dart';
+import '../services/arm_reaching_environment.dart';
 import 'simulation_provider.dart';
 
 /// A notifier that manages the configuration for the Vestibulo-Ocular Reflex (VOR) task.
@@ -43,7 +45,14 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
     state = task;
     _activeEnv = _buildEnv(task);
     _activeEnv.reset();
-    ref.read(simulationProvider.notifier).resetEpisode();
+    
+    // For ArmReaching, we need a network with 4 DCNs for 2D control.
+    NetworkConfig? config;
+    if (task == CerebellarTask.armReaching) {
+      config = NetworkConfig.defaultConfig().copyWith(dcnCount: 4);
+    }
+    
+    ref.read(simulationProvider.notifier).resetEpisode(config: config);
   }
 
   /// Advances the active environment by one time step (typically 1/60s).
@@ -62,6 +71,8 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
         return SineWaveEnvironment();
       case CerebellarTask.vor:
         return VorEnvironment(config: ref.read(vorConfigProvider));
+      case CerebellarTask.armReaching:
+        return ArmReachingEnvironment();
     }
   }
 
