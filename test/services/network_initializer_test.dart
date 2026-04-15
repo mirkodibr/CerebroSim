@@ -7,11 +7,11 @@ void main() {
       final state = NetworkInitializer.createRLMockNetwork();
       
       // Check neuron counts
-      final pfCount = state.neurons.where((n) => n.cellType == 'GC').length;
-      final bcCount = state.neurons.where((n) => n.cellType == 'BC').length;
-      final pcCount = state.neurons.where((n) => n.cellType == 'PC').length;
-      final scCount = state.neurons.where((n) => n.cellType == 'SC').length;
-      final dcnCount = state.neurons.where((n) => n.cellType == 'DCN').length;
+      final pfCount = state.neurons.values.where((n) => n.cellType == 'GC').length;
+      final bcCount = state.neurons.values.where((n) => n.cellType == 'BC').length;
+      final pcCount = state.neurons.values.where((n) => n.cellType == 'PC').length;
+      final scCount = state.neurons.values.where((n) => n.cellType == 'SC').length;
+      final dcnCount = state.neurons.values.where((n) => n.cellType == 'DCN').length;
       
       expect(pfCount, 10);
       expect(bcCount, 5);
@@ -21,7 +21,7 @@ void main() {
       
       // Check for negative weights from inhibitory cells
       for (final synapse in state.synapses) {
-        final source = state.neurons.firstWhere((n) => n.id == synapse.fromNeuronId);
+        final source = state.neurons[synapse.fromNeuronId]!;
         
         if (source.cellType == 'BC' || source.cellType == 'PC') {
           expect(synapse.weight, lessThan(0), reason: 'Synapse from ${source.cellType} should be inhibitory');

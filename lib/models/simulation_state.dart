@@ -8,8 +8,8 @@ import 'synapse_model.dart';
 /// metrics like prediction error and overall progress through an experiment.
 @immutable
 class SimulationState {
-  /// The list of all neurons in the current network architecture.
-  final List<NeuronModel> neurons;
+  /// The map of all neurons in the current network architecture, keyed by their ID.
+  final Map<String, NeuronModel> neurons;
   /// The list of all synaptic connections between neurons.
   final List<SynapseModel> synapses;
   /// The current output of the cerebellar "critic" or prediction unit.
@@ -44,13 +44,17 @@ class SimulationState {
   /// This defines a basic cerebellar circuit with Granule, Purkinje, Basket,
   /// Deep Cerebellar Nucleus, and Climbing Fiber neurons.
   factory SimulationState.initial() {
-    final neurons = [
+    final neuronsList = [
       NeuronModel.initial(id: 'GC_01', cellType: 'GC'),
       NeuronModel.initial(id: 'PC_01', cellType: 'PC'),
       NeuronModel.initial(id: 'BC_01', cellType: 'BC'),
       NeuronModel.initial(id: 'DCN_01', cellType: 'DCN'),
       NeuronModel.initial(id: 'CF_01', cellType: 'CF'),
     ];
+
+    final neuronsMap = {
+      for (final n in neuronsList) n.id: n,
+    };
 
     final synapses = [
       SynapseModel.initial(fromId: 'GC_01', toId: 'PC_01', isInhibitory: false),
@@ -60,7 +64,7 @@ class SimulationState {
     ];
 
     return SimulationState(
-      neurons: neurons,
+      neurons: neuronsMap,
       synapses: synapses,
       criticPrediction: 0.0,
       tdError: 0.0,
@@ -74,7 +78,7 @@ class SimulationState {
 
   /// Returns a copy of the simulation state with updated fields.
   SimulationState copyWith({
-    List<NeuronModel>? neurons,
+    Map<String, NeuronModel>? neurons,
     List<SynapseModel>? synapses,
     double? criticPrediction,
     double? tdError,

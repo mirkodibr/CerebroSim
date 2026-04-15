@@ -69,7 +69,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
     Offset? nearestPos;
     double minDistance = 28.0;
 
-    for (final n in state.neurons) {
+    for (final n in state.neurons.values) {
       final pos3d = Neural3DProjection.kNeuronPositions[n.id];
       if (pos3d == null) continue;
 
@@ -153,18 +153,23 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
             ),
           ),
         ),
-        if (_selectedNeuronId != null && overlayPos != null)
-          NeuronInfoOverlay(
-            neuron: state.neurons.firstWhere((n) => n.id == _selectedNeuronId),
-            position: overlayPos,
-            onClose: () => setState(() {
-              _selectedNeuronId = null;
-              _selectedNeuronPos = null;
-            }),
-          ),
+        if (_selectedNeuronId != null) ...[
+          () {
+            final neuron = state.neurons[_selectedNeuronId!];
+            if (neuron != null && overlayPos != null) {
+              return NeuronInfoOverlay(
+                neuron: neuron,
+                position: overlayPos,
+                onClose: () => setState(() {
+                  _selectedNeuronId = null;
+                  _selectedNeuronPos = null;
+                }),
+              );
+            }
+            return const SizedBox.shrink();
+          }(),
+        ],
       ],
     );
   }
 }
-
-

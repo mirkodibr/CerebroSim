@@ -102,3 +102,20 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x] **3D Neural Canvas:** Replace the 2D painter with a 3D version that utilizes the Painter’s Algorithm for depth-sorted rendering of neurons and synapses.
 * [x] **Gesture-Based Navigation:** Enable interactive rotation (X/Y axes) and pinch-to-zoom using `ScaleGestureDetector` on the 3D workspace.
 * [x] **Biological Overlays:** Add live 3D electrical "charge arcs" on each cell and a smart-positioning `NeuronInfoOverlay` card that tracks selected neurons in 3D space.
+
+### Phase 13: Engine Optimization (The Performance Fix)
+*Goal: Eliminate O(N) list traversals to allow the engine to maintain 60fps when scaling to hundreds of neurons.*
+* [ ] **O(1) State Overhaul:** Refactor `SimulationState` to store `neurons` as a `Map<String, NeuronModel>`.
+* [ ] **Synapse Indexing:** Implement a pre-computed adjacency list (`Map<String, List<SynapseModel>>`) for instant outbound connection lookups.
+* [ ] **Tick Refactor:** Rewrite `SimulationEngine.tick` to utilize map-based routing instead of `.firstWhere` lookups.
+
+### Phase 14: Temporal Dynamics (The Biology Fix)
+*Goal: Replace instantaneous transmission with biologically realistic parallel fiber travel times.*
+* [ ] **Delay Modeling:** Add an `int axonalDelay` property to the `SynapseModel`.
+* [ ] **The Ring Buffer:** Implement a temporal ring buffer inside `SimulationEngine` to schedule potential delivery for `currentTick + axonalDelay`.
+
+### Phase 15: Dynamic Topology & Complex Tasks
+*Goal: Break the hardcoded 19-neuron limit and introduce multi-dimensional motor control.*
+* [ ] **Network Configuration:** Create a `NetworkConfig` model allowing custom counts for GC, BC, PC, SC, and DCN cells.
+* [ ] **Procedural Architecture:** Refactor `NetworkInitializer` to procedurally generate connections and `NeuralCanvas3DPainter` to dynamically position cells based on layer counts.
+* [ ] **2D Arm Reaching Task:** Expand the `EnvironmentProvider` and DCN logic to support a 2-dimensional (X/Y) planar reaching task with continuous Euclidean distance punishment.

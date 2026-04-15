@@ -35,7 +35,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
     // 2. Project all neurons to determine 2D positions and depth
     final Map<String, ProjectedPoint> projectedNeurons = {};
-    for (final n in state.neurons) {
+    for (final n in state.neurons.values) {
       final pos3d = Neural3DProjection.kNeuronPositions[n.id];
       if (pos3d == null) continue;
       projectedNeurons[n.id] = Neural3DProjection.project(
@@ -52,7 +52,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
     final List<_DepthItem> items = [];
 
     // Add neurons
-    for (final n in state.neurons) {
+    for (final n in state.neurons.values) {
       final p = projectedNeurons[n.id];
       if (p != null) {
         items.add(_NeuronItem(n, p, isSelected: n.id == selectedNeuronId));
@@ -81,9 +81,9 @@ class NeuralCanvas3DPainter extends CustomPainter {
   /// Draws the horizontal bands representing cerebellar layers.
   void _drawLayers(Canvas canvas, Size size) {
     final h = size.height / 3;
-    final molecularPaint = Paint()..color = const Color(0xFF0A1A2A).withOpacity(0.4);
-    final purkinjePaint = Paint()..color = const Color(0xFF0F0A1A).withOpacity(0.4);
-    final granularPaint = Paint()..color = const Color(0xFF0A1A0A).withOpacity(0.4);
+    final molecularPaint = Paint()..color = const Color(0xFF0A1A2A).withValues(alpha: 0.4);
+    final purkinjePaint = Paint()..color = const Color(0xFF0F0A1A).withValues(alpha: 0.4);
+    final granularPaint = Paint()..color = const Color(0xFF0A1A0A).withValues(alpha: 0.4);
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, h), molecularPaint);
     canvas.drawRect(Rect.fromLTWH(0, h, size.width, h), purkinjePaint);
@@ -133,7 +133,7 @@ class _NeuronItem extends _DepthItem {
         pos,
         radius * 1.3,
         Paint()
-          ..color = isSelected ? Colors.white : Colors.white.withOpacity(0.5)
+          ..color = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0,
       );
@@ -148,7 +148,7 @@ class _NeuronItem extends _DepthItem {
       sweepAngle,
       false,
       Paint()
-        ..color = Colors.white.withOpacity(0.6)
+        ..color = Colors.white.withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = 3.0 * (projected.scale / 30.0),
@@ -187,7 +187,7 @@ class _SynapseItem extends _DepthItem {
     final opacity = (avgScale / 60.0).clamp(0.1, 0.8);
     
     final paint = Paint()
-      ..color = baseColor.withOpacity(opacity)
+      ..color = baseColor.withValues(alpha: opacity)
       ..strokeWidth = (synapse.weight.abs() * 3.0 + 0.5) * (avgScale / 30.0)
       ..style = PaintingStyle.stroke;
 

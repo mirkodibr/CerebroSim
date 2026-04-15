@@ -42,8 +42,8 @@ class VorEnvironment implements CerebellarEnvironment {
     final double headVel = config.amplitude * math.sin(2 * math.pi * config.frequency * _currentTime);
 
     // Calculate eye velocity from the DCN output pair.
-    final dcnOpen = state.neurons.firstWhere((n) => n.id == 'dcn_open', orElse: () => state.neurons.first);
-    final dcnClose = state.neurons.firstWhere((n) => n.id == 'dcn_close', orElse: () => state.neurons.first);
+    final dcnOpen = state.neurons['dcn_open'] ?? state.neurons.values.first;
+    final dcnClose = state.neurons['dcn_close'] ?? state.neurons.values.first;
     
     final double actualEyeVel = (dcnOpen.membranePotential - dcnClose.membranePotential) * config.amplitude;
     

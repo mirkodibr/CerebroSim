@@ -24,35 +24,37 @@ class NetworkInitializer {
   /// All weights are initialized with standard values (0.2 - 0.5 for excitatory,
   /// -1.0 to -2.0 for inhibitory) to allow for subsequent plasticity.
   static SimulationState createRLMockNetwork() {
-    final neurons = <NeuronModel>[];
+    final neurons = <String, NeuronModel>{};
     final synapses = <SynapseModel>[];
 
     // 1. Parallel Fiber neurons (PF / Granular)
     for (int i = 0; i < 10; i++) {
-      neurons.add(NeuronModel.initial(
-        id: 'pf_$i',
+      final id = 'pf_$i';
+      neurons[id] = NeuronModel.initial(
+        id: id,
         cellType: 'GC',
-      ));
+      );
     }
 
     // 2. Basket Cells (BC)
     for (int i = 0; i < 5; i++) {
-      neurons.add(NeuronModel.initial(
-        id: 'bc_$i',
+      final id = 'bc_$i';
+      neurons[id] = NeuronModel.initial(
+        id: id,
         cellType: 'BC',
-      ));
+      );
     }
 
     // 3. Purkinje Cells (PC)
-    neurons.add(NeuronModel.initial(id: 'pc_1', cellType: 'PC'));
-    neurons.add(NeuronModel.initial(id: 'pc_2', cellType: 'PC'));
+    neurons['pc_1'] = NeuronModel.initial(id: 'pc_1', cellType: 'PC');
+    neurons['pc_2'] = NeuronModel.initial(id: 'pc_2', cellType: 'PC');
 
     // 4. Stellate Cell (SC)
-    neurons.add(NeuronModel.initial(id: 'sc_1', cellType: 'SC'));
+    neurons['sc_1'] = NeuronModel.initial(id: 'sc_1', cellType: 'SC');
 
     // 5. DCN Cells
-    neurons.add(NeuronModel.initial(id: 'dcn_open', cellType: 'DCN'));
-    neurons.add(NeuronModel.initial(id: 'dcn_close', cellType: 'DCN'));
+    neurons['dcn_open'] = NeuronModel.initial(id: 'dcn_open', cellType: 'DCN');
+    neurons['dcn_close'] = NeuronModel.initial(id: 'dcn_close', cellType: 'DCN');
 
     // 6. Connect PFs to BC, PC, and SC
     for (int i = 0; i < 10; i++) {

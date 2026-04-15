@@ -37,8 +37,8 @@ class SineWaveEnvironment implements CerebellarEnvironment {
     final bool isWaveMovingUp = math.cos(2 * math.pi * _frequency * _currentTime) > 0;
 
     // Determine DCN output direction from the competitive DCN pair.
-    final dcnOpen = state.neurons.firstWhere((n) => n.id == 'dcn_open', orElse: () => state.neurons.first);
-    final dcnClose = state.neurons.firstWhere((n) => n.id == 'dcn_close', orElse: () => state.neurons.first);
+    final dcnOpen = state.neurons['dcn_open'] ?? state.neurons.values.first;
+    final dcnClose = state.neurons['dcn_close'] ?? state.neurons.values.first;
     
     final bool outputMovingUp = dcnOpen.membranePotential > dcnClose.membranePotential;
     

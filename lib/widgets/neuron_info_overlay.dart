@@ -38,7 +38,7 @@ class NeuronInfoOverlay extends ConsumerWidget {
           width: cardWidth,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E).withOpacity(0.95),
+            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.white24),
             boxShadow: const [
@@ -63,7 +63,7 @@ class NeuronInfoOverlay extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: neuron.isInhibitory ? Colors.red.withOpacity(0.2) : Colors.cyan.withOpacity(0.2),
+                      color: neuron.isInhibitory ? Colors.red.withValues(alpha: 0.2) : Colors.cyan.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
                         color: neuron.isInhibitory ? Colors.red : Colors.cyan,

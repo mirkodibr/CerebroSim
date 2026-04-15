@@ -32,9 +32,9 @@ void main() {
       // CS window is 0.0s - 0.250s
       // Create a state where DCN is firing
       final firingState = emptyState.copyWith(
-        neurons: emptyState.neurons.map((n) => 
-          n.cellType == 'DCN' ? n.copyWith(isFiring: true) : n
-        ).toList(),
+        neurons: emptyState.neurons.map((id, n) => 
+          MapEntry(id, n.cellType == 'DCN' ? n.copyWith(isFiring: true) : n)
+        ),
       );
 
       // Step during CS window with firing DCN
@@ -59,11 +59,12 @@ void main() {
     setUp(() {
       env = SineWaveEnvironment();
       // Environment expects 'dcn_open' and 'dcn_close'
+      final neurons = {
+        'dcn_open': NeuronModel.initial(id: 'dcn_open', cellType: 'DCN'),
+        'dcn_close': NeuronModel.initial(id: 'dcn_close', cellType: 'DCN'),
+      };
       baseState = SimulationState.initial().copyWith(
-        neurons: [
-          NeuronModel.initial(id: 'dcn_open', cellType: 'DCN'),
-          NeuronModel.initial(id: 'dcn_close', cellType: 'DCN'),
-        ],
+        neurons: neurons,
       );
     });
 
@@ -72,10 +73,10 @@ void main() {
       // derivative = cos(0) = 1 (Moving Up)
       // We want to force output to move DOWN: dcnOpen < dcnClose
       final movingDownState = baseState.copyWith(
-        neurons: [
-          baseState.neurons[0].copyWith(membranePotential: 0.1), // dcn_open
-          baseState.neurons[1].copyWith(membranePotential: 0.5), // dcn_close
-        ],
+        neurons: {
+          'dcn_open': baseState.neurons['dcn_open']!.copyWith(membranePotential: 0.1),
+          'dcn_close': baseState.neurons['dcn_close']!.copyWith(membranePotential: 0.5),
+        },
       );
 
       final step = env.step(movingDownState, 0.01);
@@ -86,10 +87,10 @@ void main() {
       // At t=0, moving up.
       // Force output to move UP: dcnOpen > dcnClose
       final movingUpState = baseState.copyWith(
-        neurons: [
-          baseState.neurons[0].copyWith(membranePotential: 0.5), // dcn_open
-          baseState.neurons[1].copyWith(membranePotential: 0.1), // dcn_close
-        ],
+        neurons: {
+          'dcn_open': baseState.neurons['dcn_open']!.copyWith(membranePotential: 0.5),
+          'dcn_close': baseState.neurons['dcn_close']!.copyWith(membranePotential: 0.1),
+        },
       );
 
       final step = env.step(movingUpState, 0.01);
@@ -107,11 +108,12 @@ void main() {
       const config = VorConfig(targetGain: 1.5, amplitude: 10.0, frequency: 1.0);
       final env = VorEnvironment(config: config);
       
+      final neurons = {
+        'dcn_open': NeuronModel.initial(id: 'dcn_open', cellType: 'DCN'),
+        'dcn_close': NeuronModel.initial(id: 'dcn_close', cellType: 'DCN'),
+      };
       final baseState = SimulationState.initial().copyWith(
-        neurons: [
-          NeuronModel.initial(id: 'dcn_open', cellType: 'DCN'),
-          NeuronModel.initial(id: 'dcn_close', cellType: 'DCN'),
-        ],
+        neurons: neurons,
       );
 
       // At t=0.25, sin(2*pi*1*0.25) = sin(pi/2) = 1.0
@@ -119,10 +121,10 @@ void main() {
       
       // Let's set eye velocity to 0
       final zeroEyeVelState = baseState.copyWith(
-        neurons: [
-          baseState.neurons[0].copyWith(membranePotential: 0.0),
-          baseState.neurons[1].copyWith(membranePotential: 0.0),
-        ],
+        neurons: {
+          'dcn_open': baseState.neurons['dcn_open']!.copyWith(membranePotential: 0.0),
+          'dcn_close': baseState.neurons['dcn_close']!.copyWith(membranePotential: 0.0),
+        },
       );
 
       final step = env.step(zeroEyeVelState, 0.25);
@@ -136,10 +138,10 @@ void main() {
       // Let's set eye velocity to perfectly cancel head velocity (gain 1.0)
       // actualEyeVel = -10.0 -> (dcnOpen - dcnClose) * 10 = -10 -> dcnOpen - dcnClose = -1
       final perfectGainState = baseState.copyWith(
-        neurons: [
-          baseState.neurons[0].copyWith(membranePotential: 0.0),
-          baseState.neurons[1].copyWith(membranePotential: 1.0),
-        ],
+        neurons: {
+          'dcn_open': baseState.neurons['dcn_open']!.copyWith(membranePotential: 0.0),
+          'dcn_close': baseState.neurons['dcn_close']!.copyWith(membranePotential: 1.0),
+        },
       );
 
       final stepPerfect = env.step(perfectGainState, 0.25);

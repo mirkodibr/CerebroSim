@@ -40,7 +40,7 @@ class EyeblinkEnvironment implements CerebellarEnvironment {
 
     // Check for DCN spike during CS window
     if (csActive) {
-      final dcnFiring = state.neurons.any((n) => n.cellType == 'DCN' && n.isFiring);
+      final dcnFiring = state.neurons.values.any((n) => n.cellType == 'DCN' && n.isFiring);
       if (dcnFiring) {
         _blinkProduced = true;
       }

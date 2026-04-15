@@ -78,8 +78,8 @@ class NeuralCanvasPainter extends CustomPainter {
   /// the absolute synaptic weight.
   void _drawSynapses(Canvas canvas, Size size) {
     for (final s in state.synapses) {
-      final fromNeuron = state.neurons.firstWhere((n) => n.id == s.fromNeuronId, orElse: () => state.neurons.first);
-      final toNeuron = state.neurons.firstWhere((n) => n.id == s.toNeuronId, orElse: () => state.neurons.first);
+      final fromNeuron = state.neurons[s.fromNeuronId] ?? state.neurons.values.first;
+      final toNeuron = state.neurons[s.toNeuronId] ?? state.neurons.values.first;
 
       final fromPos = getNeuronPos(fromNeuron, size);
       final toPos = getNeuronPos(toNeuron, size);
@@ -119,7 +119,7 @@ class NeuralCanvasPainter extends CustomPainter {
   /// If a neuron's [isFiring] state is true, a white glow/stroke is added around it.
   /// The neuron's cell type name is painted below its position.
   void _drawNeurons(Canvas canvas, Size size) {
-    for (final n in state.neurons) {
+    for (final n in state.neurons.values) {
       final pos = getNeuronPos(n, size);
       
       if (n.isFiring) {
@@ -150,4 +150,3 @@ class NeuralCanvasPainter extends CustomPainter {
     return true;
   }
 }
-

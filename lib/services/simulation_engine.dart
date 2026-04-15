@@ -42,7 +42,7 @@ class SimulationEngine {
     
     // CF receives env.punishment (representing the error signal)
     // GC receives context (stateVector[0])
-    for (final n in current.neurons) {
+    for (final n in current.neurons.values) {
       if (n.cellType == 'CF') {
         inputCurrents[n.id] = env.punishment;
       } else if (n.cellType == 'GC') {
@@ -54,22 +54,24 @@ class SimulationEngine {
 
     // Weighted sum from synapses: propagate pre-synaptic activity to post-synaptic targets.
     for (final s in current.synapses) {
-      final preNeuron = current.neurons.firstWhere((n) => n.id == s.fromNeuronId);
+      final preNeuron = current.neurons[s.fromNeuronId];
+      if (preNeuron == null) continue;
+      
       final currentIn = inputCurrents[s.toNeuronId] ?? 0.0;
       // Use membranePotential from PREVIOUS state for synaptic propagation
       inputCurrents[s.toNeuronId] = currentIn + (s.weight * preNeuron.membranePotential);
     }
 
     // Apply baseline tonic firing to DCN neurons to represent spontaneous activity.
-    for (final n in current.neurons) {
+    for (final n in current.neurons.values) {
       if (n.cellType == 'DCN') {
         inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + dcnBaseline;
       }
     }
 
     // Step 2: run lifUpdate and eligibilityUpdate for each neuron.
-    final List<NeuronModel> nextNeurons = current.neurons.map((n) {
-      final input = inputCurrents[n.id] ?? 0.0;
+    final Map<String, NeuronModel> nextNeurons = current.neurons.map((id, n) {
+      final input = inputCurrents[id] ?? 0.0;
       double newPotential = lifUpdate(n, input);
       bool isFiring = newPotential >= n.threshold;
       
@@ -82,18 +84,21 @@ class SimulationEngine {
       final double activity = isFiring ? 1.0 : 0.0;
       final newTrace = eligibilityUpdate(n.eligibilityTrace, activity, n.decayRate);
 
-      return n.copyWith(
+      return MapEntry(id, n.copyWith(
         membranePotential: newPotential,
         isFiring: isFiring,
         eligibilityTrace: newTrace,
-      );
-    }).toList();
+      ));
+    });
 
     // Step 3: compute tdError
     // In this cerebellar context, reward is defined as (1.0 - punishment).
     // The DCN neuron acts as the state-value estimator.
-    final oldDcn = current.neurons.firstWhere((n) => n.cellType == 'DCN', orElse: () => current.neurons.first);
-    final nextDcn = nextNeurons.firstWhere((n) => n.id == oldDcn.id);
+    final oldDcn = current.neurons.values.firstWhere(
+      (n) => n.cellType == 'DCN', 
+      orElse: () => current.neurons.values.first,
+    );
+    final nextDcn = nextNeurons[oldDcn.id] ?? oldDcn;
     
     final td = tdError(1.0 - env.punishment, nextDcn.membranePotential, oldDcn.membranePotential, gamma: gamma);
 
@@ -150,12 +155,14 @@ class SimulationEngine {
   @visibleForTesting
   List<SynapseModel> updateWeights(
     List<SynapseModel> synapses,
-    List<NeuronModel> neurons,
+    Map<String, NeuronModel> neurons,
     double tdError, {
     required double learningRate,
   }) {
     return synapses.map((synapse) {
-      final preNeuron = neurons.firstWhere((n) => n.id == synapse.fromNeuronId);
+      final preNeuron = neurons[synapse.fromNeuronId];
+      if (preNeuron == null) return synapse;
+
       final sign = synapse.isInhibitory ? -1.0 : 1.0;
       final deltaW = sign * learningRate * tdError * preNeuron.eligibilityTrace;
       final newWeight = (synapse.weight + deltaW).clamp(-2.0, 2.0);

@@ -84,7 +84,7 @@ void main() {
     test('excitatory synapse weight=0.1, eligibilityTrace=0.5, tdError=0.2, learningRate=0.01 -> expect ≈ 0.101', () {
       final synapse = SynapseModel.initial(fromId: 'n1', toId: 'n2', isInhibitory: false).copyWith(weight: 0.1);
       final neuron = NeuronModel.initial(id: 'n1', cellType: 'GC').copyWith(eligibilityTrace: 0.5);
-      final result = engine.updateWeights([synapse], [neuron], 0.2, learningRate: 0.01);
+      final result = engine.updateWeights([synapse], {'n1': neuron}, 0.2, learningRate: 0.01);
       expect(result.first.weight, closeTo(0.101, 0.00001));
     });
 

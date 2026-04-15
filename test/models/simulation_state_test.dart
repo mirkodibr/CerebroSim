@@ -12,7 +12,7 @@ void main() {
       expect(state.episodeStep, 0);
       expect(state.episodeCount, 0);
       
-      final cellTypes = state.neurons.map((n) => n.cellType).toSet();
+      final cellTypes = state.neurons.values.map((n) => n.cellType).toSet();
       expect(cellTypes.contains('GC'), true);
       expect(cellTypes.contains('PC'), true);
       expect(cellTypes.contains('BC'), true);
