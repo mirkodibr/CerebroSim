@@ -4,6 +4,9 @@ import '../models/neuron_model.dart';
 import '../models/synapse_model.dart';
 import '../models/environment.dart';
 
+import '../models/network_config.dart';
+import 'network_initializer.dart';
+
 /// The core computational engine of the cerebellar simulation.
 /// 
 /// This class implements the mathematical models for:
@@ -13,9 +16,21 @@ import '../models/environment.dart';
 ///   eligibility traces.
 /// - **Temporal Memory:** Eligibility trace updates for bridging time gaps.
 class SimulationEngine {
-  /// Returns a [SimulationState] initialized with default neurons and synapses.
-  SimulationState initialState() {
-    return SimulationState.initial();
+  /// A temporal ring buffer to schedule future synaptic currents based on axonal delays.
+  /// Key 1: Target tick (episodeStep).
+  /// Key 2: Target neuron ID.
+  /// Value: Accumulated current to be applied at that tick.
+  final Map<int, Map<String, double>> _potentialBuffer = {};
+
+  /// Returns a [SimulationState] initialized based on the provided [config].
+  SimulationState initialState({NetworkConfig? config}) {
+    return NetworkInitializer.createRLMockNetwork(config: config);
+  }
+
+  /// Clears the temporal ring buffer. 
+  /// Should be called during simulation resets or when loading new configurations.
+  void clearBuffer() {
+    _potentialBuffer.clear();
   }
 
   /// Advances the simulation by a single time step [dt].
@@ -52,14 +67,35 @@ class SimulationEngine {
       }
     }
 
-    // Weighted sum from synapses: propagate pre-synaptic activity to post-synaptic targets.
-    for (final s in current.synapses) {
-      final preNeuron = current.neurons[s.fromNeuronId];
-      if (preNeuron == null) continue;
-      
-      final currentIn = inputCurrents[s.toNeuronId] ?? 0.0;
-      // Use membranePotential from PREVIOUS state for synaptic propagation
-      inputCurrents[s.toNeuronId] = currentIn + (s.weight * preNeuron.membranePotential);
+    // Pull scheduled currents from the buffer for the current tick.
+    final scheduledForNow = _potentialBuffer.remove(current.episodeStep);
+    if (scheduledForNow != null) {
+      for (final entry in scheduledForNow.entries) {
+        inputCurrents[entry.key] = (inputCurrents[entry.key] ?? 0.0) + entry.value;
+      }
+    }
+
+    // Optimized propagation: Iterate over neurons. If they have activity (membranePotential > 0),
+    // propagate to downstream targets via the preSynapticIndex.
+    for (final n in current.neurons.values) {
+      if (n.membranePotential > 0) {
+        final downstreamSynapses = current.preSynapticIndex[n.id];
+        if (downstreamSynapses != null) {
+          for (final s in downstreamSynapses) {
+            final targetTick = current.episodeStep + s.axonalDelay;
+            final currentIn = s.weight * n.membranePotential;
+            
+            if (s.axonalDelay == 0) {
+              // Instantaneous propagation
+              inputCurrents[s.toNeuronId] = (inputCurrents[s.toNeuronId] ?? 0.0) + currentIn;
+            } else {
+              // Schedule for future tick
+              final tickBuffer = _potentialBuffer.putIfAbsent(targetTick, () => {});
+              tickBuffer[s.toNeuronId] = (tickBuffer[s.toNeuronId] ?? 0.0) + currentIn;
+            }
+          }
+        }
+      }
     }
 
     // Apply baseline tonic firing to DCN neurons to represent spontaneous activity.
@@ -94,18 +130,25 @@ class SimulationEngine {
     // Step 3: compute tdError
     // In this cerebellar context, reward is defined as (1.0 - punishment).
     // The DCN neuron acts as the state-value estimator.
-    final oldDcn = current.neurons.values.firstWhere(
-      (n) => n.cellType == 'DCN', 
-      orElse: () => current.neurons.values.first,
-    );
+    NeuronModel? oldDcn;
+    oldDcn = current.neurons['dcn_open'] ?? current.neurons['DCN_01'];
+    if (oldDcn == null || oldDcn.cellType != 'DCN') {
+       for (final n in current.neurons.values) {
+         if (n.cellType == 'DCN') {
+           oldDcn = n;
+           break;
+         }
+       }
+    }
+    oldDcn ??= current.neurons.values.first;
+
     final nextDcn = nextNeurons[oldDcn.id] ?? oldDcn;
-    
     final td = tdError(1.0 - env.punishment, nextDcn.membranePotential, oldDcn.membranePotential, gamma: gamma);
 
     // Step 4: call updateWeights to adjust synaptic strengths based on learning.
     final List<SynapseModel> nextSynapses = updateWeights(
       current.synapses,
-      nextNeurons, // Use updated neurons for eligibility trace
+      nextNeurons, 
       td,
       learningRate: learningRate,
     );
@@ -116,6 +159,9 @@ class SimulationEngine {
     if (env.isEpisodeEnd) {
       nextStep = 0;
       nextEpisodeCount++;
+      // Biologically, axonal delays are usually cleared at the end of an episode/trial
+      // to prevent "leakage" into the next one.
+      clearBuffer();
     }
 
     return current.copyWith(
@@ -129,29 +175,18 @@ class SimulationEngine {
   }
 
   /// Calculates the next membrane potential using a Leaky Integrate-and-Fire model.
-  /// 
-  /// The model takes the current potential, adds the [inputCurrent], 
-  /// and applies a [decayRate] representing the leakage of the cell.
   @visibleForTesting
   double lifUpdate(NeuronModel n, double inputCurrent) {
     return (n.membranePotential + inputCurrent) * (1 - n.decayRate);
   }
 
   /// Calculates the Temporal Difference (TD) error for reinforcement learning.
-  /// 
-  /// [reward] is the immediate environmental feedback.
-  /// [vNext] is the estimated value of the next state (new DCN potential).
-  /// [vCurrent] is the estimated value of the current state (old DCN potential).
-  /// [gamma] is the discount factor for future rewards.
   @visibleForTesting
   double tdError(double reward, double vNext, double vCurrent, {double gamma = 0.95}) {
     return reward + gamma * vNext - vCurrent;
   }
 
   /// Updates synaptic weights according to the TD-learning rule and eligibility traces.
-  /// 
-  /// Each [synapse] is adjusted by: `deltaW = sign * learningRate * tdError * eligibilityTrace`.
-  /// The weights are clamped between -2.0 and 2.0 to maintain numerical stability.
   @visibleForTesting
   List<SynapseModel> updateWeights(
     List<SynapseModel> synapses,
@@ -171,8 +206,6 @@ class SimulationEngine {
   }
 
   /// Updates a neuron's eligibility trace, representing a temporal memory of activity.
-  /// 
-  /// The [currentTrace] decays by [decayRate] and is incremented by [preSynapticActivity].
   @visibleForTesting
   double eligibilityUpdate(double currentTrace, double preSynapticActivity, double decayRate) {
     return currentTrace * (1 - decayRate) + preSynapticActivity;

@@ -12,6 +12,8 @@ class SimulationState {
   final Map<String, NeuronModel> neurons;
   /// The list of all synaptic connections between neurons.
   final List<SynapseModel> synapses;
+  /// An adjacency list for instant outbound connection lookups, keyed by the pre-synaptic neuron ID.
+  final Map<String, List<SynapseModel>> preSynapticIndex;
   /// The current output of the cerebellar "critic" or prediction unit.
   final double criticPrediction;
   /// The Temporal Difference (TD) error representing the difference between prediction and reality.
@@ -30,6 +32,7 @@ class SimulationState {
   const SimulationState({
     required this.neurons,
     required this.synapses,
+    this.preSynapticIndex = const {},
     this.criticPrediction = 0.0,
     this.tdError = 0.0,
     this.climbingFiberSignal = 0.0,
@@ -63,9 +66,16 @@ class SimulationState {
       SynapseModel.initial(fromId: 'PC_01', toId: 'DCN_01', isInhibitory: true),
     ];
 
+    // Build the initial index
+    final Map<String, List<SynapseModel>> index = {};
+    for (final s in synapses) {
+      index.putIfAbsent(s.fromNeuronId, () => []).add(s);
+    }
+
     return SimulationState(
       neurons: neuronsMap,
       synapses: synapses,
+      preSynapticIndex: index,
       criticPrediction: 0.0,
       tdError: 0.0,
       climbingFiberSignal: 0.0,
@@ -80,6 +90,7 @@ class SimulationState {
   SimulationState copyWith({
     Map<String, NeuronModel>? neurons,
     List<SynapseModel>? synapses,
+    Map<String, List<SynapseModel>>? preSynapticIndex,
     double? criticPrediction,
     double? tdError,
     double? climbingFiberSignal,
@@ -91,6 +102,7 @@ class SimulationState {
     return SimulationState(
       neurons: neurons ?? this.neurons,
       synapses: synapses ?? this.synapses,
+      preSynapticIndex: preSynapticIndex ?? this.preSynapticIndex,
       criticPrediction: criticPrediction ?? this.criticPrediction,
       tdError: tdError ?? this.tdError,
       climbingFiberSignal: climbingFiberSignal ?? this.climbingFiberSignal,
@@ -99,5 +111,17 @@ class SimulationState {
       episodeCount: episodeCount ?? this.episodeCount,
       isRunning: isRunning ?? this.isRunning,
     );
+  }
+
+  /// Regenerates the [preSynapticIndex] from the current [synapses] list.
+  ///
+  /// This is an O(N) operation typically used after loading a new set
+  /// of synapses (e.g., when restoring a snapshot).
+  SimulationState rebuildIndex() {
+    final Map<String, List<SynapseModel>> index = {};
+    for (final s in synapses) {
+      index.putIfAbsent(s.fromNeuronId, () => []).add(s);
+    }
+    return copyWith(preSynapticIndex: index);
   }
 }

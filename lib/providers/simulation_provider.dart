@@ -78,6 +78,7 @@ class SimulationNotifier extends Notifier<SimulationState> {
     stopSimulation();
     _episodePunishmentSum = 0.0;
     _episodeTickCount = 0;
+    _engine.clearBuffer();
     ref.read(episodeHistoryProvider.notifier).clear();
     state = _engine.initialState();
   }
@@ -91,7 +92,8 @@ class SimulationNotifier extends Notifier<SimulationState> {
       return state.synapses[i].copyWith(weight: weights[i]);
     });
     
-    state = state.copyWith(synapses: nextSynapses);
+    _engine.clearBuffer();
+    state = state.copyWith(synapses: nextSynapses).rebuildIndex();
   }
 
   /// Performs a single simulation step (tick).

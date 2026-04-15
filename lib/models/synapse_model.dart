@@ -18,6 +18,8 @@ class SynapseModel {
   final double eligibility;
   /// Indicates if this synapse has an inhibitory effect on the postsynaptic neuron.
   final bool isInhibitory;
+  /// The physical delay (in ticks) for the signal to travel along the axon.
+  final int axonalDelay;
 
   const SynapseModel({
     required this.id,
@@ -26,6 +28,7 @@ class SynapseModel {
     required this.weight,
     this.eligibility = 0.0,
     required this.isInhibitory,
+    this.axonalDelay = 0,
   });
 
   /// Creates a [SynapseModel] with an initial weight based on its inhibitory nature.
@@ -33,6 +36,7 @@ class SynapseModel {
     required String fromId,
     required String toId,
     required bool isInhibitory,
+    int axonalDelay = 0,
   }) {
     return SynapseModel(
       id: '$fromId->$toId',
@@ -41,6 +45,7 @@ class SynapseModel {
       weight: isInhibitory ? -0.1 : 0.1,
       eligibility: 0.0,
       isInhibitory: isInhibitory,
+      axonalDelay: axonalDelay,
     );
   }
 
@@ -52,6 +57,7 @@ class SynapseModel {
     double? weight,
     double? eligibility,
     bool? isInhibitory,
+    int? axonalDelay,
   }) {
     return SynapseModel(
       id: id ?? this.id,
@@ -60,6 +66,7 @@ class SynapseModel {
       weight: weight ?? this.weight,
       eligibility: eligibility ?? this.eligibility,
       isInhibitory: isInhibitory ?? this.isInhibitory,
+      axonalDelay: axonalDelay ?? this.axonalDelay,
     );
   }
 }

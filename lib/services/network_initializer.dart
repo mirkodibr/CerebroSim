@@ -1,128 +1,130 @@
+import 'dart:math' as math;
 import '../models/neuron_model.dart';
 import '../models/synapse_model.dart';
 import '../models/simulation_state.dart';
+import '../models/network_config.dart';
 
 /// Helper class for setting up various neural network configurations.
 /// 
 /// It centralizes the logic for creating the initial neurons and their 
 /// synaptic connections for specific cerebellar tasks.
 class NetworkInitializer {
-  /// Creates a mock cerebellar network suitable for reinforcement learning tasks.
+  /// Creates a mock cerebellar network based on the provided [config].
   /// 
-  /// The network contains:
-  /// - **10 Parallel Fibers (GC):** Provide the sensory input (Context).
-  /// - **5 Basket Cells (BC):** Provide lateral inhibition to Purkinje Cells.
-  /// - **2 Purkinje Cells (PC):** The main integrative unit, inhibitory to DCN.
-  /// - **1 Stellate Cell (SC):** Provides local inhibition within the molecular layer.
-  /// - **2 Deep Cerebellar Nuclei (DCN):** The output of the circuit.
+  /// The network utilizes probabilistic wiring to ensure realistic sparsity:
+  /// - Each Granule Cell (GC) connects to exactly 70% of available PCs and BCs.
+  /// - Basket Cells (BC) and Purkinje Cells (PC) provide standard inhibitory motifs.
   /// 
   /// Synaptic setup:
-  /// - GC -> PC, BC, SC (Excitatory)
-  /// - BC -> PC (Inhibitory)
-  /// - PC -> DCN (Inhibitory)
-  /// 
-  /// All weights are initialized with standard values (0.2 - 0.5 for excitatory,
-  /// -1.0 to -2.0 for inhibitory) to allow for subsequent plasticity.
-  static SimulationState createRLMockNetwork() {
+  /// - GC -> PC, BC, SC (Excitatory, with 2-5 frame axonal delays)
+  /// - BC -> PC (Inhibitory, instantaneous)
+  /// - PC -> DCN (Inhibitory, instantaneous)
+  static SimulationState createRLMockNetwork({NetworkConfig? config}) {
+    final cfg = config ?? NetworkConfig.defaultConfig();
     final neurons = <String, NeuronModel>{};
     final synapses = <SynapseModel>[];
+    final random = math.Random();
 
     // 1. Parallel Fiber neurons (PF / Granular)
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < cfg.gcCount; i++) {
       final id = 'pf_$i';
-      neurons[id] = NeuronModel.initial(
-        id: id,
-        cellType: 'GC',
-      );
+      neurons[id] = NeuronModel.initial(id: id, cellType: 'GC');
     }
 
     // 2. Basket Cells (BC)
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < cfg.bcCount; i++) {
       final id = 'bc_$i';
-      neurons[id] = NeuronModel.initial(
-        id: id,
-        cellType: 'BC',
-      );
+      neurons[id] = NeuronModel.initial(id: id, cellType: 'BC');
     }
 
     // 3. Purkinje Cells (PC)
-    neurons['pc_1'] = NeuronModel.initial(id: 'pc_1', cellType: 'PC');
-    neurons['pc_2'] = NeuronModel.initial(id: 'pc_2', cellType: 'PC');
+    for (int i = 0; i < cfg.pcCount; i++) {
+      final id = 'pc_$i';
+      neurons[id] = NeuronModel.initial(id: id, cellType: 'PC');
+    }
 
-    // 4. Stellate Cell (SC)
-    neurons['sc_1'] = NeuronModel.initial(id: 'sc_1', cellType: 'SC');
+    // 4. Stellate Cells (SC)
+    for (int i = 0; i < cfg.scCount; i++) {
+      final id = 'sc_$i';
+      neurons[id] = NeuronModel.initial(id: id, cellType: 'SC');
+    }
 
     // 5. DCN Cells
-    neurons['dcn_open'] = NeuronModel.initial(id: 'dcn_open', cellType: 'DCN');
-    neurons['dcn_close'] = NeuronModel.initial(id: 'dcn_close', cellType: 'DCN');
-
-    // 6. Connect PFs to BC, PC, and SC
-    for (int i = 0; i < 10; i++) {
-      synapses.add(SynapseModel(
-        id: 'pf_$i->pc_1',
-        fromNeuronId: 'pf_$i',
-        toNeuronId: 'pc_1',
-        weight: 0.5,
-        isInhibitory: false,
-      ));
-      synapses.add(SynapseModel(
-        id: 'pf_$i->pc_2',
-        fromNeuronId: 'pf_$i',
-        toNeuronId: 'pc_2',
-        weight: 0.5,
-        isInhibitory: false,
-      ));
-      
-      synapses.add(SynapseModel(
-        id: 'pf_$i->sc_1',
-        fromNeuronId: 'pf_$i',
-        toNeuronId: 'sc_1',
-        weight: 0.2,
-        isInhibitory: false,
-      ));
-      
-      synapses.add(SynapseModel(
-        id: 'pf_$i->bc_${(i / 2).floor()}',
-        fromNeuronId: 'pf_$i',
-        toNeuronId: 'bc_${(i / 2).floor()}',
-        weight: 0.3,
-        isInhibitory: false,
-      ));
+    // We maintain 'dcn_open' and 'dcn_close' naming for task compatibility if count is 2
+    if (cfg.dcnCount == 2) {
+      neurons['dcn_open'] = NeuronModel.initial(id: 'dcn_open', cellType: 'DCN');
+      neurons['dcn_close'] = NeuronModel.initial(id: 'dcn_close', cellType: 'DCN');
+    } else {
+      for (int i = 0; i < cfg.dcnCount; i++) {
+        final id = 'dcn_$i';
+        neurons[id] = NeuronModel.initial(id: id, cellType: 'DCN');
+      }
     }
 
-    // 7. Inhibitory Synapses
-    for (int i = 0; i < 5; i++) {
-      synapses.add(SynapseModel(
-        id: 'bc_$i->pc_1',
-        fromNeuronId: 'bc_$i',
-        toNeuronId: 'pc_1',
-        weight: -1.0,
-        isInhibitory: true,
-      ));
-      synapses.add(SynapseModel(
-        id: 'bc_$i->pc_2',
-        fromNeuronId: 'bc_$i',
-        toNeuronId: 'pc_2',
-        weight: -1.0,
-        isInhibitory: true,
-      ));
+    // 6. Probabilistic GC Connections (Excitatory)
+    // Connect each GC to 70% of PCs and BCs.
+    final pcIds = neurons.values.where((n) => n.cellType == 'PC').map((n) => n.id).toList();
+    final bcIds = neurons.values.where((n) => n.cellType == 'BC').map((n) => n.id).toList();
+    final scIds = neurons.values.where((n) => n.cellType == 'SC').map((n) => n.id).toList();
+
+    for (int i = 0; i < cfg.gcCount; i++) {
+      final gcId = 'pf_$i';
+      final pfDelay = 2 + random.nextInt(4);
+
+      // GC -> PC (Probabilistic 70%)
+      _connectProbabilistic(gcId, pcIds, 0.7, synapses, random, pfDelay, 0.5, false);
+      
+      // GC -> BC (Probabilistic 70%)
+      _connectProbabilistic(gcId, bcIds, 0.7, synapses, random, pfDelay, 0.3, false);
+
+      // GC -> SC (Probabilistic 70%)
+      _connectProbabilistic(gcId, scIds, 0.7, synapses, random, pfDelay, 0.2, false);
     }
 
-    synapses.add(const SynapseModel(
-      id: 'pc_1->dcn_open',
-      fromNeuronId: 'pc_1',
-      toNeuronId: 'dcn_open',
-      weight: -2.0,
-      isInhibitory: true,
-    ));
-    synapses.add(const SynapseModel(
-      id: 'pc_2->dcn_close',
-      fromNeuronId: 'pc_2',
-      toNeuronId: 'dcn_close',
-      weight: -2.0,
-      isInhibitory: true,
-    ));
+    // 7. Inhibitory Motif: BC -> PC
+    // Each BC inhibits a subset of PCs (probabilistic 60%)
+    for (final bcId in bcIds) {
+      _connectProbabilistic(bcId, pcIds, 0.6, synapses, random, 0, -1.0, true);
+    }
 
-    return SimulationState(neurons: neurons, synapses: synapses);
+    // 8. Inhibitory Motif: PC -> DCN
+    // Purkinje cells are the sole output of the cortex, inhibiting DCN.
+    final dcnIds = neurons.values.where((n) => n.cellType == 'DCN').map((n) => n.id).toList();
+    for (final pcId in pcIds) {
+      // Connect each PC to at least one DCN, or probabilistic 80% if many
+      _connectProbabilistic(pcId, dcnIds, 0.8, synapses, random, 0, -2.0, true);
+    }
+
+    return SimulationState(neurons: neurons, synapses: synapses).rebuildIndex();
+  }
+
+  /// Internal helper to create synapses between a source and a list of targets with a given probability.
+  static void _connectProbabilistic(
+    String fromId, 
+    List<String> targetIds, 
+    double probability, 
+    List<SynapseModel> synapses, 
+    math.Random random,
+    int delay,
+    double weight,
+    bool isInhibitory
+  ) {
+    if (targetIds.isEmpty) return;
+    
+    // Shuffle targets to ensure even distribution when probability is applied
+    final targets = List<String>.from(targetIds)..shuffle(random);
+    final count = (targets.length * probability).ceil().clamp(1, targets.length);
+
+    for (int i = 0; i < count; i++) {
+      final toId = targets[i];
+      synapses.add(SynapseModel(
+        id: '$fromId->$toId',
+        fromNeuronId: fromId,
+        toNeuronId: toId,
+        weight: weight,
+        isInhibitory: isInhibitory,
+        axonalDelay: delay,
+      ));
+    }
   }
 }
