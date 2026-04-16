@@ -5,20 +5,24 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
+import 'providers/auth_provider.dart';
 import 'router/app_router.dart';
 
 /// The entry point of the CerebroSim application.
 ///
 /// This function handles the initial setup of the application by:
 /// 1. Ensuring Flutter framework bindings are initialized.
-/// 2. Initializing Firebase with platform-specific options.
-/// 3. Setting up Crashlytics for error reporting.
-/// 4. Enabling Firestore offline persistence.
-/// 5. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
+/// 2. Preserving the native splash screen.
+/// 3. Initializing Firebase with platform-specific options.
+/// 4. Setting up Crashlytics for error reporting.
+/// 5. Enabling Firestore offline persistence.
+/// 6. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   
   try {
     await Firebase.initializeApp(
@@ -63,6 +67,7 @@ void main() async {
 /// This [ConsumerWidget] is responsible for:
 /// - Configuring the application-wide theme (light/dark) via [ThemeService] and [themeNotifierProvider].
 /// - Providing the [GoRouter] configuration from [routerProvider] to the application.
+/// - Removing the native splash screen once the initial authentication state is resolved.
 class CerebroSimApp extends ConsumerWidget {
   const CerebroSimApp({super.key});
 
@@ -70,6 +75,13 @@ class CerebroSimApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeNotifierProvider);
     final router = ref.watch(routerProvider);
+
+    // Remove splash screen once auth state is no longer loading
+    ref.listen(authProvider, (previous, next) {
+      if (!next.isLoading) {
+        FlutterNativeSplash.remove();
+      }
+    });
 
     return MaterialApp.router(
       routerConfig: router,

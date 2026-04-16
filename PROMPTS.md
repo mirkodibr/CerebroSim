@@ -280,7 +280,7 @@
   7. Update `AppShell` to use `go_router`'s `ShellRoute` so the bottom nav bar persists across tab navigation.
   8. Run `flutter analyze` and `flutter test` — all tests must pass.
 
-- [ ] **76. Native Splash Screen:** Fix the white flash on launch and implement a proper native splash.
+- [x] **76. Native Splash Screen:** Fix the white flash on launch and implement a proper native splash.
   1. Add `flutter_native_splash: ^2.4.0` to `pubspec.yaml` under `dev_dependencies`. Add a `flutter_native_splash` section to `pubspec.yaml`:
      ```yaml
      flutter_native_splash:

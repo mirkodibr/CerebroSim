@@ -132,7 +132,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 ### Phase 17 : Quality & Navigation
 *Goal: Implement declarative routing, a native launch experience, and ensure complete UI theme consistency.*
 * [x] **Declarative Routing:** Migrate imperative `Navigator` logic to `go_router` with Riverpod auth-redirect guards to prevent stack corruption.
-* [ ] **Native Splash Screen:** Implement `flutter_native_splash` to hold the launch screen until Firebase Auth is initialized.
+* [x] **Native Splash Screen:** Implement `flutter_native_splash` to hold the launch screen until Firebase Auth is initialized.
 * [ ] **Theme Token Audit:** Replace all hardcoded colors (e.g., `Colors.white`) with `Theme.of(context).colorScheme` tokens for flawless Light/Dark mode transitions.
 * [ ] **Vault & Save UX:** Add loading states to the save operation and implement client-side filtering/sorting for the Vault gallery.
 
