@@ -310,7 +310,7 @@
   For `CustomPainter` subclasses where `BuildContext` is not available, pass `ColorScheme colorScheme` as a constructor parameter from the parent widget and use it inside `paint()`.
   After updating, manually test by toggling between dark and light modes via the Profile screen. Every screen must be fully readable in both modes. Run `flutter analyze` — zero errors.
 
-- [ ] **78. Save State & Vault Filters:** Two UX fixes in one prompt.
+- [x] **78. Save State & Vault Filters:** Two UX fixes in one prompt.
   **Part 1 — Save dialog loading state:**
   In `lib/screens/simulate_screen.dart`, in the `_showSaveDialog` bottom sheet:
   1. Add a `bool _isSaving = false` variable inside the `StatefulBuilder`.

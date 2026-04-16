@@ -14,16 +14,20 @@ import '../models/experiment_snapshot.dart';
 /// 
 /// Users can browse these collections and load the synaptic weights from any 
 /// snapshot back into the active simulation.
-class VaultScreen extends ConsumerWidget {
-  /// Optional callback function to trigger a tab change in the parent navigation shell.
-  /// Deprecated in favor of direct GoRouter navigation.
+class VaultScreen extends ConsumerStatefulWidget {
   final Function(int)? onTabChange;
-
-  /// Creates a new [VaultScreen] instance.
   const VaultScreen({super.key, this.onTabChange});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VaultScreen> createState() => _VaultScreenState();
+}
+
+class _VaultScreenState extends ConsumerState<VaultScreen> {
+  String _filterTask = 'all';
+  String _sortBy = 'date';
+
+  @override
+  Widget build(BuildContext context) {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -35,6 +39,17 @@ class VaultScreen extends ConsumerWidget {
               Tab(text: 'Gallery'),
             ],
           ),
+          actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.sort),
+              tooltip: 'Sort by',
+              onSelected: (value) => setState(() => _sortBy = value),
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'date', child: Text('Newest first')),
+                const PopupMenuItem(value: 'performance', child: Text('Best performance')),
+              ],
+            ),
+          ],
         ),
         body: TabBarView(
           children: [
@@ -46,46 +61,105 @@ class VaultScreen extends ConsumerWidget {
     );
   }
 
+  List<ExperimentSnapshot> _applyFilterAndSort(List<ExperimentSnapshot> snapshots) {
+    var filtered = snapshots;
+    if (_filterTask != 'all') {
+      filtered = snapshots.where((s) => s.taskName.toLowerCase() == _filterTask.toLowerCase()).toList();
+    }
+
+    if (_sortBy == 'date') {
+      filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } else if (_sortBy == 'performance') {
+      filtered.sort((a, b) => a.finalErrorRate.compareTo(b.finalErrorRate));
+    }
+    return filtered;
+  }
+
+  Widget _buildFilterChips(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          _filterChip('All', 'all'),
+          const SizedBox(width: 8),
+          _filterChip('Eyeblink', 'eyeblink'),
+          const SizedBox(width: 8),
+          _filterChip('Sine', 'sineWave'),
+          const SizedBox(width: 8),
+          _filterChip('VOR', 'vor'),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, String value) {
+    final isSelected = _filterTask == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() => _filterTask = value);
+      },
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
   /// Builds the list of snapshots owned by the authenticated user.
-  /// 
-  /// It watches [vaultProvider] and handles the different [AsyncValue] states 
-  /// (data, loading, error).
   Widget _buildUserSnapshots(BuildContext context, WidgetRef ref) {
     final snapshots = ref.watch(vaultProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return snapshots.when(
-      data: (list) => list.isEmpty
-          ? Center(child: Text('No experiments saved yet.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
-          : ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (context, index) => SnapshotCard(
-                snapshot: list[index],
-                onTap: () => _loadSnapshot(context, ref, list[index]),
-              ),
+      data: (list) {
+        final processed = _applyFilterAndSort(list);
+        return Column(
+          children: [
+            _buildFilterChips(context),
+            Expanded(
+              child: processed.isEmpty
+                  ? Center(child: Text('No matching experiments.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
+                  : ListView.builder(
+                      itemCount: processed.length,
+                      itemBuilder: (context, index) => SnapshotCard(
+                        snapshot: processed[index],
+                        onTap: () => _loadSnapshot(context, ref, processed[index]),
+                      ),
+                    ),
             ),
+          ],
+        );
+      },
       loading: () => _buildShimmerList(context),
       error: (e, s) => Center(child: Text('Error: $e', style: TextStyle(color: colorScheme.error))),
     );
   }
 
   /// Builds the list of snapshots shared publicly by all users.
-  /// 
-  /// It watches [publicGalleryProvider] to fetch and display community experiments.
   Widget _buildPublicGallery(BuildContext context, WidgetRef ref) {
     final snapshots = ref.watch(publicGalleryProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return snapshots.when(
-      data: (list) => list.isEmpty
-          ? Center(child: Text('Gallery is empty.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
-          : ListView.builder(
-              itemCount: list.length,
-              itemBuilder: (context, index) => SnapshotCard(
-                snapshot: list[index],
-                onTap: () => _loadSnapshot(context, ref, list[index]),
-              ),
+      data: (list) {
+        final processed = _applyFilterAndSort(list);
+        return Column(
+          children: [
+            _buildFilterChips(context),
+            Expanded(
+              child: processed.isEmpty
+                  ? Center(child: Text('Gallery is empty.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
+                  : ListView.builder(
+                      itemCount: processed.length,
+                      itemBuilder: (context, index) => SnapshotCard(
+                        snapshot: processed[index],
+                        onTap: () => _loadSnapshot(context, ref, processed[index]),
+                      ),
+                    ),
             ),
+          ],
+        );
+      },
       loading: () => _buildShimmerList(context),
       error: (e, s) => Center(child: Text('Error: $e', style: TextStyle(color: colorScheme.error))),
     );
@@ -111,17 +185,14 @@ class VaultScreen extends ConsumerWidget {
   }
 
   /// Injects the synaptic weights from a [snapshot] into the active simulation.
-  /// 
-  /// After updating the [simulationProvider], it displays a confirmation 
-  /// [SnackBar] and uses GoRouter to redirect the user to the simulation screen.
   void _loadSnapshot(BuildContext context, WidgetRef ref, ExperimentSnapshot snapshot) {
     ref.read(simulationProvider.notifier).loadSnapshot(snapshot.synapticWeights);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Loaded weights from "${snapshot.title}"')),
     );
     
-    if (onTabChange != null) {
-      onTabChange!(0);
+    if (widget.onTabChange != null) {
+      widget.onTabChange!(0);
     } else {
       context.go('/shell/simulate');
     }

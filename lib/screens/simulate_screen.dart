@@ -145,6 +145,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     bool isPublic = false;
+    bool isSaving = false;
     final formKey = GlobalKey<FormState>();
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -153,7 +154,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
       isScrollControlled: true,
       backgroundColor: colorScheme.surface,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => Padding(
+        builder: (context, setModalState) => Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
             left: 24,
@@ -181,37 +182,61 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                 SwitchListTile(
                   title: Text('Share Publicly', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7))),
                   value: isPublic,
-                  onChanged: (v) => setState(() => isPublic = v),
+                  onChanged: isSaving ? null : (v) => setModalState(() => isPublic = v),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final user = ref.read(authProvider).value;
-                      if (user == null) return;
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (formKey.currentState!.validate()) {
+                            setModalState(() => isSaving = true);
+                            try {
+                              final user = ref.read(authProvider).value;
+                              if (user == null) return;
 
-                      final task = ref.read(environmentProvider);
-                      final simState = ref.read(simulationProvider);
+                              final task = ref.read(environmentProvider);
+                              final simState = ref.read(simulationProvider);
 
-                      final snapshot = ExperimentSnapshot.fromSimulation(
-                        userId: user.uid,
-                        userEmail: user.email ?? 'anon',
-                        taskName: task.name,
-                        title: titleController.text,
-                        isPublic: isPublic,
-                        state: simState,
-                      );
+                              final snapshot = ExperimentSnapshot.fromSimulation(
+                                userId: user.uid,
+                                userEmail: user.email ?? 'anon',
+                                taskName: task.name,
+                                title: titleController.text,
+                                isPublic: isPublic,
+                                state: simState,
+                              );
 
-                      await ref.read(vaultProvider.notifier).saveSnapshot(snapshot);
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Experiment saved!')),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Save Snapshot'),
+                              await ref.read(vaultProvider.notifier).saveSnapshot(snapshot);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Experiment saved!')),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                setModalState(() => isSaving = false);
+                              }
+                            }
+                          }
+                        },
+                  child: isSaving
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colorScheme.onPrimary,
+                          ),
+                        )
+                      : const Text('Save Snapshot'),
                 ),
                 const SizedBox(height: 24),
               ],
