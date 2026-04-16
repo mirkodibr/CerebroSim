@@ -20,12 +20,16 @@ class TaskSelector extends ConsumerWidget {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           child: SegmentedButton<CerebellarTask>(
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             segments: const [
-              ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink'), icon: Icon(Icons.remove_red_eye)),
-              ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine'), icon: Icon(Icons.waves)),
-              ButtonSegment(value: CerebellarTask.vor, label: Text('VOR'), icon: Icon(Icons.sync)),
+              ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink'), icon: Icon(Icons.remove_red_eye, size: 18)),
+              ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine'), icon: Icon(Icons.waves, size: 18)),
+              ButtonSegment(value: CerebellarTask.vor, label: Text('VOR'), icon: Icon(Icons.sync, size: 18)),
             ],
             selected: {task},
             onSelectionChanged: (newSelection) async {
@@ -48,7 +52,11 @@ class TaskSelector extends ConsumerWidget {
             },
           ),
         ),
-        if (task == CerebellarTask.vor) const VorConfigPanel(),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: task == CerebellarTask.vor ? const VorConfigPanel() : const SizedBox.shrink(),
+        ),
       ],
     );
   }

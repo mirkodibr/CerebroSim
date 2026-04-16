@@ -406,7 +406,7 @@
   4. In `_onComplete()`, call `ref.read(prefsServiceProvider).clearOnboardingStep()` before navigating.
   Run `flutter analyze` — zero errors.
 
-- [ ] **84. Comprehensive Visual Polish:** A comprehensive visual polish pass to elevate the app from functional to premium. Apply these changes across the entire codebase.
+- [x] **84. Comprehensive Visual Polish:** A comprehensive visual polish pass to elevate the app from functional to premium. Apply these changes across the entire codebase.
   **ThemeService (`lib/services/theme_service.dart`):**
   1. In `cyberLabTheme`, add: `cardTheme: CardThemeData(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Color(0x1AFFFFFF), width: 0.5)))`.
   2. Add `appBarTheme: AppBarTheme(elevation: 0, scrolledUnderElevation: 0, centerTitle: false, titleTextStyle: GoogleFonts.spaceMono(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF00FFFF)))`.

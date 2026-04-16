@@ -146,7 +146,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x] **Layout Overhaul:** Refactor the Simulate screen using `CustomScrollView` and `SliverList` to prevent overflow and improve data density.
 * [x] **Chart Readability:** Add horizontal gridlines, Y-axis scale labels, and current-value legends to the `ConvergenceChart` and `SignalPlotter`.
 * [x] **Tactile & Discoverability:** Implement `HapticFeedback` on interactions, a first-launch 3D gesture hint, and onboarding state restoration.
-* [ ] **Premium Styling:** Apply high-fidelity UI constraints (compact chips, consistent gap spacing, subtle card borders, flat app bars).
+* [x] **Premium Styling:** Apply high-fidelity UI constraints (compact chips, consistent gap spacing, subtle card borders, flat app bars).
 * [ ] **Parameter Sliders:** Add dynamic configuration sliders for the Eyeblink (CS window) and Sine Wave (Frequency/Amplitude) tasks.
 
 ### Phase 20: Differentiating Features
