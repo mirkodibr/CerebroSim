@@ -169,6 +169,37 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
             ),
           ),
         ),
+        
+        // Floating Controls anchored to canvas
+        Positioned(
+          bottom: 8,
+          right: 8,
+          child: Column(
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'reset_view_canvas',
+                onPressed: resetView,
+                tooltip: 'Reset 3D View',
+                child: const Icon(Icons.center_focus_strong),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'rotation_hint_canvas',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Swipe to rotate, pinch to zoom, tap to inspect.'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+                tooltip: 'Interaction Hint',
+                child: const Icon(Icons.help_outline),
+              ),
+            ],
+          ),
+        ),
+
         if (_selectedNeuronId != null) ...[
           () {
             final neuron = state.neurons[_selectedNeuronId!];

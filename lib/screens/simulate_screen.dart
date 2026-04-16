@@ -12,15 +12,10 @@ import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
 import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
+import '../models/simulation_state.dart';
 
 /// The primary experimental workspace for CerebroSim.
-/// 
-/// This screen serves as the central hub for interacting with the cerebellar 
-/// Reinforcement Learning (RL) simulation. It provides controls to start, stop, 
-/// and reset episodes, as well as tools to select different tasks, visualize 
-/// neural activity, and monitor real-time performance signals.
 class SimulateScreen extends ConsumerStatefulWidget {
-  /// Creates a new [SimulateScreen] instance.
   const SimulateScreen({super.key});
 
   @override
@@ -28,132 +23,95 @@ class SimulateScreen extends ConsumerStatefulWidget {
 }
 
 class _SimulateScreenState extends ConsumerState<SimulateScreen> {
-  /// Key to access the state of the 3D neural canvas (for resetting view).
-  final GlobalKey<NeuralCanvas3DState> _canvasKey = GlobalKey<NeuralCanvas3DState>();
-
-  /// Builds the simulation interface, including the task selector, neural canvas, 
-  /// and signal plotter. It also integrates simulation control buttons in the AppBar.
   @override
   Widget build(BuildContext context) {
-    /// Monitors the current state of the simulation (running status, progress, etc.).
     final state = ref.watch(simulationProvider);
-    
-    /// Provides access to simulation control methods.
     final notifier = ref.read(simulationProvider.notifier);
-
-    /// Monitors the current network topology configuration.
     final networkConfig = ref.watch(networkConfigProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CerebroSim RL Lab'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => notifier.resetEpisode(),
-            tooltip: 'Reset Simulation',
-          ),
-          IconButton(
-            icon: Icon(state.isRunning ? Icons.pause : Icons.play_arrow),
-            onPressed: () {
-              if (state.isRunning) {
-                notifier.pauseSimulation();
-              } else {
-                notifier.startSimulation();
-              }
-            },
-            tooltip: state.isRunning ? 'Pause' : 'Start/Resume',
-          ),
-          if (state.isRunning || (state.episodeStep > 0 || state.episodeCount > 0))
-            IconButton(
-              icon: const Icon(Icons.stop),
-              onPressed: () => notifier.stopSimulation(),
-              tooltip: 'Stop',
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            floating: true,
+            snap: true,
+            title: const Text('CerebroSim RL Lab'),
+            backgroundColor: colorScheme.surface,
+            elevation: 0,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1.0),
+              child: Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
             ),
-          PopupMenuButton<double>(
-            icon: const Icon(Icons.speed),
-            tooltip: 'Simulation Speed',
-            onSelected: (speed) => notifier.setSpeed(speed),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: SimulationConstants.kSpeedNormal, child: Text('1x Speed')),
-              const PopupMenuItem(value: SimulationConstants.kSpeedFast, child: Text('5x Speed')),
-              const PopupMenuItem(value: SimulationConstants.kSpeedVeryFast, child: Text('10x Speed')),
+            actions: [
+              _buildSimControlGroup(context, state, notifier),
+              PopupMenuButton<double>(
+                icon: const Icon(Icons.speed, size: 20),
+                tooltip: 'Simulation Speed',
+                onSelected: (speed) => notifier.setSpeed(speed),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: SimulationConstants.kSpeedNormal, child: Text('1x Speed')),
+                  const PopupMenuItem(value: SimulationConstants.kSpeedFast, child: Text('5x Speed')),
+                  const PopupMenuItem(value: SimulationConstants.kSpeedVeryFast, child: Text('10x Speed')),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.save, size: 20),
+                onPressed: () => _showSaveDialog(context, ref),
+                tooltip: 'Save Snapshot',
+              ),
+              const SizedBox(width: 8),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () => _showSaveDialog(context, ref),
-            tooltip: 'Save Snapshot',
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
-              const TaskSelector(),
-
-              /// Summary of current network topology.
-              InkWell(
-                onTap: () => context.push('/network_config'),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text(
-                    'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.secondary,
-                      fontWeight: FontWeight.bold,
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Column(
+                children: [
+                  const TaskSelector(),
+                  InkWell(
+                    onTap: () => context.push('/network_config'),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+                      child: Text(
+                        'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.secondary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-              
-              /// Interactive 3D visualization of the neural network architecture and activity.
-              Expanded(
-                child: NeuralCanvas3D(key: _canvasKey),
-              ),
-              
-              /// Real-time plotting component for monitoring simulation signals and performance.
-              const SignalPlotter(),
-
-              /// Chart showing performance convergence across multiple episodes.
-              const SizedBox(
-                height: 140,
-                child: ConvergenceChart(),
-              ),
-              
-              const SizedBox(height: 16),
-            ],
+            ),
           ),
-          
-          /// Floating reset and hint controls for the 3D canvas.
-          Positioned(
-            bottom: 250, // Positioned above the chart and plotter
-            right: 16,
+          SliverFillRemaining(
+            hasScrollBody: false,
             child: Column(
               children: [
-                FloatingActionButton.small(
-                  heroTag: 'reset_view',
-                  onPressed: () => _canvasKey.currentState?.resetView(),
-                  tooltip: 'Reset 3D View',
-                  child: const Icon(Icons.center_focus_strong),
+                const Expanded(
+                  flex: 5,
+                  child: NeuralCanvas3D(),
                 ),
-                const SizedBox(height: 8),
-                FloatingActionButton.small(
-                  heroTag: 'rotation_hint',
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Swipe to rotate, pinch to zoom, tap to inspect.'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                  tooltip: 'Interaction Hint',
-                  child: const Icon(Icons.help_outline),
+                Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
+                const SizedBox(
+                  height: 140,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: SignalPlotter(),
+                  ),
                 ),
+                const SizedBox(
+                  height: 110,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12, 4, 12, 4),
+                    child: ConvergenceChart(),
+                  ),
+                ),
+                const SizedBox(height: 16), // Bottom breathing room
               ],
             ),
           ),
@@ -162,7 +120,46 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
     );
   }
 
-  /// Displays a modal dialog to capture metadata and save the current simulation state.
+  Widget _buildSimControlGroup(BuildContext context, SimulationState state, SimulationNotifier notifier) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.refresh, size: 18),
+            onPressed: () => notifier.resetEpisode(),
+            tooltip: 'Reset',
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: Icon(state.isRunning ? Icons.pause : Icons.play_arrow, size: 18),
+            onPressed: () {
+              if (state.isRunning) {
+                notifier.pauseSimulation();
+              } else {
+                notifier.startSimulation();
+              }
+            },
+            tooltip: state.isRunning ? 'Pause' : 'Start',
+          ),
+          if (state.isRunning || state.episodeStep > 0 || state.episodeCount > 0)
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.stop, size: 18),
+              onPressed: () => notifier.stopSimulation(),
+              tooltip: 'Stop',
+            ),
+        ],
+      ),
+    );
+  }
+
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
     bool isPublic = false;

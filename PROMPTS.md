@@ -354,7 +354,7 @@
 
 ## Phase 19: User Experience— UI/UX Polish and Layout Fixes
 
-- [ ] **81. Simulate Screen Layout Overhaul:** The simulate screen stacks TaskSelector + NeuralCanvas3D + SignalPlotter + ConvergenceChart + FABs in a single Column, causing overflow on smaller devices and visual crowding. Redesign the layout.
+- [x] **81. Simulate Screen Layout Overhaul:** The simulate screen stacks TaskSelector + NeuralCanvas3D + SignalPlotter + ConvergenceChart + FABs in a single Column, causing overflow on smaller devices and visual crowding. Redesign the layout.
   1. Replace the flat `Column` body with a `CustomScrollView` using `SliverList`. Structure:
      - `SliverAppBar` (floating, snap) containing the simulation controls (play/pause/stop/speed/save). Use `backgroundColor: Theme.of(context).colorScheme.surface` with `elevation: 0` and a bottom border.
      - A `SliverToBoxAdapter` for the `TaskSelector` with `16px` vertical padding.
