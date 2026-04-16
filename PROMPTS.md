@@ -329,7 +329,7 @@
 
 ## Phase 18: User Experience— Neuron Count Configurator
 
-- [ ] **79. Network Configurator UI:** Allow users to configure the number of each neuron type before running a simulation. This exposes the `NetworkConfig` model that already exists.
+- [x] **79. Network Configurator UI:** Allow users to configure the number of each neuron type before running a simulation. This exposes the `NetworkConfig` model that already exists.
   1. Create `lib/providers/network_config_provider.dart`:
      - `NetworkConfigNotifier` extending `Notifier` with `build()` returning `NetworkConfig.defaultConfig()`.
      - Method `update(NetworkConfig c) => state = c`.

@@ -138,7 +138,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 
 ### Phase 18 : Neuron Count Configurator
 *Goal: Expose network topology parameters to the user for dynamic architectural scaling.*
-* [ ] **Configurator UI:** Build a dedicated screen allowing users to increment/decrement GC, BC, PC, SC, and DCN neuron counts within safe limits.
+* [x] **Configurator UI:** Build a dedicated screen allowing users to increment/decrement GC, BC, PC, SC, and DCN neuron counts within safe limits.
 * [ ] **Engine Integration:** Inject the user-defined `NetworkConfig` into the `SimulationEngine` and serialize it within `ExperimentSnapshot` saves.
 
 ### Phase 19 : UI/UX Polish and Layout Fixes

@@ -11,6 +11,7 @@ import '../screens/app_shell.dart';
 import '../screens/simulate_screen.dart';
 import '../screens/vault_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/network_config_screen.dart';
 
 /// A [ChangeNotifier] that triggers a refresh in [GoRouter] when auth or onboarding states change.
 class RouterNotifier extends ChangeNotifier {
@@ -78,6 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/network_config',
+        builder: (context, state) => const NetworkConfigScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) {

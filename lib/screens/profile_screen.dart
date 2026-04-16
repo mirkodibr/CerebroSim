@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 
@@ -70,8 +71,7 @@ class ProfileScreen extends ConsumerWidget {
             title: const Text('Configure network'),
             subtitle: const Text('Adjust neural topology'),
             onTap: () {
-              // Navigation will be implemented in Prompt 79
-              // For now, we can show a placeholder or just leave it as is
+              context.push('/network_config');
             },
           ),
           const Divider(),
