@@ -78,6 +78,27 @@ class AuthNotifier extends AsyncNotifier<User?> {
       state = AsyncError(e, s);
     }
   }
+
+  /// Permanently deletes the current user's account and data via the [AuthService].
+  /// Updates the state to [AsyncLoading] during the process and [AsyncError] on failure.
+  Future<void> deleteAccount() async {
+    final previousState = state;
+    state = const AsyncLoading();
+    try {
+      await ref.read(authServiceProvider).deleteAccount();
+    } on FirebaseAuthException catch (e, s) {
+      state = AsyncError(e, s);
+      // If it fails (e.g. requires-recent-login), we might want to restore 
+      // the data state so the UI remains interactive.
+      state = AsyncData(FirebaseAuth.instance.currentUser);
+      // Re-throw so the UI can show a specific error message/dialog
+      rethrow;
+    } catch (e, s) {
+      state = AsyncError(e, s);
+      state = previousState;
+      rethrow;
+    }
+  }
 }
 
 /// A global provider for the [AuthNotifier], allowing widgets to observe and

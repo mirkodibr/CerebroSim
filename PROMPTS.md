@@ -237,7 +237,7 @@
   3. Override `didChangeAppLifecycleState`: on `AppLifecycleState.paused` or `AppLifecycleState.hidden`, call `pauseSimulation()`. On `AppLifecycleState.resumed`, if `_wasRunning` (store this flag before pausing), call `startSimulation()`.
   Run `flutter analyze` — zero errors.
 
-- [ ] **73. In-App Account Deletion:** Apple requires in-app account deletion for all apps with user accounts (mandatory since June 2022). Implement a complete delete-account flow.
+- [x] **73. In-App Account Deletion:** Apple requires in-app account deletion for all apps with user accounts (mandatory since June 2022). Implement a complete delete-account flow.
   1. In `lib/services/auth_service.dart`, add `Future deleteAccount()`:
      - Get the current user: `final user = _auth.currentUser; if (user == null) return;`
      - Delete all Firestore user data using a batch: delete `users/{uid}` document and all documents in `users/{uid}/snapshots/` (fetch them first with `.get()`, then batch delete).

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/theme_provider.dart';
+import '../providers/auth_provider.dart';
 
 /// A screen for managing user settings and application preferences.
 /// 
@@ -42,13 +43,75 @@ class ProfileScreen extends ConsumerWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.account_tree),
+            title: const Text('Configure network'),
+            subtitle: const Text('Adjust neural topology'),
+            onTap: () {
+              // Navigation will be implemented in Prompt 79
+              // For now, we can show a placeholder or just leave it as is
+            },
+          ),
+          const Divider(),
+          ListTile(
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
             onTap: () async {
-              await FirebaseAuth.instance.signOut();
-              // Note: Navigation to the login screen is typically handled by 
-              // an auth listener in the application's root router.
+              await ref.read(authProvider.notifier).signOut();
             },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text('Delete account', style: TextStyle(color: Colors.red)),
+            onTap: () => _showDeleteConfirmation(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes all your experiments and cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await ref.read(authProvider.notifier).deleteAccount();
+              } on FirebaseAuthException catch (e) {
+                if (e.code == 'requires-recent-login') {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please sign out and sign back in before deleting your account.'),
+                      ),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.message}')),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('DELETE', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

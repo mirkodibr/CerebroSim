@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Service responsible for handling user authentication via Firebase.
 ///
@@ -8,14 +9,17 @@ import 'package:google_sign_in/google_sign_in.dart';
 class AuthService {
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
+  final FirebaseFirestore _db;
 
   /// Creates a new [AuthService]. 
-  /// If no [auth] or [googleSignIn] is provided, it uses the default instances.
+  /// If no [auth], [googleSignIn], or [db] is provided, it uses the default instances.
   AuthService({
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
+    FirebaseFirestore? db,
   }) : _auth = auth ?? FirebaseAuth.instance,
-       _googleSignIn = googleSignIn ?? GoogleSignIn();
+       _googleSignIn = googleSignIn ?? GoogleSignIn(),
+       _db = db ?? FirebaseFirestore.instance;
 
   /// Signs in a user using their [email] and [password].
   ///
@@ -78,6 +82,45 @@ class AuthService {
     try {
       await _googleSignIn.signOut();
       await _auth.signOut();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Permanently deletes the user's account and all associated research data.
+  /// 
+  /// This performs a batch deletion of the user's Firestore documents 
+  /// before deleting the Firebase Auth user.
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final uid = user.uid;
+
+    try {
+      // 1. Delete all Firestore snapshots in a batch
+      final snapshots = await _db.collection('users').doc(uid).collection('snapshots').get();
+      
+      final batch = _db.batch();
+      for (var doc in snapshots.docs) {
+        batch.delete(doc.reference);
+        // If it was public, delete from public_snapshots too
+        if (doc.data()['isPublic'] == true) {
+          batch.delete(_db.collection('public_snapshots').doc(doc.id));
+        }
+      }
+      
+      // Delete the user document itself
+      batch.delete(_db.collection('users').doc(uid));
+
+      await batch.commit();
+
+      // 2. Delete the Firebase user
+      // This may throw 'requires-recent-login'
+      await user.delete();
+
+      // 3. Clear Google session
+      await _googleSignIn.signOut();
     } catch (e) {
       rethrow;
     }
