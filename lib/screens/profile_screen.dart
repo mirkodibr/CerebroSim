@@ -28,6 +28,29 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          if (user != null && !user.emailVerified)
+            Container(
+              color: Theme.of(context).colorScheme.tertiaryContainer,
+              child: ListTile(
+                leading: Icon(
+                  Icons.warning_amber_rounded,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+                title: const Text('Email not verified'),
+                subtitle: const Text('Check your inbox'),
+                trailing: TextButton(
+                  onPressed: () async {
+                    await user.sendEmailVerification();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Verification email sent')),
+                      );
+                    }
+                  },
+                  child: const Text('Resend'),
+                ),
+              ),
+            ),
           if (user != null)
             ListTile(
               leading: const Icon(Icons.email),

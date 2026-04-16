@@ -251,7 +251,7 @@
      - If the error code is `requires-recent-login`, show a `SnackBar`: "Please sign out and sign back in before deleting your account."
   4. Run `flutter analyze` — zero errors.
 
-- [ ] **74. Buffer Clearing & Email Verification:** Two independent bugs to fix in this prompt.
+- [x] **74. Buffer Clearing & Email Verification:** Two independent bugs to fix in this prompt.
   **Bug 1 — Plot buffer not cleared on task switch:**
   In `lib/providers/simulation_provider.dart`, update `resetEpisode()` to also clear the plot buffer and episode history:
   - Add `ref.read(plotBufferProvider.notifier).clear();` after `_engine.clearBuffer();`

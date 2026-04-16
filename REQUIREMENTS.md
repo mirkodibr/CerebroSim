@@ -127,7 +127,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x] **Unified Network Builder:** Centralize all network topology generation inside `NetworkInitializer` to prevent state drift and failing CI tests.
 * [x] **Offline & Lifecycle Management:** Enable Firestore offline persistence and use `AppLifecycleListener` to pause the 60Hz ticker when backgrounded.
 * [x] **Account Deletion Flow:** Implement a complete, batch-based account deletion feature to comply with GDPR and App Store mandates.
-* [ ] **Auth & State Fixes:** Enforce email verification for public saves and ensure simulation buffers are cleared during task switching.
+* [x] **Auth & State Fixes:** Enforce email verification for public saves and ensure simulation buffers are cleared during task switching.
 
 ### Phase 17 : Quality & Navigation
 *Goal: Implement declarative routing, a native launch experience, and ensure complete UI theme consistency.*

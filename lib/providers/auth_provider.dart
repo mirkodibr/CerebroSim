@@ -46,6 +46,7 @@ class AuthNotifier extends AsyncNotifier<User?> {
     state = const AsyncLoading();
     try {
       await ref.read(authServiceProvider).registerWithEmail(email, password);
+      await FirebaseAuth.instance.currentUser?.sendEmailVerification();
     } on FirebaseAuthException catch (e, s) {
       state = AsyncError(e, s);
     }

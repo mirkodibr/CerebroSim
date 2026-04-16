@@ -99,6 +99,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
     _episodePunishmentSum = 0.0;
     _episodeTickCount = 0;
     _engine.clearBuffer();
+    ref.read(plotBufferProvider.notifier).clear();
     ref.read(episodeHistoryProvider.notifier).clear();
     state = _engine.initialState(config: config);
   }

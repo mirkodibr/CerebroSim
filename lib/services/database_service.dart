@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/experiment_snapshot.dart';
 
 /// Service for managing persistence and retrieval of [ExperimentSnapshot] data.
@@ -18,6 +19,10 @@ class DatabaseService {
   /// Throws a timeout error if the operation takes longer than 10 seconds.
   Future<void> saveSnapshot(ExperimentSnapshot snap) async {
     try {
+      if (snap.isPublic && FirebaseAuth.instance.currentUser?.emailVerified == false) {
+        throw 'Please verify your email before saving public experiments.';
+      }
+
       final batch = _db.batch();
       
       // Reference to the user's private snapshot
