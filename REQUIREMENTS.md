@@ -105,17 +105,52 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 
 ### Phase 13: Engine Optimization (The Performance Fix)
 *Goal: Eliminate O(N) list traversals to allow the engine to maintain 60fps when scaling to hundreds of neurons.*
-* [ ] **O(1) State Overhaul:** Refactor `SimulationState` to store `neurons` as a `Map<String, NeuronModel>`.
-* [ ] **Synapse Indexing:** Implement a pre-computed adjacency list (`Map<String, List<SynapseModel>>`) for instant outbound connection lookups.
-* [ ] **Tick Refactor:** Rewrite `SimulationEngine.tick` to utilize map-based routing instead of `.firstWhere` lookups.
+* [x] **O(1) State Overhaul:** Refactor `SimulationState` to store `neurons` as a `Map<String, NeuronModel>`.
+* [x] **Synapse Indexing:** Implement a pre-computed adjacency list (`Map<String, List<SynapseModel>>`) for instant outbound connection lookups.
+* [x] **Tick Refactor:** Rewrite `SimulationEngine.tick` to utilize map-based routing instead of `.firstWhere` lookups.
 
 ### Phase 14: Temporal Dynamics (The Biology Fix)
 *Goal: Replace instantaneous transmission with biologically realistic parallel fiber travel times.*
-* [ ] **Delay Modeling:** Add an `int axonalDelay` property to the `SynapseModel`.
-* [ ] **The Ring Buffer:** Implement a temporal ring buffer inside `SimulationEngine` to schedule potential delivery for `currentTick + axonalDelay`.
+* [x] **Delay Modeling:** Add an `int axonalDelay` property to the `SynapseModel`.
+* [x] **The Ring Buffer:** Implement a temporal ring buffer inside `SimulationEngine` to schedule potential delivery for `currentTick + axonalDelay`.
 
 ### Phase 15: Dynamic Topology & Complex Tasks
 *Goal: Break the hardcoded 19-neuron limit and introduce multi-dimensional motor control.*
-* [ ] **Network Configuration:** Create a `NetworkConfig` model allowing custom counts for GC, BC, PC, SC, and DCN cells.
-* [ ] **Procedural Architecture:** Refactor `NetworkInitializer` to procedurally generate connections and `NeuralCanvas3DPainter` to dynamically position cells based on layer counts.
-* [ ] **2D Arm Reaching Task:** Expand the `EnvironmentProvider` and DCN logic to support a 2-dimensional (X/Y) planar reaching task with continuous Euclidean distance punishment.
+* [x] **Network Configuration:** Create a `NetworkConfig` model allowing custom counts for GC, BC, PC, SC, and DCN cells.
+* [x] **Procedural Architecture:** Refactor `NetworkInitializer` to procedurally generate connections and `NeuralCanvas3DPainter` to dynamically position cells based on layer counts.
+* [x] **2D Arm Reaching Task:** Expand the `EnvironmentProvider` and DCN logic to support a 2-dimensional (X/Y) planar reaching task with continuous Euclidean distance punishment.
+
+### Phase 16 : Critical Blockers (Production Hardening)
+*Goal: Resolve App Store blockers, prevent silent failures, and fix architectural state drift before scaling the engine.*
+* [x] **Bundle ID & Metadata:** Replace placeholder bundle identifiers across all platforms to meet App Store and Firebase OAuth requirements.
+* [ ] **Crashlytics Integration:** Implement Firebase Crashlytics to catch and report asynchronous and frame-level errors in production.
+* [ ] **Unified Network Builder:** Centralize all network topology generation inside `NetworkInitializer` to prevent state drift and failing CI tests.
+* [ ] **Offline & Lifecycle Management:** Enable Firestore offline persistence and use `AppLifecycleListener` to pause the 60Hz ticker when backgrounded.
+* [ ] **Account Deletion Flow:** Implement a complete, batch-based account deletion feature to comply with GDPR and App Store mandates.
+* [ ] **Auth & State Fixes:** Enforce email verification for public saves and ensure simulation buffers are cleared during task switching.
+
+### Phase 17 : Quality & Navigation
+*Goal: Implement declarative routing, a native launch experience, and ensure complete UI theme consistency.*
+* [ ] **Declarative Routing:** Migrate imperative `Navigator` logic to `go_router` with Riverpod auth-redirect guards to prevent stack corruption.
+* [ ] **Native Splash Screen:** Implement `flutter_native_splash` to hold the launch screen until Firebase Auth is initialized.
+* [ ] **Theme Token Audit:** Replace all hardcoded colors (e.g., `Colors.white`) with `Theme.of(context).colorScheme` tokens for flawless Light/Dark mode transitions.
+* [ ] **Vault & Save UX:** Add loading states to the save operation and implement client-side filtering/sorting for the Vault gallery.
+
+### Phase 18 : Neuron Count Configurator
+*Goal: Expose network topology parameters to the user for dynamic architectural scaling.*
+* [ ] **Configurator UI:** Build a dedicated screen allowing users to increment/decrement GC, BC, PC, SC, and DCN neuron counts within safe limits.
+* [ ] **Engine Integration:** Inject the user-defined `NetworkConfig` into the `SimulationEngine` and serialize it within `ExperimentSnapshot` saves.
+
+### Phase 19 : UI/UX Polish and Layout Fixes
+*Goal: Elevate the app from a functional prototype to a premium, professional-grade research tool.*
+* [ ] **Layout Overhaul:** Refactor the Simulate screen using `CustomScrollView` and `SliverList` to prevent overflow and improve data density.
+* [ ] **Chart Readability:** Add horizontal gridlines, Y-axis scale labels, and current-value legends to the `ConvergenceChart` and `SignalPlotter`.
+* [ ] **Tactile & Discoverability:** Implement `HapticFeedback` on interactions, a first-launch 3D gesture hint, and onboarding state restoration.
+* [ ] **Premium Styling:** Apply high-fidelity UI constraints (compact chips, consistent gap spacing, subtle card borders, flat app bars).
+* [ ] **Parameter Sliders:** Add dynamic configuration sliders for the Eyeblink (CS window) and Sine Wave (Frequency/Amplitude) tasks.
+
+### Phase 20: Differentiating Features
+*Goal: Introduce virality, AI interpretation, and educational value to capture the academic and institutional market.*
+* [ ] **Export & Deep Linking:** Enable JSON export of private experiments via `share_plus` and `cerebrosim://` deep-linking for public snapshots.
+* [ ] **AI-Powered Interpretation:** Integrate a Firebase Cloud Function to query Anthropic's API, translating raw simulation data into plain-English neuroscience insights.
+* [ ] **Guided Experiments Mode:** Build an interactive educational mode featuring pre-configured experiments linked to foundational neuroscience papers.

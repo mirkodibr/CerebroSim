@@ -192,3 +192,286 @@
 - [x] **67. Procedural 3D Painter:** 1. Read `lib/widgets/neural_canvas_3d_painter.dart`. 2. Remove the static dependency on `Neural3DProjection.kNeuronPositions`. 3. Refactor the projection loop to calculate physical coordinates dynamically based on layer types. 4. Rules: Place `GC`s in a uniformly distributed grid at `Y = -100`, `PC`s evenly spaced in a horizontal row at `Y = 0`, and `DCN`s clustered at `Y = 100`. 5. Use `Random(n.id.hashCode)` to inject a slight positional jitter (±10px) into the coordinates to make the network look organic rather than strictly mechanical. 6. Update `lib/widgets/neural_canvas.dart` to ensure `_handleTapUp` and the overlay tracking in `build` use the same procedural calculation.
 
 - [x] **68. 2D Arm Reaching Environment:** 1. Read `lib/models/cerebellar_task.dart` and add `armReaching` to the enum. 2. Create `lib/services/arm_reaching_environment.dart` implementing `CerebellarEnvironment`. Define the state vector as `[arm_x, arm_y, target_x, target_y]`. 3. Set the continuous punishment signal as the Euclidean distance: `sqrt(pow(target_x - arm_x, 2) + pow(target_y - arm_y, 2))`. 4. Read `lib/services/simulation_engine.dart`. Modify DCN parsing: if the task is `armReaching`, expect 4 DCNs (`x_pos`, `x_neg`, `y_pos`, `y_neg`). 5. Translate their relative firing rates into a 2D velocity vector `(dx, dy)` applied to the arm's position. 6. Output the updated logic and verify with `flutter analyze`.
+
+## Phase 16: Security — Critical Blockers (Production Hardening)
+
+- [x] **69. Bundle ID & Metadata Replacement:** Replace all placeholder bundle identifiers and app metadata across every platform target. Search the entire project for every occurrence of `com.example` and replace with your real reverse-domain bundle ID (e.g. `com.yourdomain.cerebrosim`). Files to update:
+  1. `ios/Runner.xcodeproj/project.pbxproj` — update PRODUCT_BUNDLE_IDENTIFIER in all three build configurations (Debug, Release, Profile) for both the Runner and RunnerTests targets.
+  2. `ios/Runner/Info.plist` — verify CFBundleIdentifier resolves to the new ID via the xcconfig variable.
+  3. `android/app/build.gradle.kts` — update `applicationId`.
+  4. `android/app/src/main/AndroidManifest.xml` — update the package attribute if present.
+  5. `macos/Runner/Configs/AppInfo.xcconfig` — update PRODUCT_BUNDLE_IDENTIFIER and PRODUCT_NAME.
+  6. `macos/Runner.xcodeproj/project.pbxproj` — update both Runner and RunnerTests targets.
+  7. `windows/CMakeLists.txt` — update the BINARY_NAME.
+  8. `linux/CMakeLists.txt` — update APPLICATION_ID.
+  9. `web/manifest.json` — update `name` and `short_name`.
+  After updating, run `flutter clean && flutter pub get`. Also update the app display name in `CFBundleDisplayName` (iOS Info.plist) and the android `android:label` to "CerebroSim" (capitalised properly). Run `flutter analyze` — zero errors required before continuing.
+
+- [ ] **70. Production Crashlytics:** Add production crash and error reporting using Firebase Crashlytics.
+  1. Add `firebase_crashlytics: ^4.0.0` to `pubspec.yaml` under dependencies. Run `flutter pub get`.
+  2. In `main.dart`, after `Firebase.initializeApp(...)`, add the following error interception setup:
+     - Set `FlutterError.onError` to `FirebaseCrashlytics.instance.recordFlutterFatalError`.
+     - Wrap `runApp(...)` in `PlatformDispatcher.instance.onError` to catch async/isolate errors.
+     - In debug mode, keep the existing `debugPrint` behavior — only send to Crashlytics in release/profile.
+  3. In `SimulationNotifier._tick()`, wrap the entire tick body in a `try/catch`. On catch, call `FirebaseCrashlytics.instance.recordError(e, s, fatal: false)` and call `stopSimulation()` to prevent an infinite error loop.
+  4. Add `firebase_crashlytics` to the iOS `Podfile` if not auto-resolved. Verify `GoogleService-Info.plist` (iOS) and `google-services.json` (Android) are present and gitignored.
+  5. Replace all remaining `print()` calls across the codebase with `debugPrint()`.
+  6. Run `flutter analyze` — zero errors required.
+
+- [ ] **71. Unified Network Builder:** There are two competing network builders causing a silent logic bug. `SimulationState.initial()` creates a 5-neuron hardcoded network with IDs like `DCN_01`, while `NetworkInitializer.createRLMockNetwork()` (used by the actual engine) creates a proper network with `dcn_open` and `dcn_close` IDs. Environments (`SineWaveEnvironment`, `VorEnvironment`) silently fall back to `neurons.values.first` when these IDs are missing. Fix as follows:
+  1. In `lib/models/simulation_state.dart`, update `SimulationState.initial()` to call `NetworkInitializer.createRLMockNetwork()` instead of hand-building 5 neurons. Remove the hardcoded neuron/synapse construction from `initial()` entirely.
+  2. Update the `SimulationState` constructor to keep the `const` keyword only where no factory calls are made. The `initial()` factory no longer needs to be `const`.
+  3. In `test/models/simulation_state_test.dart`, update the test assertions to reflect the new 19+ neuron count and the presence of `dcn_open`/`dcn_close` IDs instead of `DCN_01`.
+  4. In `test/services/network_initializer_test.dart`, fix the flaky assertions: remove the hardcoded checks for `pc_1 -> dcn_open` and `pc_2 -> dcn_close`. Instead assert: (a) at least one PC->DCN synapse exists; (b) all PC->DCN synapses are inhibitory; (c) neuron counts match the `NetworkConfig.defaultConfig()` values.
+  5. Run `flutter test` — all tests must pass.
+
+- [ ] **72. Offline Support & Lifecycle Management:** The app fully breaks without internet and the simulation timer keeps running when the app is backgrounded, draining battery. Fix both.
+  **Part 1 — Offline support:**
+  1. In `main.dart`, after `Firebase.initializeApp(...)`, add: `FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true, cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED);`
+  2. In `lib/providers/auth_provider.dart`, update `AuthNotifier.build()` to return `FirebaseAuth.instance.currentUser` immediately (already done) — confirm this doesn't suspend on no network.
+  3. Add `connectivity_plus: ^6.0.0` to `pubspec.yaml`. Create `lib/providers/connectivity_provider.dart` with a `StreamProvider` that exposes the current connectivity status.
+  4. In `lib/screens/app_shell.dart`, watch `connectivityProvider` and show a `MaterialBanner` at the top of the scaffold when offline: "No connection — simulation runs locally, cloud features unavailable." Dismiss automatically when connectivity returns.
+  **Part 2 — Background lifecycle:**
+  1. In `lib/providers/simulation_provider.dart`, make `SimulationNotifier` implement `WidgetsBindingObserver` (or use `AppLifecycleListener`).
+  2. In `build()`, call `WidgetsBinding.instance.addObserver(this)` and cancel in `ref.onDispose(() { WidgetsBinding.instance.removeObserver(this); _timer?.cancel(); })`.
+  3. Override `didChangeAppLifecycleState`: on `AppLifecycleState.paused` or `AppLifecycleState.hidden`, call `pauseSimulation()`. On `AppLifecycleState.resumed`, if `_wasRunning` (store this flag before pausing), call `startSimulation()`.
+  Run `flutter analyze` — zero errors.
+
+- [ ] **73. In-App Account Deletion:** Apple requires in-app account deletion for all apps with user accounts (mandatory since June 2022). Implement a complete delete-account flow.
+  1. In `lib/services/auth_service.dart`, add `Future deleteAccount()`:
+     - Get the current user: `final user = _auth.currentUser; if (user == null) return;`
+     - Delete all Firestore user data using a batch: delete `users/{uid}` document and all documents in `users/{uid}/snapshots/` (fetch them first with `.get()`, then batch delete).
+     - Call `await user.delete()` last. If this throws `requires-recent-login`, rethrow so the UI can prompt re-authentication.
+     - Also call `await _googleSignIn.signOut()` to clear Google session.
+  2. In `lib/providers/auth_provider.dart`, add a `deleteAccount()` method on `AuthNotifier` that sets `AsyncLoading`, calls `authService.deleteAccount()`, and on `requires-recent-login` error, sets a specific `AsyncError` with that code so the UI can handle it distinctly.
+  3. In `lib/screens/profile_screen.dart`, add a new `ListTile` below the sign-out tile:
+     - Leading icon: `Icons.delete_forever` in `Theme.of(context).colorScheme.error`
+     - Title: "Delete account" in `Theme.of(context).colorScheme.error`
+     - On tap: show an `AlertDialog` with title "Delete account?", content "This permanently deletes all your experiments and cannot be undone.", actions Cancel and "Delete" (red). On confirm, call `ref.read(authProvider.notifier).deleteAccount()`.
+     - If the error code is `requires-recent-login`, show a `SnackBar`: "Please sign out and sign back in before deleting your account."
+  4. Run `flutter analyze` — zero errors.
+
+- [ ] **74. Buffer Clearing & Email Verification:** Two independent bugs to fix in this prompt.
+  **Bug 1 — Plot buffer not cleared on task switch:**
+  In `lib/providers/simulation_provider.dart`, update `resetEpisode()` to also clear the plot buffer and episode history:
+  - Add `ref.read(plotBufferProvider.notifier).clear();` after `_engine.clearBuffer();`
+  - The `episodeHistoryProvider.notifier.clear()` call is already there — confirm it is.
+  - In `lib/providers/environment_provider.dart`, `EnvironmentNotifier.selectTask()` calls `ref.read(simulationProvider.notifier).resetEpisode()` — confirm this chain now clears both buffers.
+  **Bug 2 — No email verification:**
+  1. In `lib/providers/auth_provider.dart`, in `AuthNotifier.register()`, after the successful `registerWithEmail()` call, add: `final user = _auth.currentUser; await user?.sendEmailVerification();`
+  2. In `lib/screens/profile_screen.dart`, add a verification banner at the top of the `ListView` that only appears when `user.emailVerified == false`:
+     - A `ListTile` with `leading: Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.tertiary)`, title "Email not verified", subtitle "Check your inbox", and a trailing `TextButton("Resend")` that calls `FirebaseAuth.instance.currentUser?.sendEmailVerification()` and shows a `SnackBar("Verification email sent")`.
+  3. In `lib/services/database_service.dart`, in `saveSnapshot()`, before the batch commit, check: `if (FirebaseAuth.instance.currentUser?.emailVerified == false) throw 'Please verify your email before saving public experiments.';` — only apply this check when `snap.isPublic == true`.
+  Run `flutter analyze` — zero errors.
+
+## Phase 17: Security— Quality & Navigation
+
+- [ ] **75. Declarative Routing (GoRouter):** Replace all imperative `Navigator.push`/`pushReplacement`/`pushAndRemoveUntil` calls with declarative `go_router` routing.
+  1. Add `go_router: ^14.0.0` to `pubspec.yaml`. Run `flutter pub get`.
+  2. Create `lib/router/app_router.dart`. Define a `GoRouter` provider using Riverpod: `final routerProvider = Provider(...)`. The router must have a `refreshListenable` that wraps `authProvider` and `onboardingCompleteProvider` — create a `GoRouterRefreshStream` helper that converts an `AsyncNotifier` to a `ChangeNotifier`.
+  3. Define these named routes: `/login`, `/register`, `/onboarding`, `/shell` (with sub-routes `/shell/simulate`, `/shell/vault`, `/shell/profile`).
+  4. Add a `redirect` callback:
+     - If `authProvider` is loading → return null (show splash).
+     - If user is null → redirect to `/login` unless already there.
+     - If user is not null and onboarding not complete → redirect to `/onboarding`.
+     - If user is not null and onboarding complete → redirect to `/shell/simulate` if currently at `/login` or `/register`.
+  5. Replace the `home:` logic in `main.dart`'s `MaterialApp` with `MaterialApp.router(routerConfig: ref.watch(routerProvider))`. Remove the `navigatorKey` and all `ref.listen` navigation logic from `main.dart`.
+  6. Update `LoginScreen`, `RegisterScreen`, `OnboardingScreen` to use `context.go(...)` and `context.push(...)` instead of `Navigator`. Remove all `MaterialPageRoute` usages.
+  7. Update `AppShell` to use `go_router`'s `ShellRoute` so the bottom nav bar persists across tab navigation.
+  8. Run `flutter analyze` and `flutter test` — all tests must pass.
+
+- [ ] **76. Native Splash Screen:** Fix the white flash on launch and implement a proper native splash.
+  1. Add `flutter_native_splash: ^2.4.0` to `pubspec.yaml` under `dev_dependencies`. Add a `flutter_native_splash` section to `pubspec.yaml`:
+     ```yaml
+     flutter_native_splash:
+       color: "#121212"
+       color_dark: "#121212"
+       image: assets/splash_logo.png
+       fullscreen: true
+     ```
+     Create a simple `assets/splash_logo.png` (or use the existing app icon). Add `assets/` to the flutter assets section.
+  2. Run `dart run flutter_native_splash:create` to generate the native splash assets for iOS, Android, and web.
+  3. In `main.dart`, import `flutter_native_splash` and call `FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding)` before `runApp`. Then in `CerebroSimApp`, watch `authProvider` — once it is no longer `AsyncLoading`, call `FlutterNativeSplash.remove()`. This ensures the native splash holds until Firebase auth resolves, eliminating the white flash and the intermediate spinner.
+  4. In `main.dart`, remove the `AsyncLoading` → `CircularProgressIndicator` case from the `authState.when(...)` home builder. The native splash now handles that state entirely.
+  5. Run `flutter clean && flutter pub get` and verify the splash appears and dismisses correctly on both iOS and Android simulators.
+
+- [ ] **77. Theme Token Audit:** The app has a functioning light theme but numerous widgets use hardcoded `Colors.white`, `Colors.white70`, `Colors.white38`, `Colors.white54`, `Colors.black45` which are invisible in light mode. Replace all of them with theme-aware tokens.
+  Perform a full search for `Colors.white` and `Colors.black` in the `lib/` directory. Update every occurrence using this mapping:
+  - `Colors.white` (primary text) → `Theme.of(context).colorScheme.onSurface`
+  - `Colors.white70` (secondary text) → `Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)`
+  - `Colors.white54` (tertiary text) → `Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)`
+  - `Colors.white38` (disabled/hint text) → `Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)`
+  - `Colors.white24` (dividers) → `Theme.of(context).colorScheme.outline.withValues(alpha: 0.24)`
+  - `Colors.white10` (borders) → `Theme.of(context).colorScheme.outline.withValues(alpha: 0.1)`
+  - `Colors.white.withValues(alpha: x)` (surface overlays) → `Theme.of(context).colorScheme.onSurface.withValues(alpha: x)`
+  - `Colors.black45` (scrim/overlay) → `Theme.of(context).colorScheme.scrim.withValues(alpha: 0.45)`
+  - `Colors.black54` (shadow text) → `Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.54)`
+  Files to specifically audit: `lib/widgets/snapshot_card.dart`, `lib/widgets/neuron_detail_sheet.dart`, `lib/widgets/neuron_info_overlay.dart`, `lib/widgets/convergence_chart.dart`, `lib/widgets/signal_plotter.dart`, `lib/widgets/neural_canvas_painter.dart`, `lib/widgets/onboarding/watch_mode_step.dart`, `lib/widgets/onboarding/control_step.dart`, `lib/widgets/onboarding/explore_step.dart`.
+  For `CustomPainter` subclasses where `BuildContext` is not available, pass `ColorScheme colorScheme` as a constructor parameter from the parent widget and use it inside `paint()`.
+  After updating, manually test by toggling between dark and light modes via the Profile screen. Every screen must be fully readable in both modes. Run `flutter analyze` — zero errors.
+
+- [ ] **78. Save State & Vault Filters:** Two UX fixes in one prompt.
+  **Part 1 — Save dialog loading state:**
+  In `lib/screens/simulate_screen.dart`, in the `_showSaveDialog` bottom sheet:
+  1. Add a `bool _isSaving = false` variable inside the `StatefulBuilder`.
+  2. When the save button is tapped, immediately call `setState(() => _isSaving = true)` before the `await` call.
+  3. Replace the `ElevatedButton`'s child with a ternary: when `_isSaving`, show `SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary))`. When not saving, show `const Text('Save snapshot')`.
+  4. Set `onPressed: _isSaving ? null : () { ... }` to prevent double-tap.
+  5. Wrap the await in try/finally to reset `_isSaving = false` on both success and error.
+  **Part 2 — Vault gallery filter and sort:**
+  In `lib/screens/vault_screen.dart`:
+  1. Add a `String _filterTask = 'all'` and `String _sortBy = 'date'` to the widget state (convert to `ConsumerStatefulWidget`).
+  2. Above the `ListView` in `_buildPublicGallery`, add a horizontal `SingleChildScrollView` with filter chips: "All", "Eyeblink", "Sine", "VOR". Tapping updates `_filterTask` and calls `setState`.
+  3. Add a `PopupMenuButton` sort control in the gallery tab's header row with options "Newest first", "Best performance" (sort by `finalErrorRate` ascending).
+  4. Apply the filter and sort client-side before passing the list to `ListView.builder`. No new Firestore queries needed.
+  5. Apply the same filter chips to the "My Experiments" tab for consistency.
+  Run `flutter analyze` — zero errors.
+
+## Phase 18: User Experience— Neuron Count Configurator
+
+- [ ] **79. Network Configurator UI:** Allow users to configure the number of each neuron type before running a simulation. This exposes the `NetworkConfig` model that already exists.
+  1. Create `lib/providers/network_config_provider.dart`:
+     - `NetworkConfigNotifier` extending `Notifier` with `build()` returning `NetworkConfig.defaultConfig()`.
+     - Method `update(NetworkConfig c) => state = c`.
+     - Expose as `networkConfigProvider`.
+  2. Create `lib/screens/network_config_screen.dart` as a `ConsumerWidget`:
+     - `AppBar` with title "Network topology" and a reset-to-defaults `IconButton`.
+     - A `ListView` with one section per cell type: GC (Granule cells), BC (Basket cells), PC (Purkinje cells), SC (Stellate cells), DCN (Output nuclei).
+     - For each type, show a `ListTile` with: the cell type name + a one-line biological role subtitle; a `Row` containing a decrement `IconButton`, the current count in a `SizedBox(width: 40)` `Text`, and an increment `IconButton`.
+     - Enforce sensible limits: GC 2–50, BC 1–20, PC 1–10, SC 0–10, DCN 2 (fixed at 2 for standard tasks, shown as read-only with a note "Fixed — required for task environments").
+     - Show a live neuron total at the bottom: "Total neurons: N" with a color-coded warning in `colorScheme.error` if N > 30: "Large networks may affect performance at 10x speed."
+     - A prominent "Apply & reset simulation" `FilledButton` at the bottom that calls `ref.read(simulationProvider.notifier).resetEpisode(config: ref.read(networkConfigProvider))` and calls `context.go('/shell/simulate')`.
+  3. Add a "Configure network" `ListTile` entry to `lib/screens/profile_screen.dart` with `Icons.account_tree` as the leading icon, navigating to `NetworkConfigScreen`.
+  4. Run `flutter analyze` — zero errors.
+
+- [ ] **80. Configurator Integration:** Connect the network configurator to the full simulation lifecycle so the chosen topology is used everywhere.
+  1. In `lib/providers/simulation_provider.dart`, update `SimulationNotifier.build()` to read `networkConfigProvider` and pass it to `_engine.initialState(config: ref.read(networkConfigProvider))`. Add `ref.listen(networkConfigProvider, (_, __) {})` so changes to the config invalidate the notifier correctly — but do NOT auto-reset; only reset when the user explicitly taps "Apply".
+  2. In `lib/screens/simulate_screen.dart`, add the current topology summary to the AppBar subtitle or as a small chip row below the task selector: "GC: 10 | BC: 5 | PC: 2 | SC: 1" using the values from `ref.watch(networkConfigProvider)`. Make it a tappable `InkWell` that navigates to `NetworkConfigScreen` so users can reach it without going to Profile.
+  3. In `_showSaveDialog`, add the network config to the saved `ExperimentSnapshot`. Update `ExperimentSnapshot` model to include an optional `NetworkConfig? networkConfig` field. Update `toFirestore()` to serialize it as a nested map `{'gcCount': ..., 'bcCount': ...}` and update `fromFirestore()` to deserialize it. Update `ExperimentSnapshot.fromSimulation(...)` to accept and store the config.
+  4. In `lib/widgets/snapshot_card.dart`, add a small topology chip below the task chip if `snapshot.networkConfig != null`: e.g. "GC:10 PC:2" in a compact style matching the existing task chip.
+  5. In `lib/providers/simulation_provider.dart`, in `loadSnapshot()`, if the snapshot's `networkConfig` is non-null, also update `networkConfigProvider` before rebuilding: `ref.read(networkConfigProvider.notifier).update(snapshot.networkConfig!)`.
+  6. Run `flutter analyze` and `flutter test` — all tests must pass.
+
+## Phase 19: User Experience— UI/UX Polish and Layout Fixes
+
+- [ ] **81. Simulate Screen Layout Overhaul:** The simulate screen stacks TaskSelector + NeuralCanvas3D + SignalPlotter + ConvergenceChart + FABs in a single Column, causing overflow on smaller devices and visual crowding. Redesign the layout.
+  1. Replace the flat `Column` body with a `CustomScrollView` using `SliverList`. Structure:
+     - `SliverAppBar` (floating, snap) containing the simulation controls (play/pause/stop/speed/save). Use `backgroundColor: Theme.of(context).colorScheme.surface` with `elevation: 0` and a bottom border.
+     - A `SliverToBoxAdapter` for the `TaskSelector` with `16px` vertical padding.
+     - A `SliverFillRemaining(hasScrollBody: false)` containing a `Column` with:
+       a. `Expanded(flex: 5)` — `NeuralCanvas3D` (takes the majority of screen).
+       b. A `Divider(height: 1)`.
+       c. `SizedBox(height: 140)` — `SignalPlotter` with internal padding `EdgeInsets.fromLTRB(12, 8, 12, 4)`.
+       d. `SizedBox(height: 110)` — `ConvergenceChart` with matching padding.
+       e. `SizedBox(height: 16)` — bottom breathing room for nav bar.
+  2. Move the FAB column (reset view + hint) to inside the `NeuralCanvas3D` widget's own `Stack`, positioned at `bottom: 8, right: 8` — remove it from `SimulateScreen` entirely. This keeps the FABs visually anchored to the canvas.
+  3. Remove the `Stack` wrapper from `SimulateScreen.build()`. The `NeuralCanvas3D` now manages its own overlays internally.
+  4. On the AppBar, replace the raw `IconButton` row with a cleaner layout: group play/pause/stop into a single `SegmentedButton`-style widget, and put speed + save as trailing `IconButton`s. This reduces AppBar clutter from 5+ icons to 3 visual units.
+  5. Verify on screen sizes: iPhone SE (375×667), standard (390×844), and tablet (768×1024) using `flutter run` device preview. No overflow errors in any layout.
+  Run `flutter analyze` — zero errors.
+
+- [ ] **82. Chart Axis Labels & Scales:** The convergence chart and signal plotter display data without any reference scale, making them informationally empty. Add axis labels and improve overall chart readability.
+  **ConvergenceChartPainter in `lib/widgets/convergence_chart.dart`:**
+  1. Reserve `leftMargin = 40.0` and `bottomMargin = 20.0` inside `paint()`. All chart drawing must start at x=leftMargin, y=0 and end at x=size.width, y=size.height-bottomMargin.
+  2. Draw 5 horizontal gridlines at Y positions corresponding to values 0.0, 0.25, 0.5, 0.75, 1.0. Use a dashed stroke: `strokeWidth: 0.5`, color `labelStyle.color?.withValues(alpha: 0.2)`.
+  3. For each gridline, draw a Y-axis label at x=0, aligned right (`TextPainter` with `textAlign: TextAlign.right`, width=36). Labels: "1.0", "0.75", "0.5", "0.25", "0".
+  4. Draw X-axis episode labels: first episode number and last episode number at the bottom margin. Use `labelStyle` at 10px.
+  5. Update the legend to also show current values: "Punishment: 0.42" and "|TD error|: 0.18" — read the last record from `history.last`.
+  **SignalPlotterPainter in `lib/widgets/signal_plotter.dart`:**
+  1. Draw a single horizontal center line (y=0 reference) as a dashed 0.5px line in `Colors.white24` → replace with `colorScheme.outline.withValues(alpha: 0.2)` after the theme fix prompt.
+  2. Draw Y-axis tick marks at +1.0 and -1.0 with tiny labels "1" and "-1" at the left edge.
+  3. Draw a vertical "now" indicator: a thin vertical line at x=size.width-1 to make it clear the chart scrolls right-to-left.
+  Run `flutter analyze` — zero errors.
+
+- [ ] **83. Tactile & Discoverability Polish:** Three tactile and discoverability improvements.
+  **Part 1 — Haptic feedback:**
+  Add `import 'package:flutter/services.dart'` where needed and add haptic calls:
+  - `HapticFeedback.lightImpact()` in `NeuralCanvas3DState._handleTapUp()` when a neuron is found.
+  - `HapticFeedback.mediumImpact()` in `SimulationNotifier.startSimulation()`.
+  - `HapticFeedback.selectionClick()` in `EnvironmentNotifier.selectTask()` when the task actually changes.
+  - `HapticFeedback.lightImpact()` in `VaultNotifier.saveSnapshot()` on success (before the SnackBar).
+  **Part 2 — Canvas gesture hint:**
+  1. In `lib/services/prefs_service.dart`, add `Future hasSeenCanvasHint()` and `Future setCanvasHintSeen()` using key `'canvas_hint_seen'`.
+  2. In `NeuralCanvas3DState.initState()`, check `PrefsService().hasSeenCanvasHint()`. If false, after a 1-second delay show an `OverlayEntry` containing a semi-transparent instruction card: "Swipe to rotate · Pinch to zoom · Tap to inspect" centered over the canvas. Auto-dismiss after 3 seconds or on first touch via `GestureDetector`. On dismiss, call `setCanvasHintSeen()`.
+  3. The hint card styling: `Container` with `color: colorScheme.inverseSurface.withValues(alpha: 0.85)`, `borderRadius: BorderRadius.circular(12)`, `padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12)`. Text in `colorScheme.onInverseSurface`.
+  **Part 3 — Onboarding resume:**
+  In `lib/screens/onboarding_screen.dart`:
+  1. In `_OnboardingScreenState.initState()`, read `ref.read(prefsServiceProvider).getOnboardingStep()` (add this method to `PrefsService` using key `'onboarding_step'`, returning an `int` 0-2).
+  2. After `_pageController` is created, if the stored step > 0, call `_pageController.jumpToPage(storedStep)` and set `_currentPage = storedStep`.
+  3. In `onPageChanged`, call `ref.read(prefsServiceProvider).setOnboardingStep(index)`.
+  4. In `_onComplete()`, call `ref.read(prefsServiceProvider).clearOnboardingStep()` before navigating.
+  Run `flutter analyze` — zero errors.
+
+- [ ] **84. Comprehensive Visual Polish:** A comprehensive visual polish pass to elevate the app from functional to premium. Apply these changes across the entire codebase.
+  **ThemeService (`lib/services/theme_service.dart`):**
+  1. In `cyberLabTheme`, add: `cardTheme: CardThemeData(elevation: 0, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Color(0x1AFFFFFF), width: 0.5)))`.
+  2. Add `appBarTheme: AppBarTheme(elevation: 0, scrolledUnderElevation: 0, centerTitle: false, titleTextStyle: GoogleFonts.spaceMono(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF00FFFF)))`.
+  3. Add `bottomNavigationBarTheme: BottomNavigationBarThemeData(elevation: 0, backgroundColor: Color(0xFF0A0A0A), selectedItemColor: Color(0xFF00FFFF), unselectedItemColor: Color(0xFF5F5E5A), type: BottomNavigationBarType.fixed)`.
+  4. Add `inputDecorationTheme: InputDecorationTheme(filled: true, fillColor: Color(0xFF1E1E1E), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12)), borderSide: BorderSide(color: Color(0x33FFFFFF), width: 0.5)), contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14))`.
+  5. In `presentationTheme`, add matching `cardTheme`, `appBarTheme`, `bottomNavigationBarTheme`, and `inputDecorationTheme` using light-mode appropriate values.
+  **SnapshotCard (`lib/widgets/snapshot_card.dart`):**
+  - Replace the raw `Card` + `ListTile` with a custom `Container` using the new card theme.
+  - Add `12px` vertical and `16px` horizontal padding.
+  - Use a two-row layout: top row = title + public badge; bottom row = task chip + episode count + error rate + date.
+  - Chips: use `Chip` with `visualDensity: VisualDensity.compact`, `padding: EdgeInsets.zero`, `labelStyle: TextStyle(fontSize: 11)`.
+  - Show a `trailing` chevron icon only on wide-enough screens (check `MediaQuery`).
+  **TaskSelector (`lib/widgets/task_selector.dart`):**
+  - Add `16px` horizontal padding to the `SegmentedButton` wrapper.
+  - Set `style: ButtonStyle(minimumSize: WidgetStateProperty.all(Size(0, 40)))` on the `SegmentedButton`.
+  - Wrap the `VorConfigPanel` in an `AnimatedSize(duration: Duration(milliseconds: 250), curve: Curves.easeInOut)` so it expands/collapses smoothly.
+  **General spacing rules (apply everywhere):**
+  - All `ListView` children: minimum `8px` vertical gap between items.
+  - All `Column`/`Row` in screens: use `gap` equivalent — replace adjacent `SizedBox` pairs with `mainAxisSpacing` or consistent `SizedBox(height: 16)`.
+  - `AppBar` actions: `IconButton` with `visualDensity: VisualDensity.compact` to tighten the tap targets.
+  Run `flutter analyze` — zero errors.
+
+- [ ] **85. Task Parameter Sliders:** Currently only the VOR task has a config panel. Expose tunable parameters for Eyeblink and Sine Wave to match the educational depth of VOR.
+  1. Create `lib/models/eyeblink_config.dart` with `@immutable class EyeblinkConfig`: fields `double csDurationMs` (default 250), `double usDurationMs` (default 50), `double trialDurationS` (default 1.0). Include `copyWith`.
+  2. Create `lib/models/sine_config.dart` with `@immutable class SineConfig`: fields `double frequencyHz` (default 1.0), `double amplitude` (default 1.0). Include `copyWith`.
+  3. Create providers `eyeblinkConfigProvider` and `sineConfigProvider` as `NotifierProvider`s following the exact same pattern as `vorConfigProvider`.
+  4. Update `EyeblinkEnvironment` and `SineWaveEnvironment` constructors to accept their respective config objects. Update `EnvironmentNotifier._buildEnv()` to pass `ref.read(eyeblinkConfigProvider)` and `ref.read(sineConfigProvider)` respectively.
+  5. In `lib/widgets/task_selector.dart`, add two new config panel widgets:
+     - `EyeblinkConfigPanel`: Two sliders — "CS window" (50ms–500ms, showing value in ms), "Trial duration" (0.5s–3.0s). Status label: "Short CS = harder association" if < 150ms, "Standard Pavlovian timing" otherwise.
+     - `SineConfigPanel`: Two sliders — "Frequency" (0.25Hz–4.0Hz), "Amplitude" (0.1–2.0). Status label: "High frequency = rapid adaptation required" if > 2Hz.
+  6. Update the `TaskSelector` widget to show the appropriate config panel based on the active task — wrap all three panels in the same `AnimatedSize` pattern used for `VorConfigPanel`.
+  7. Run `flutter analyze` — zero errors.
+
+## Phase 20: User Experience— Differentiating Features
+
+- [ ] **86. Export & Deep Linking:** Allow researchers to share and export experiments, creating organic virality.
+  1. Add `share_plus: ^10.0.0` to `pubspec.yaml`. Run `flutter pub get`.
+  2. In `lib/models/experiment_snapshot.dart`, add `String toJson()` that returns a clean JSON string of the snapshot (use `jsonEncode` with all fields except `userId` for privacy). Add `factory ExperimentSnapshot.fromJson(String json)` for import.
+  3. In `lib/screens/vault_screen.dart`, add a share `IconButton` to each `SnapshotCard`'s trailing area (in addition to the chevron). On tap:
+     - For public snapshots: `Share.share('Check out my CerebroSim experiment: ${snapshot.title}\nTask: ${snapshot.taskName} | Error rate: ${snapshot.finalErrorRate.toStringAsFixed(3)}\ncerebrosim://snapshot/${snapshot.id}')`.
+     - For private snapshots: share the JSON export as a file attachment using `Share.shareXFiles([XFile.fromData(utf8.encode(snapshot.toJson()), name: '${snapshot.title}.json', mimeType: 'application/json')])`.
+  4. Add deep link handling (URI scheme `cerebrosim://`). In `main.dart`, add `uni_links: ^0.5.1` or use Flutter's built-in `PlatformDispatcher`. Listen for incoming URIs matching `cerebrosim://snapshot/{id}`. On match, navigate to the vault tab and highlight/open the matching snapshot.
+  5. Update `ios/Runner/Info.plist` to register the `cerebrosim` URL scheme under `CFBundleURLTypes`. Update `android/app/src/main/AndroidManifest.xml` to register an `intent-filter` for the scheme.
+  6. Run `flutter analyze` — zero errors.
+
+- [ ] **87. AI-Powered Interpretation:** Add AI-powered plain-English interpretation of simulation results — the single biggest differentiator versus any competing app.
+  IMPORTANT: The API key must never be stored in the client. This feature requires a Firebase Cloud Function as a proxy. If Cloud Functions are not yet set up, stub the HTTP call with a hardcoded response and add a TODO comment.
+  1. Create `functions/src/index.ts` (or use existing Cloud Functions setup). Add an HTTPS callable function `interpretExperiment` that:
+     - Accepts `{ episodeHistory: EpisodeRecord[], finalErrorRate: number, taskName: string, networkConfig: NetworkConfig }`.
+     - Calls the Anthropic Messages API with a system prompt: "You are a neuroscience educator explaining cerebellar learning simulation results to a student. Be concise, specific, and reference real neuroscience (LTD, Purkinje cells, climbing fibers). Maximum 3 paragraphs."
+     - Returns `{ interpretation: string }`.
+     - Store the Anthropic API key in Firebase environment config, not in code.
+  2. In `lib/services/interpretation_service.dart`, create `Future interpretExperiment(...)` that calls the Cloud Function using `FirebaseFunctions.instance.httpsCallable('interpretExperiment').call(data)`.
+  3. In `lib/screens/vault_screen.dart`, add an "Interpret" `TextButton` to each snapshot card in the "My Experiments" tab. On tap:
+     - Show a `showModalBottomSheet` with a `FutureBuilder` that calls `interpretExperiment`.
+     - While loading: `CircularProgressIndicator` centered with text "Analyzing your neural network...".
+     - On data: display the interpretation text in a scrollable `Text` widget with `style: Theme.of(context).textTheme.bodyMedium`.
+     - On error: show "Interpretation unavailable — check your connection."
+  4. Cache the interpretation result in the Firestore snapshot document under field `aiInterpretation` so it only generates once per snapshot.
+  5. Run `flutter analyze` — zero errors.
+
+- [ ] **88. Guided Experiments Mode:** Add a "Guided experiments" mode that turns the app into a teaching tool for neuroscience students and professors.
+  1. Create `lib/models/guided_experiment.dart` with `@immutable class GuidedExperiment`: fields `String id`, `String title`, `String description`, `String hypothesis`, `List steps` (instruction strings), `NetworkConfig networkConfig`, `CerebellarTask task`, `VorConfig? vorConfig`, `EyeblinkConfig? eyeblinkConfig`, `SineConfig? sineConfig`, `String? paperReference`.
+  2. Create `lib/data/guided_experiments.dart` with a `const List kGuidedExperiments` containing at least 4 pre-built experiments:
+     - "Pavlovian fear conditioning" (Eyeblink, default config, steps explaining CS-US interval, expected convergence curve, reference to Thompson 1986).
+     - "Cerebellar ataxia simulation" (VOR, targetGain: 0.4, steps explaining how low gain models ataxic VOR, reference to Ito 1984).
+     - "Gain-up adaptation" (VOR, targetGain: 1.8, steps showing gain-up requiring more episodes, comparing convergence rates).
+     - "High-frequency tracking" (SineWave, frequencyHz: 3.0, steps showing how fast signals stress the eligibility trace mechanism).
+  3. Create `lib/screens/guided_experiments_screen.dart` as a `ConsumerWidget` displaying the experiments in a `ListView`. Each card shows: title, description preview (2 lines), task chip, paper reference as a tappable link. Tapping opens a detail screen.
+  4. Create `lib/screens/guided_experiment_detail_screen.dart` showing the full hypothesis, numbered steps in a `Stepper` widget (can mark each step complete), and a prominent "Run this experiment" `FilledButton` that applies the config and navigates to the simulate screen.
+  5. Add a "Guided experiments" entry to `AppShell`'s bottom nav bar OR add it as a `ListTile` in `ProfileScreen` and a banner card at the top of `SimulateScreen`.
+  6. Run `flutter analyze` — zero errors.

@@ -1,4 +1,4 @@
-package com.example.cerebrosim
+package com.mirkodibra.cerebrosim
 
 import io.flutter.embedding.android.FlutterActivity
 
