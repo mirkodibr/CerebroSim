@@ -344,7 +344,7 @@
   3. Add a "Configure network" `ListTile` entry to `lib/screens/profile_screen.dart` with `Icons.account_tree` as the leading icon, navigating to `NetworkConfigScreen`.
   4. Run `flutter analyze` — zero errors.
 
-- [ ] **80. Configurator Integration:** Connect the network configurator to the full simulation lifecycle so the chosen topology is used everywhere.
+- [x] **80. Configurator Integration:** Connect the network configurator to the full simulation lifecycle so the chosen topology is used everywhere.
   1. In `lib/providers/simulation_provider.dart`, update `SimulationNotifier.build()` to read `networkConfigProvider` and pass it to `_engine.initialState(config: ref.read(networkConfigProvider))`. Add `ref.listen(networkConfigProvider, (_, __) {})` so changes to the config invalidate the notifier correctly — but do NOT auto-reset; only reset when the user explicitly taps "Apply".
   2. In `lib/screens/simulate_screen.dart`, add the current topology summary to the AppBar subtitle or as a small chip row below the task selector: "GC: 10 | BC: 5 | PC: 2 | SC: 1" using the values from `ref.watch(networkConfigProvider)`. Make it a tappable `InkWell` that navigates to `NetworkConfigScreen` so users can reach it without going to Profile.
   3. In `_showSaveDialog`, add the network config to the saved `ExperimentSnapshot`. Update `ExperimentSnapshot` model to include an optional `NetworkConfig? networkConfig` field. Update `toFirestore()` to serialize it as a nested map `{'gcCount': ..., 'bcCount': ...}` and update `fromFirestore()` to deserialize it. Update `ExperimentSnapshot.fromSimulation(...)` to accept and store the config.

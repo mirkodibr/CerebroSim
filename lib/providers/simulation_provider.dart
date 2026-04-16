@@ -7,6 +7,7 @@ import '../models/simulation_constants.dart';
 import '../models/plot_point.dart';
 import '../models/episode_record.dart';
 import '../models/network_config.dart';
+import '../models/experiment_snapshot.dart';
 import '../services/simulation_engine.dart';
 import 'environment_provider.dart';
 import 'plot_buffer_provider.dart';
@@ -14,6 +15,7 @@ import 'learning_rate_provider.dart';
 import 'episode_history_provider.dart';
 import 'gamma_provider.dart';
 import 'dcn_baseline_provider.dart';
+import 'network_config_provider.dart';
 
 /// A provider that exposes an instance of [SimulationEngine].
 /// The engine contains the core logic for updating the neural network state.
@@ -39,11 +41,17 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   @override
   SimulationState build() {
     WidgetsBinding.instance.addObserver(this);
+
+    // Listen to network config changes to invalidate correctly but not auto-reset
+    ref.listen(networkConfigProvider, (prev, next) {});
+
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
       _timer?.cancel();
     });
-    return _engine.initialState();
+    
+    final initialConfig = ref.read(networkConfigProvider);
+    return _engine.initialState(config: initialConfig);
   }
 
   @override
@@ -104,9 +112,18 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
     state = _engine.initialState(config: config);
   }
 
-  /// Loads a previously saved snapshot of synaptic weights into the current simulation state.
-  /// This allows restoring the network's learning state from the vault.
-  void loadSnapshot(List<double> weights) {
+  /// Loads a previously saved snapshot into the current simulation state.
+  /// This allows restoring the network's learning state and topology from the vault.
+  void loadSnapshot(ExperimentSnapshot snapshot) {
+    // If the snapshot has a different network config, we must update our config first
+    if (snapshot.networkConfig != null) {
+      ref.read(networkConfigProvider.notifier).update(snapshot.networkConfig!);
+      
+      // Rebuild state with the new config first
+      state = _engine.initialState(config: snapshot.networkConfig!);
+    }
+
+    final weights = snapshot.synapticWeights;
     if (weights.length != state.synapses.length) return;
     
     final nextSynapses = List.generate(state.synapses.length, (i) {

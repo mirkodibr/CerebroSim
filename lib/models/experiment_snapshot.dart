@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 import 'simulation_state.dart';
+import 'network_config.dart';
 
 /// Represents a saved state of a cerebellar simulation experiment.
 ///
@@ -30,6 +31,8 @@ class ExperimentSnapshot {
   final String title;
   /// The timestamp when the snapshot was created.
   final DateTime createdAt;
+  /// The network topology used in the experiment.
+  final NetworkConfig? networkConfig;
 
   const ExperimentSnapshot({
     required this.id,
@@ -43,6 +46,7 @@ class ExperimentSnapshot {
     required this.isPublic,
     required this.title,
     required this.createdAt,
+    this.networkConfig,
   });
 
   /// Converts the snapshot into a Map suitable for storage in Cloud Firestore.
@@ -58,12 +62,21 @@ class ExperimentSnapshot {
       'isPublic': isPublic,
       'title': title,
       'createdAt': Timestamp.fromDate(createdAt),
+      'networkConfig': networkConfig != null ? {
+        'gcCount': networkConfig!.gcCount,
+        'bcCount': networkConfig!.bcCount,
+        'pcCount': networkConfig!.pcCount,
+        'scCount': networkConfig!.scCount,
+        'dcnCount': networkConfig!.dcnCount,
+      } : null,
     };
   }
 
   /// Creates an [ExperimentSnapshot] from a Firestore [DocumentSnapshot].
   factory ExperimentSnapshot.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final configData = data['networkConfig'] as Map<String, dynamic>?;
+
     return ExperimentSnapshot(
       id: doc.id,
       userId: data['userId'] ?? '',
@@ -76,6 +89,13 @@ class ExperimentSnapshot {
       isPublic: data['isPublic'] ?? false,
       title: data['title'] ?? 'Untitled Experiment',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      networkConfig: configData != null ? NetworkConfig(
+        gcCount: configData['gcCount'] ?? 10,
+        bcCount: configData['bcCount'] ?? 5,
+        pcCount: configData['pcCount'] ?? 2,
+        scCount: configData['scCount'] ?? 1,
+        dcnCount: configData['dcnCount'] ?? 2,
+      ) : null,
     );
   }
 
@@ -89,6 +109,7 @@ class ExperimentSnapshot {
     required String title,
     required bool isPublic,
     required SimulationState state,
+    NetworkConfig? networkConfig,
   }) {
     return ExperimentSnapshot(
       id: '', // Will be set by Firestore
@@ -102,6 +123,7 @@ class ExperimentSnapshot {
       isPublic: isPublic,
       title: title,
       createdAt: DateTime.now(),
+      networkConfig: networkConfig,
     );
   }
 
@@ -118,6 +140,7 @@ class ExperimentSnapshot {
     bool? isPublic,
     String? title,
     DateTime? createdAt,
+    NetworkConfig? networkConfig,
   }) {
     return ExperimentSnapshot(
       id: id ?? this.id,
@@ -131,6 +154,7 @@ class ExperimentSnapshot {
       isPublic: isPublic ?? this.isPublic,
       title: title ?? this.title,
       createdAt: createdAt ?? this.createdAt,
+      networkConfig: networkConfig ?? this.networkConfig,
     );
   }
 }

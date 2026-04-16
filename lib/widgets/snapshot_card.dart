@@ -26,6 +26,7 @@ class SnapshotCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 4),
             Row(
               children: [
                 Chip(
@@ -42,6 +43,20 @@ class SnapshotCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (snapshot.networkConfig != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    _buildCompactTag(context, 'GC:${snapshot.networkConfig!.gcCount}'),
+                    _buildCompactTag(context, 'BC:${snapshot.networkConfig!.bcCount}'),
+                    _buildCompactTag(context, 'PC:${snapshot.networkConfig!.pcCount}'),
+                    _buildCompactTag(context, 'SC:${snapshot.networkConfig!.scCount}'),
+                  ],
+                ),
+              ),
             Text(
               'Ep: ${snapshot.episodeCount} | Error: ${snapshot.finalErrorRate.toStringAsFixed(4)}',
               style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.7)),
@@ -56,5 +71,19 @@ class SnapshotCard extends StatelessWidget {
       ),
     );
   }
-}
 
+  Widget _buildCompactTag(BuildContext context, String label) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: colorScheme.outline.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 9, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+      ),
+    );
+  }
+}

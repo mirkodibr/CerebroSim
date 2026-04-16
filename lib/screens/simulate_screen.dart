@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vault_provider.dart';
 import '../providers/environment_provider.dart';
+import '../providers/network_config_provider.dart';
 import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
@@ -38,6 +40,9 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
     
     /// Provides access to simulation control methods.
     final notifier = ref.read(simulationProvider.notifier);
+
+    /// Monitors the current network topology configuration.
+    final networkConfig = ref.watch(networkConfigProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -88,6 +93,22 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             children: [
               /// UI component for selecting between different cerebellar tasks (e.g., VOR, Eyeblink).
               const TaskSelector(),
+
+              /// Summary of current network topology.
+              InkWell(
+                onTap: () => context.push('/network_config'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Text(
+                    'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
               
               /// Interactive 3D visualization of the neural network architecture and activity.
               Expanded(
@@ -205,6 +226,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                                 title: titleController.text,
                                 isPublic: isPublic,
                                 state: simState,
+                                networkConfig: ref.read(networkConfigProvider),
                               );
 
                               await ref.read(vaultProvider.notifier).saveSnapshot(snapshot);

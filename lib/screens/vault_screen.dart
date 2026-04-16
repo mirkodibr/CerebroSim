@@ -186,7 +186,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
 
   /// Injects the synaptic weights from a [snapshot] into the active simulation.
   void _loadSnapshot(BuildContext context, WidgetRef ref, ExperimentSnapshot snapshot) {
-    ref.read(simulationProvider.notifier).loadSnapshot(snapshot.synapticWeights);
+    ref.read(simulationProvider.notifier).loadSnapshot(snapshot);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Loaded weights from "${snapshot.title}"')),
     );
