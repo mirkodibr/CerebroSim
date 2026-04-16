@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
@@ -69,6 +70,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   /// Starts or resumes the simulation.
   void startSimulation() {
     if (state.isRunning) return;
+    HapticFeedback.mediumImpact();
     state = state.copyWith(isRunning: true);
     _startTicker();
   }

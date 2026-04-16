@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/experiment_snapshot.dart';
 import '../services/database_service.dart';
@@ -52,6 +53,7 @@ class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
     
     try {
       await ref.read(databaseServiceProvider).saveSnapshot(snap);
+      HapticFeedback.lightImpact();
     } catch (e, s) {
       state = AsyncError(e, s);
       // Restore previous state after an error to prevent permanent loading indicators

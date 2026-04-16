@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cerebellar_task.dart';
 import '../models/environment.dart';
@@ -42,6 +43,7 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
   /// Changes the active cerebellar task, resets the environment, and resets the simulation episode.
   void selectTask(CerebellarTask task) {
     if (state == task) return;
+    HapticFeedback.selectionClick();
     state = task;
     _activeEnv = _buildEnv(task);
     _activeEnv.reset();

@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/simulation_provider.dart';
+import '../providers/prefs_provider.dart';
 import '../services/neural_3d_projection.dart';
 import '../models/neuron_model.dart';
 import 'neuron_info_overlay.dart';
@@ -20,6 +23,7 @@ class NeuralCanvas3D extends ConsumerStatefulWidget {
 
 class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  OverlayEntry? _hintEntry;
   
   // State fields for 3D view
   double _rotX = 0.4;
@@ -38,10 +42,59 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat();
+
+    _checkAndShowHint();
+  }
+
+  Future<void> _checkAndShowHint() async {
+    final prefs = ref.read(prefsServiceProvider);
+    final hasSeen = await prefs.hasSeenCanvasHint();
+    if (!hasSeen) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) _showGestureHint();
+      });
+    }
+  }
+
+  void _showGestureHint() {
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    _hintEntry = OverlayEntry(
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: colorScheme.inverseSurface.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Swipe to rotate · Pinch to zoom · Tap to inspect',
+              style: TextStyle(color: colorScheme.onInverseSurface, fontSize: 14),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_hintEntry!);
+
+    // Auto-dismiss after 3s
+    Future.delayed(const Duration(seconds: 3), () => _dismissHint());
+  }
+
+  void _dismissHint() {
+    if (_hintEntry != null) {
+      _hintEntry?.remove();
+      _hintEntry = null;
+      ref.read(prefsServiceProvider).setCanvasHintSeen();
+    }
   }
 
   @override
   void dispose() {
+    _hintEntry?.remove();
     _animationController.dispose();
     super.dispose();
   }
@@ -59,6 +112,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
 
   /// Handles tap events to select a neuron in 3D space.
   void _handleTapUp(TapUpDetails details) {
+    _dismissHint();
     final RenderBox box = context.findRenderObject() as RenderBox;
     final Offset localPos = box.globalToLocal(details.globalPosition);
     final Size size = box.size;
@@ -96,6 +150,10 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
         nearestId = n.id;
         nearestPos = screenPos;
       }
+    }
+
+    if (nearestId != null) {
+      HapticFeedback.lightImpact();
     }
 
     setState(() {
@@ -143,6 +201,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
         GestureDetector(
           onTapUp: _handleTapUp,
           onScaleStart: (details) {
+            _dismissHint();
             _baseZoom = _zoom;
           },
           onScaleUpdate: (details) {

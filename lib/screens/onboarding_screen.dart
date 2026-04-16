@@ -26,6 +26,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// Tracks the current step of the onboarding process.
   int _currentPage = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkStoredStep();
+  }
+
+  Future<void> _checkStoredStep() async {
+    final prefs = ref.read(prefsServiceProvider);
+    final step = await prefs.getOnboardingStep();
+    if (step > 0 && mounted) {
+      _pageController.jumpToPage(step);
+      setState(() => _currentPage = step);
+    }
+  }
+
   /// Advances the user to the next step in the onboarding process.
   void _onNext() {
     _pageController.nextPage(
@@ -48,7 +63,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   /// invalidates the [onboardingCompleteProvider] to reflect the change globally.
   /// Navigation is handled automatically by the router redirect logic.
   Future<void> _onComplete() async {
-    await ref.read(prefsServiceProvider).setOnboardingComplete();
+    final prefs = ref.read(prefsServiceProvider);
+    await prefs.setOnboardingComplete();
+    await prefs.clearOnboardingStep();
     ref.invalidate(onboardingCompleteProvider);
   }
 
@@ -84,7 +101,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (index) => setState(() => _currentPage = index),
+        onPageChanged: (index) {
+          setState(() => _currentPage = index);
+          ref.read(prefsServiceProvider).setOnboardingStep(index);
+        },
         children: [
           WatchModeStep(onNext: _onNext),
           ControlStep(onNext: _onNext),

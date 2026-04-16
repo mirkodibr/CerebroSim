@@ -387,7 +387,7 @@
   3. Draw a vertical "now" indicator: a thin vertical line at x=size.width-1 to make it clear the chart scrolls right-to-left.
   Run `flutter analyze` — zero errors.
 
-- [ ] **83. Tactile & Discoverability Polish:** Three tactile and discoverability improvements.
+- [x] **83. Tactile & Discoverability Polish:** Three tactile and discoverability improvements.
   **Part 1 — Haptic feedback:**
   Add `import 'package:flutter/services.dart'` where needed and add haptic calls:
   - `HapticFeedback.lightImpact()` in `NeuralCanvas3DState._handleTapUp()` when a neuron is found.
