@@ -14,6 +14,7 @@ class NeuronDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final description = kCellTypeDescriptions[neuron.cellType] ?? 'No description available.';
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(24.0),
@@ -28,15 +29,17 @@ class NeuronDetailSheet extends StatelessWidget {
                 neuron.cellType,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: colorScheme.onSurface,
                 ),
               ),
               Chip(
                 label: Text(
                   neuron.isInhibitory ? 'Inhibitory' : 'Excitatory',
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: colorScheme.onTertiaryContainer),
                 ),
-                backgroundColor: neuron.isInhibitory ? Colors.red.withValues(alpha: 0.3) : Colors.cyan.withValues(alpha: 0.3),
+                backgroundColor: neuron.isInhibitory 
+                  ? colorScheme.error.withValues(alpha: 0.3) 
+                  : colorScheme.tertiaryContainer,
               ),
             ],
           ),
@@ -48,12 +51,12 @@ class NeuronDetailSheet extends StatelessWidget {
             context, 
             'Status', 
             neuron.isFiring ? 'FIRING' : 'resting',
-            valueColor: neuron.isFiring ? Colors.red : Colors.grey,
+            valueColor: neuron.isFiring ? colorScheme.error : colorScheme.onSurface.withValues(alpha: 0.54),
           ),
-          const Divider(color: Colors.white24, height: 32),
+          Divider(color: colorScheme.outline.withValues(alpha: 0.24), height: 32),
           Text(
             description,
-            style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7), fontStyle: FontStyle.italic),
           ),
           const SizedBox(height: 24),
         ],
@@ -63,17 +66,19 @@ class NeuronDetailSheet extends StatelessWidget {
 
   /// Builds a stylized row for displaying a labeled data point.
   Widget _buildDataRow(BuildContext context, String label, String value, {Color? valueColor}) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           ...[
-            Text(label, style: const TextStyle(color: Colors.white70)),
+            Text(label, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7))),
             Text(
               value,
               style: TextStyle(
-                color: valueColor ?? Colors.white,
+                color: valueColor ?? colorScheme.onSurface,
                 fontFamily: 'monospace',
                 fontWeight: FontWeight.bold,
               ),

@@ -34,6 +34,7 @@ class ConvergenceChart extends ConsumerWidget {
         painter: ConvergenceChartPainter(
           history: history,
           labelStyle: theme.textTheme.labelSmall ?? const TextStyle(),
+          colorScheme: theme.colorScheme,
         ),
       ),
     );
@@ -44,10 +45,12 @@ class ConvergenceChart extends ConsumerWidget {
 class ConvergenceChartPainter extends CustomPainter {
   final List<EpisodeRecord> history;
   final TextStyle labelStyle;
+  final ColorScheme colorScheme;
 
   ConvergenceChartPainter({
     required this.history,
     required this.labelStyle,
+    required this.colorScheme,
   });
 
   @override
@@ -56,7 +59,7 @@ class ConvergenceChartPainter extends CustomPainter {
     final double height = size.height;
 
     final Paint axisPaint = Paint()
-      ..color = Colors.grey.withValues(alpha: 0.3)
+      ..color = colorScheme.outline.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
     // Draw axes

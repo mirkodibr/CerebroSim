@@ -71,7 +71,7 @@ class VorConfigPanel extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.all(8.0),
-      color: Colors.white.withValues(alpha: 0.05),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(

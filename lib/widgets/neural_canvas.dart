@@ -165,6 +165,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
               zoom: _zoom,
               selectedNeuronId: _selectedNeuronId,
               repaint: _animationController,
+              colorScheme: Theme.of(context).colorScheme,
             ),
           ),
         ),

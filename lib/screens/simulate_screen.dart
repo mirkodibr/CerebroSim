@@ -146,11 +146,12 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
     final titleController = TextEditingController();
     bool isPublic = false;
     final formKey = GlobalKey<FormState>();
+    final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: colorScheme.surface,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => Padding(
           padding: EdgeInsets.only(
@@ -165,20 +166,20 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Save Experiment', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Save Experiment', style: TextStyle(color: colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: titleController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: colorScheme.onSurface),
+                  decoration: InputDecoration(
                     labelText: 'Experiment Title',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                    border: const OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.length < 3) ? 'Minimum 3 characters' : null,
                 ),
                 SwitchListTile(
-                  title: const Text('Share Publicly', style: TextStyle(color: Colors.white70)),
+                  title: Text('Share Publicly', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7))),
                   value: isPublic,
                   onChanged: (v) => setState(() => isPublic = v),
                 ),

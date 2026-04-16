@@ -15,21 +15,23 @@ class ExploreStep extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      color: const Color(0xFF1E1E1E),
+      color: colorScheme.surface,
       padding: const EdgeInsets.all(32.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'Explore the Network',
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(color: colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Tap any cell to learn what it does. You can also switch between different training tasks.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 16),
           ),
           const SizedBox(height: 24),
           const TaskSelector(),
@@ -41,9 +43,10 @@ class ExploreStep extends ConsumerWidget {
             onPressed: onComplete,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
             ),
-            child: const Text('Start Researching →', style: TextStyle(fontSize: 18, color: Colors.black)),
+            child: const Text('Start Researching →', style: TextStyle(fontSize: 18)),
           ),
         ],
       ),

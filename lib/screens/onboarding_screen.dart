@@ -60,6 +60,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -67,14 +69,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         leading: Visibility(
           visible: _currentPage > 0,
           child: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white70),
+            icon: Icon(Icons.arrow_back, color: colorScheme.onSurface.withValues(alpha: 0.7)),
             onPressed: _onBack,
           ),
         ),
         actions: [
           TextButton(
             onPressed: _onComplete,
-            child: const Text('Skip', style: TextStyle(color: Colors.white70)),
+            child: Text('Skip', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7))),
           ),
         ],
       ),

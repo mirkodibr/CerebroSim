@@ -16,22 +16,27 @@ class SignalPlotter extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(environmentProvider);
     final buffer = ref.watch(plotBufferProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       height: 180,
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Colors.black45,
+        color: colorScheme.scrim.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [
-          _buildLegend(task),
+          _buildLegend(context, task),
           Expanded(
             child: CustomPaint(
               size: Size.infinite,
-              painter: SignalPlotterPainter(buffer: buffer, isVor: task == CerebellarTask.vor),
+              painter: SignalPlotterPainter(
+                buffer: buffer, 
+                isVor: task == CerebellarTask.vor,
+                colorScheme: colorScheme,
+              ),
             ),
           ),
         ],
@@ -40,28 +45,29 @@ class SignalPlotter extends ConsumerWidget {
   }
 
   /// Builds a color-coded legend indicating which signal each line represents.
-  Widget _buildLegend(CerebellarTask task) {
+  Widget _buildLegend(BuildContext context, CerebellarTask task) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _legendItem('Critic', const Color(0xFF00FFFF)),
+        _legendItem(context, 'Critic', const Color(0xFF00FFFF)),
         const SizedBox(width: 16),
-        _legendItem('Actual', const Color(0xFFEF9F27)),
+        _legendItem(context, 'Actual', const Color(0xFFEF9F27)),
         if (task == CerebellarTask.vor) ...[
           const SizedBox(width: 16),
-          _legendItem('Gain', const Color(0xFF8A2BE2)),
+          _legendItem(context, 'Gain', const Color(0xFF8A2BE2)),
         ],
       ],
     );
   }
 
   /// Helper for creating a single labeled legend item.
-  Widget _legendItem(String label, Color color) {
+  Widget _legendItem(BuildContext context, String label, Color color) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        Text(label, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10)),
       ],
     );
   }
@@ -74,8 +80,13 @@ class SignalPlotter extends ConsumerWidget {
 class SignalPlotterPainter extends CustomPainter {
   final List<PlotPoint> buffer;
   final bool isVor;
+  final ColorScheme colorScheme;
 
-  SignalPlotterPainter({required this.buffer, required this.isVor});
+  SignalPlotterPainter({
+    required this.buffer, 
+    required this.isVor,
+    required this.colorScheme,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {

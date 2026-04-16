@@ -22,8 +22,9 @@ class NeuronInfoOverlay extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size;
+    final colorScheme = Theme.of(context).colorScheme;
     const cardWidth = 210.0;
-    
+
     // Smart Positioning: flip to left if too close to right edge
     bool flipLeft = position.dx + cardWidth + 20 > size.width;
     double left = flipLeft ? position.dx - cardWidth - 10 : position.dx + 10;
@@ -38,11 +39,11 @@ class NeuronInfoOverlay extends ConsumerWidget {
           width: cardWidth,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+            color: colorScheme.surface.withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white24),
-            boxShadow: const [
-              BoxShadow(blurRadius: 10, color: Colors.black54),
+            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.24)),
+            boxShadow: [
+              BoxShadow(blurRadius: 10, color: colorScheme.onSurface.withValues(alpha: 0.54)),
             ],
           ),
           child: Column(
@@ -54,8 +55,8 @@ class NeuronInfoOverlay extends ConsumerWidget {
                 children: [
                   Text(
                     neuron.cellType,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: colorScheme.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -63,40 +64,42 @@ class NeuronInfoOverlay extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: neuron.isInhibitory ? Colors.red.withValues(alpha: 0.2) : Colors.cyan.withValues(alpha: 0.2),
+                      color: neuron.isInhibitory 
+                        ? colorScheme.error.withValues(alpha: 0.2) 
+                        : colorScheme.tertiary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: neuron.isInhibitory ? Colors.red : Colors.cyan,
+                        color: neuron.isInhibitory ? colorScheme.error : colorScheme.tertiary,
                         width: 1,
                       ),
                     ),
                     child: Text(
                       neuron.isInhibitory ? 'INHIB' : 'EXCIT',
                       style: TextStyle(
-                        color: neuron.isInhibitory ? Colors.red : Colors.cyan,
+                        color: neuron.isInhibitory ? colorScheme.error : colorScheme.tertiary,
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54, size: 16),
+                    icon: Icon(Icons.close, color: colorScheme.onSurface.withValues(alpha: 0.54), size: 16),
                     onPressed: onClose,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
                 ],
               ),
-              const Divider(color: Colors.white12),
-              _buildValueRow('Membrane V', neuron.membranePotential, neuron.isFiring),
-              _buildValueRow('Eligibility', neuron.eligibilityTrace, neuron.isFiring),
-              _buildValueRow('Threshold', neuron.threshold, false),
-              _buildValueRow('Decay Rate', neuron.decayRate, false),
+              Divider(color: colorScheme.outline.withValues(alpha: 0.1)),
+              _buildValueRow(context, 'Membrane V', neuron.membranePotential, neuron.isFiring),
+              _buildValueRow(context, 'Eligibility', neuron.eligibilityTrace, neuron.isFiring),
+              _buildValueRow(context, 'Threshold', neuron.threshold, false),
+              _buildValueRow(context, 'Decay Rate', neuron.decayRate, false),
               const SizedBox(height: 8),
               Text(
                 kCellTypeDescriptions[neuron.cellType] ?? '',
-                style: const TextStyle(
-                  color: Colors.white70,
+                style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 11,
                   fontStyle: FontStyle.italic,
                 ),
@@ -108,17 +111,19 @@ class NeuronInfoOverlay extends ConsumerWidget {
     );
   }
 
-  Widget _buildValueRow(String label, double value, bool isFiring) {
+  Widget _buildValueRow(BuildContext context, String label, double value, bool isFiring) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(label, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54), fontSize: 11)),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 150),
             style: TextStyle(
-              color: isFiring ? Colors.red : Colors.white,
+              color: isFiring ? colorScheme.error : colorScheme.onSurface,
               fontFamily: 'Courier',
               fontSize: 12,
               fontWeight: isFiring ? FontWeight.bold : FontWeight.normal,

@@ -15,24 +15,19 @@ class NeuralCanvas3DPainter extends CustomPainter {
   final double rotY;
   final double zoom;
   final String? selectedNeuronId;
+  final ColorScheme colorScheme;
 
   NeuralCanvas3DPainter({
     required this.state,
     required this.rotX,
     required this.rotY,
     required this.zoom,
+    required this.colorScheme,
     this.selectedNeuronId,
     super.repaint,
   });
 
   /// Calculates a procedural 3D position for a neuron based on its cell type.
-  /// 
-  /// Rules:
-  /// - GC: Distributed grid at Y = -100 (Deep/Granular)
-  /// - PC: Evenly spaced row at Y = 0 (Middle/Purkinje)
-  /// - DCN: Clustered at Y = 100 (Top/Molecular context - inverted for visual depth)
-  /// - BC/SC: Floating near PC layer.
-  /// - CF: Rising from below.
   static Offset3D calculateProceduralPosition(NeuronModel n, Map<String, List<NeuronModel>> grouped) {
     final sameType = grouped[n.cellType] ?? [];
     final index = sameType.indexWhere((element) => element.id == n.id);
@@ -44,8 +39,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
     switch (n.cellType) {
       case 'GC':
-        y = -1.2; // Granular layer (Bottom)
-        // Arrange in a grid
+        y = -1.2;
         final side = math.sqrt(count).ceil();
         final row = index ~/ side;
         final col = index % side;
@@ -53,23 +47,22 @@ class NeuralCanvas3DPainter extends CustomPainter {
         z = (row - (side - 1) / 2) * 0.8;
         break;
       case 'PC':
-        y = 0.0; // Purkinje layer (Middle)
-        // Horizontal row
+        y = 0.0;
         x = count > 1 ? (index - (count - 1) / 2) * 1.5 : 0.0;
         z = 0.0;
         break;
       case 'BC':
-        y = 0.4; // Slightly above PC layer
+        y = 0.4;
         x = count > 1 ? (index - (count - 1) / 2) * 1.2 : 0.4;
         z = -0.5;
         break;
       case 'SC':
-        y = 0.8; // High molecular layer
+        y = 0.8;
         x = count > 1 ? (index - (count - 1) / 2) * 1.0 : -0.4;
         z = 0.5;
         break;
       case 'DCN':
-        y = -2.0; // Very deep output nuclei
+        y = -2.0;
         x = count > 1 ? (index - (count - 1) / 2) * 1.0 : 0.0;
         z = 0.2;
         break;
@@ -80,7 +73,6 @@ class NeuralCanvas3DPainter extends CustomPainter {
         break;
     }
 
-    // Add organic jitter based on ID hash (deterministic)
     final random = math.Random(n.id.hashCode);
     x += (random.nextDouble() - 0.5) * 0.15;
     y += (random.nextDouble() - 0.5) * 0.15;
@@ -94,16 +86,13 @@ class NeuralCanvas3DPainter extends CustomPainter {
     final centerX = size.width / 2;
     final centerY = size.height / 2;
 
-    // 1. Draw Background Layers (40% opacity)
     _drawLayers(canvas, size);
 
-    // Group neurons for layout calculation
     final Map<String, List<NeuronModel>> grouped = {};
     for (final n in state.neurons.values) {
       grouped.putIfAbsent(n.cellType, () => []).add(n);
     }
 
-    // 2. Project all neurons to determine 2D positions and depth
     final Map<String, ProjectedPoint> projectedNeurons = {};
     for (final n in state.neurons.values) {
       final pos3d = calculateProceduralPosition(n, grouped);
@@ -117,18 +106,15 @@ class NeuralCanvas3DPainter extends CustomPainter {
       );
     }
 
-    // 3. Collect all drawable items for sorting
     final List<_DepthItem> items = [];
 
-    // Add neurons
     for (final n in state.neurons.values) {
       final p = projectedNeurons[n.id];
       if (p != null) {
-        items.add(_NeuronItem(n, p, isSelected: n.id == selectedNeuronId));
+        items.add(_NeuronItem(n, p, colorScheme, isSelected: n.id == selectedNeuronId));
       }
     }
 
-    // Add synapses
     for (final s in state.synapses) {
       final pFrom = projectedNeurons[s.fromNeuronId];
       final pTo = projectedNeurons[s.toNeuronId];
@@ -137,21 +123,19 @@ class NeuralCanvas3DPainter extends CustomPainter {
       }
     }
 
-    // 4. Painter's Algorithm: Sort by depth (furthest first)
     items.sort((a, b) => b.depth.compareTo(a.depth));
 
-    // 5. Draw items in order
     for (final item in items) {
       item.draw(canvas);
     }
   }
 
-  /// Draws the horizontal bands representing cerebellar layers.
   void _drawLayers(Canvas canvas, Size size) {
     final h = size.height / 3;
-    final molecularPaint = Paint()..color = const Color(0xFF0A1A2A).withValues(alpha: 0.4);
-    final purkinjePaint = Paint()..color = const Color(0xFF0F0A1A).withValues(alpha: 0.4);
-    final granularPaint = Paint()..color = const Color(0xFF0A1A0A).withValues(alpha: 0.4);
+    
+    final molecularPaint = Paint()..color = colorScheme.primary.withValues(alpha: 0.1);
+    final purkinjePaint = Paint()..color = colorScheme.secondary.withValues(alpha: 0.1);
+    final granularPaint = Paint()..color = colorScheme.tertiary.withValues(alpha: 0.1);
 
     canvas.drawRect(Rect.fromLTWH(0, 0, size.width, h), molecularPaint);
     canvas.drawRect(Rect.fromLTWH(0, h, size.width, h), purkinjePaint);
@@ -164,19 +148,18 @@ class NeuralCanvas3DPainter extends CustomPainter {
   }
 }
 
-/// Abstract base for depth-sortable drawable items.
 abstract class _DepthItem {
   double get depth;
   void draw(Canvas canvas);
 }
 
-/// A drawable representation of a neuron in 3D space.
 class _NeuronItem extends _DepthItem {
   final NeuronModel neuron;
   final ProjectedPoint projected;
   final bool isSelected;
+  final ColorScheme colorScheme;
 
-  _NeuronItem(this.neuron, this.projected, {this.isSelected = false});
+  _NeuronItem(this.neuron, this.projected, this.colorScheme, {this.isSelected = false});
 
   @override
   double get depth => projected.zDepth;
@@ -197,7 +180,7 @@ class _NeuronItem extends _DepthItem {
         pos,
         radius * 1.3,
         Paint()
-          ..color = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5)
+          ..color = isSelected ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.0,
       );
@@ -210,7 +193,7 @@ class _NeuronItem extends _DepthItem {
       sweepAngle,
       false,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.6)
+        ..color = colorScheme.onSurface.withValues(alpha: 0.6)
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round
         ..strokeWidth = 3.0 * (projected.scale / 30.0),
@@ -225,12 +208,11 @@ class _NeuronItem extends _DepthItem {
       case 'DCN': return const Color(0xFF1D9E75);
       case 'CF': return const Color(0xFFE24B4A);
       case 'SC': return const Color(0xFF00FFFF);
-      default: return Colors.grey;
+      default: return colorScheme.outline;
     }
   }
 }
 
-/// A drawable representation of a synapse in 3D space.
 class _SynapseItem extends _DepthItem {
   final SynapseModel synapse;
   final ProjectedPoint from;

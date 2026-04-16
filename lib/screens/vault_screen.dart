@@ -52,10 +52,11 @@ class VaultScreen extends ConsumerWidget {
   /// (data, loading, error).
   Widget _buildUserSnapshots(BuildContext context, WidgetRef ref) {
     final snapshots = ref.watch(vaultProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return snapshots.when(
       data: (list) => list.isEmpty
-          ? const Center(child: Text('No experiments saved yet.', style: TextStyle(color: Colors.white54)))
+          ? Center(child: Text('No experiments saved yet.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
           : ListView.builder(
               itemCount: list.length,
               itemBuilder: (context, index) => SnapshotCard(
@@ -63,8 +64,8 @@ class VaultScreen extends ConsumerWidget {
                 onTap: () => _loadSnapshot(context, ref, list[index]),
               ),
             ),
-      loading: () => _buildShimmerList(),
-      error: (e, s) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.red))),
+      loading: () => _buildShimmerList(context),
+      error: (e, s) => Center(child: Text('Error: $e', style: TextStyle(color: colorScheme.error))),
     );
   }
 
@@ -73,10 +74,11 @@ class VaultScreen extends ConsumerWidget {
   /// It watches [publicGalleryProvider] to fetch and display community experiments.
   Widget _buildPublicGallery(BuildContext context, WidgetRef ref) {
     final snapshots = ref.watch(publicGalleryProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return snapshots.when(
       data: (list) => list.isEmpty
-          ? const Center(child: Text('Gallery is empty.', style: TextStyle(color: Colors.white54)))
+          ? Center(child: Text('Gallery is empty.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
           : ListView.builder(
               itemCount: list.length,
               itemBuilder: (context, index) => SnapshotCard(
@@ -84,13 +86,14 @@ class VaultScreen extends ConsumerWidget {
                 onTap: () => _loadSnapshot(context, ref, list[index]),
               ),
             ),
-      loading: () => _buildShimmerList(),
-      error: (e, s) => Center(child: Text('Error: $e', style: const TextStyle(color: Colors.red))),
+      loading: () => _buildShimmerList(context),
+      error: (e, s) => Center(child: Text('Error: $e', style: TextStyle(color: colorScheme.error))),
     );
   }
 
   /// Renders a placeholder list while snapshot data is being fetched.
-  Widget _buildShimmerList() {
+  Widget _buildShimmerList(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return ListView.builder(
       itemCount: 5,
       itemBuilder: (context, index) => Padding(
@@ -98,7 +101,7 @@ class VaultScreen extends ConsumerWidget {
         child: Container(
           height: 100,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: colorScheme.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),

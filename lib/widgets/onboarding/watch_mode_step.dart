@@ -46,35 +46,38 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Stack(
       children: [
         const AbsorbPointer(
           child: NeuralCanvas3D(),
         ),
         Container(
-          color: Colors.black45,
+          color: colorScheme.scrim.withValues(alpha: 0.45),
           padding: const EdgeInsets.all(32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 'Neural Observation',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: colorScheme.onSurface, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Your cerebellum learns by trying and failing. Watch the network attempt to predict the error signal.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: colorScheme.onSurface, fontSize: 18),
               ),
               const Spacer(),
               ElevatedButton(
                 onPressed: widget.onNext,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
                 ),
-                child: const Text('I see it →', style: TextStyle(fontSize: 18, color: Colors.black)),
+                child: const Text('I see it →', style: TextStyle(fontSize: 18)),
               ),
             ],
           ),

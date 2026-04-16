@@ -15,42 +15,44 @@ class SnapshotCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white.withValues(alpha: 0.05),
+      color: colorScheme.onSurface.withValues(alpha: 0.05),
       child: ListTile(
         onTap: onTap,
-        title: Text(snapshot.title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: Text(snapshot.title, style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Chip(
-                  label: Text(snapshot.taskName, style: const TextStyle(fontSize: 10)),
+                  label: Text(snapshot.taskName, style: TextStyle(fontSize: 10, color: colorScheme.onPrimaryContainer)),
                   visualDensity: VisualDensity.compact,
-                  backgroundColor: Colors.blue.withValues(alpha: 0.3),
+                  backgroundColor: colorScheme.primaryContainer,
                 ),
                 const SizedBox(width: 8),
                 if (snapshot.isPublic)
                   Chip(
-                    label: const Text('PUBLIC', style: TextStyle(fontSize: 10)),
+                    label: Text('PUBLIC', style: TextStyle(fontSize: 10, color: colorScheme.onSecondaryContainer)),
                     visualDensity: VisualDensity.compact,
-                    backgroundColor: Colors.green.withValues(alpha: 0.3),
+                    backgroundColor: colorScheme.secondaryContainer,
                   ),
               ],
             ),
             Text(
               'Ep: ${snapshot.episodeCount} | Error: ${snapshot.finalErrorRate.toStringAsFixed(4)}',
-              style: const TextStyle(fontSize: 12, color: Colors.white70),
+              style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.7)),
             ),
             Text(
               DateFormat('MMM dd, yyyy HH:mm').format(snapshot.createdAt),
-              style: const TextStyle(fontSize: 10, color: Colors.white38),
+              style: TextStyle(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.38)),
             ),
           ],
         ),
-        trailing: const Icon(Icons.chevron_right, color: Colors.white38),
+        trailing: Icon(Icons.chevron_right, color: colorScheme.onSurface.withValues(alpha: 0.38)),
       ),
     );
   }

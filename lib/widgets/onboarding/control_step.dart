@@ -24,29 +24,30 @@ class _ControlStepState extends ConsumerState<ControlStep> {
   @override
   Widget build(BuildContext context) {
     final lr = ref.watch(learningRateProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      color: const Color(0xFF1E1E1E),
+      color: colorScheme.surface,
       padding: const EdgeInsets.all(32.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             'Dynamic Controls',
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            style: TextStyle(color: colorScheme.onSurface, fontSize: 28, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Adjust the learning rate to see how it affects the speed and stability of the network\'s adaptation.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+            style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 16),
           ),
           const Spacer(),
           const SignalPlotter(),
           const SizedBox(height: 32),
           Row(
             children: [
-              const Text('Learning Rate:', style: TextStyle(color: Colors.white)),
+              Text('Learning Rate:', style: TextStyle(color: colorScheme.onSurface)),
               Expanded(
                 child: Slider(
                   value: lr,
@@ -58,7 +59,7 @@ class _ControlStepState extends ConsumerState<ControlStep> {
                   },
                 ),
               ),
-              Text(lr.toStringAsFixed(3), style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold)),
+              Text(lr.toStringAsFixed(3), style: TextStyle(color: colorScheme.tertiary, fontWeight: FontWeight.bold)),
             ],
           ),
           const Spacer(),
@@ -66,9 +67,10 @@ class _ControlStepState extends ConsumerState<ControlStep> {
             onPressed: _interacted ? widget.onNext : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
             ),
-            child: const Text('Next →', style: TextStyle(fontSize: 18, color: Colors.black)),
+            child: const Text('Next →', style: TextStyle(fontSize: 18)),
           ),
         ],
       ),
