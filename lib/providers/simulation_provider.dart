@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
@@ -24,20 +25,37 @@ final simulationEngineProvider = Provider<SimulationEngine>((ref) {
 /// It orchestrates the timing of the simulation ticks, interacts with the
 /// [SimulationEngine] for state updates, and communicates with the
 /// [EnvironmentNotifier] for task-specific inputs and feedback.
-class SimulationNotifier extends Notifier<SimulationState> {
+class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingObserver {
   Timer? _timer;
   final SimulationEngine _engine = SimulationEngine();
   
   double _episodePunishmentSum = 0.0;
   int _episodeTickCount = 0;
   double _speedMultiplier = SimulationConstants.kSpeedNormal;
+  bool _wasRunningBeforePause = false;
 
   /// Initializes the simulation state using the [SimulationEngine]'s initial state.
   /// Ensures that any active timers are cancelled when the provider is disposed.
   @override
   SimulationState build() {
-    ref.onDispose(() => _timer?.cancel());
+    WidgetsBinding.instance.addObserver(this);
+    ref.onDispose(() {
+      WidgetsBinding.instance.removeObserver(this);
+      _timer?.cancel();
+    });
     return _engine.initialState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _wasRunningBeforePause = this.state.isRunning;
+      pauseSimulation();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_wasRunningBeforePause) {
+        startSimulation();
+      }
+    }
   }
 
   /// Starts or resumes the simulation.

@@ -2,6 +2,7 @@ import 'package:cerebrosim/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/theme_service.dart';
@@ -19,13 +20,20 @@ import 'screens/onboarding_screen.dart';
 /// 1. Ensuring Flutter framework bindings are initialized.
 /// 2. Initializing Firebase with platform-specific options.
 /// 3. Setting up Crashlytics for error reporting.
-/// 4. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
+/// 4. Enabling Firestore offline persistence.
+/// 5. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Enable Firestore persistence
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
     );
 
     // Pass all uncaught "fatal" errors from the framework to Crashlytics

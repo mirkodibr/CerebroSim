@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import '../providers/connectivity_provider.dart';
 import 'profile_screen.dart';
 import 'simulate_screen.dart';
 import 'vault_screen.dart';
@@ -32,6 +34,29 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch connectivity and show/hide banner
+    ref.listen<AsyncValue<List<ConnectivityResult>>>(connectivityProvider, (previous, next) {
+      final results = next.value ?? [];
+      final isOffline = results.isEmpty || results.every((r) => r == ConnectivityResult.none);
+      
+      if (isOffline) {
+        ScaffoldMessenger.of(context).showMaterialBanner(
+          MaterialBanner(
+            content: const Text('No connection — simulation runs locally, cloud features unavailable.'),
+            actions: [
+              TextButton(
+                onPressed: () => ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
+                child: const Text('DISMISS'),
+              ),
+            ],
+            backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      }
+    });
+
     /// The list of top-level screens accessible via the navigation bar.
     /// Order must match the [BottomNavigationBar] items.
     final List<Widget> screens = [

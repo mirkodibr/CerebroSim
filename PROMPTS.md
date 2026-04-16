@@ -225,7 +225,7 @@
   4. In `test/services/network_initializer_test.dart`, fix the flaky assertions: remove the hardcoded checks for `pc_1 -> dcn_open` and `pc_2 -> dcn_close`. Instead assert: (a) at least one PC->DCN synapse exists; (b) all PC->DCN synapses are inhibitory; (c) neuron counts match the `NetworkConfig.defaultConfig()` values.
   5. Run `flutter test` — all tests must pass.
 
-- [ ] **72. Offline Support & Lifecycle Management:** The app fully breaks without internet and the simulation timer keeps running when the app is backgrounded, draining battery. Fix both.
+- [x] **72. Offline Support & Lifecycle Management:** The app fully breaks without internet and the simulation timer keeps running when the app is backgrounded, draining battery. Fix both.
   **Part 1 — Offline support:**
   1. In `main.dart`, after `Firebase.initializeApp(...)`, add: `FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true, cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED);`
   2. In `lib/providers/auth_provider.dart`, update `AuthNotifier.build()` to return `FirebaseAuth.instance.currentUser` immediately (already done) — confirm this doesn't suspend on no network.
