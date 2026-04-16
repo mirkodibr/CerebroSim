@@ -1,39 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
-import 'profile_screen.dart';
-import 'simulate_screen.dart';
-import 'vault_screen.dart';
 
 /// The root navigation shell of the CerebroSim application.
 /// 
 /// This widget provides the primary navigation structure using a [BottomNavigationBar] 
-/// and an [IndexedStack] to maintain state between the different top-level screens.
+/// and a [ShellRoute] child to maintain state between the different top-level screens.
 /// It acts as a container for the core application features: simulation, experiment vault, 
 /// and user profile.
-class AppShell extends ConsumerStatefulWidget {
+class AppShell extends ConsumerWidget {
+  /// The child widget to be displayed within the shell.
+  final Widget child;
+
   /// Creates a new [AppShell] instance.
-  const AppShell({super.key});
+  const AppShell({super.key, required this.child});
 
-  @override
-  ConsumerState<AppShell> createState() => _AppShellState();
-}
+  /// Updates the current tab by navigating to the corresponding route.
+  void _onTabChange(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        context.go('/shell/simulate');
+        break;
+      case 1:
+        context.go('/shell/vault');
+        break;
+      case 2:
+        context.go('/shell/profile');
+        break;
+    }
+  }
 
-/// The state for [AppShell], managing the current navigation index and screen transitions.
-class _AppShellState extends ConsumerState<AppShell> {
-  /// The current index of the selected tab in the navigation bar.
-  int _currentIndex = 0;
-
-  /// Updates the current tab index and triggers a rebuild to show the selected screen.
-  /// 
-  /// [index] is the zero-based index of the new tab selection.
-  void _onTabChange(int index) {
-    setState(() => _currentIndex = index);
+  /// Calculates the current index based on the current route path.
+  int _calculateSelectedIndex(BuildContext context) {
+    final String location = GoRouterState.of(context).matchedLocation;
+    if (location.startsWith('/shell/simulate')) return 0;
+    if (location.startsWith('/shell/vault')) return 1;
+    if (location.startsWith('/shell/profile')) return 2;
+    return 0;
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // Watch connectivity and show/hide banner
     ref.listen<AsyncValue<List<ConnectivityResult>>>(connectivityProvider, (previous, next) {
       final results = next.value ?? [];
@@ -57,22 +66,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
     });
 
-    /// The list of top-level screens accessible via the navigation bar.
-    /// Order must match the [BottomNavigationBar] items.
-    final List<Widget> screens = [
-      const SimulateScreen(),
-      VaultScreen(onTabChange: _onTabChange),
-      const ProfileScreen(),
-    ];
-
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
+      body: child,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabChange,
+        currentIndex: _calculateSelectedIndex(context),
+        onTap: (index) => _onTabChange(context, index),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.biotech),

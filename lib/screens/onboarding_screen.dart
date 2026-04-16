@@ -4,7 +4,6 @@ import '../providers/prefs_provider.dart';
 import '../widgets/onboarding/watch_mode_step.dart';
 import '../widgets/onboarding/control_step.dart';
 import '../widgets/onboarding/explore_step.dart';
-import 'app_shell.dart';
 
 /// A multi-step introduction to the CerebroSim simulation environment.
 /// 
@@ -43,19 +42,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  /// Marks onboarding as complete and transitions the user to the [AppShell].
+  /// Marks onboarding as complete.
   /// 
   /// This method updates persistent preferences using [prefsServiceProvider] and
   /// invalidates the [onboardingCompleteProvider] to reflect the change globally.
+  /// Navigation is handled automatically by the router redirect logic.
   Future<void> _onComplete() async {
     await ref.read(prefsServiceProvider).setOnboardingComplete();
     ref.invalidate(onboardingCompleteProvider);
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AppShell()),
-      );
-    }
   }
 
   @override

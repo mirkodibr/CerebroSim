@@ -7,12 +7,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
-import 'providers/auth_provider.dart';
-import 'providers/prefs_provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'screens/app_shell.dart';
-import 'screens/login_screen.dart';
-import 'screens/onboarding_screen.dart';
+import 'router/app_router.dart';
 
 /// The entry point of the CerebroSim application.
 ///
@@ -65,59 +60,24 @@ void main() async {
 
 /// The root widget of the CerebroSim application.
 ///
-/// This [ConsumerStatefulWidget] is responsible for:
+/// This [ConsumerWidget] is responsible for:
 /// - Configuring the application-wide theme (light/dark) via [ThemeService] and [themeNotifierProvider].
-/// - Managing high-level routing based on the user's authentication state ([authProvider]).
-/// - Determining whether to show the [LoginScreen], [OnboardingScreen], or the main [AppShell]
-///   based on whether the user is logged in and has completed the onboarding process.
-class CerebroSimApp extends ConsumerStatefulWidget {
+/// - Providing the [GoRouter] configuration from [routerProvider] to the application.
+class CerebroSimApp extends ConsumerWidget {
   const CerebroSimApp({super.key});
 
   @override
-  ConsumerState<CerebroSimApp> createState() => _CerebroSimAppState();
-}
-
-class _CerebroSimAppState extends ConsumerState<CerebroSimApp> {
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeNotifierProvider);
-    final authState = ref.watch(authProvider);
+    final router = ref.watch(routerProvider);
 
-    // Listen for auth state changes to ensure the navigation stack is cleared on sign-out
-    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
-      if (previous?.hasValue == true && previous?.value != null && next.hasValue && next.value == null) {
-        _navigatorKey.currentState?.pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    });
-
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
+    return MaterialApp.router(
+      routerConfig: router,
       title: 'CerebroSim',
       theme: ThemeService.presentationTheme,
       darkTheme: ThemeService.cyberLabTheme,
       themeMode: themeMode,
       debugShowCheckedModeBanner: false,
-      home: authState.when(
-        data: (user) {
-          if (user == null) return const LoginScreen();
-          
-          final onboardingComplete = ref.watch(onboardingCompleteProvider);
-          return onboardingComplete.when(
-            data: (complete) => complete ? const AppShell() : const OnboardingScreen(),
-            loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-            error: (e, s) => const AppShell(),
-          );
-        },
-        loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
-        error: (e, s) => const LoginScreen(),
-      ),
     );
   }
 }

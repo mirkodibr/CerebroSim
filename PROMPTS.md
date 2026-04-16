@@ -266,7 +266,7 @@
 
 ## Phase 17: Security— Quality & Navigation
 
-- [ ] **75. Declarative Routing (GoRouter):** Replace all imperative `Navigator.push`/`pushReplacement`/`pushAndRemoveUntil` calls with declarative `go_router` routing.
+- [x] **75. Declarative Routing (GoRouter):** Replace all imperative `Navigator.push`/`pushReplacement`/`pushAndRemoveUntil` calls with declarative `go_router` routing.
   1. Add `go_router: ^14.0.0` to `pubspec.yaml`. Run `flutter pub get`.
   2. Create `lib/router/app_router.dart`. Define a `GoRouter` provider using Riverpod: `final routerProvider = Provider(...)`. The router must have a `refreshListenable` that wraps `authProvider` and `onboardingCompleteProvider` — create a `GoRouterRefreshStream` helper that converts an `AsyncNotifier` to a `ChangeNotifier`.
   3. Define these named routes: `/login`, `/register`, `/onboarding`, `/shell` (with sub-routes `/shell/simulate`, `/shell/vault`, `/shell/profile`).

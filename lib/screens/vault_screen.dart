@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/vault_provider.dart';
 import '../providers/simulation_provider.dart';
 import '../widgets/snapshot_card.dart';
@@ -14,14 +15,12 @@ import '../models/experiment_snapshot.dart';
 /// Users can browse these collections and load the synaptic weights from any 
 /// snapshot back into the active simulation.
 class VaultScreen extends ConsumerWidget {
-  /// Callback function to trigger a tab change in the parent navigation shell.
-  /// 
-  /// Used to automatically switch the user back to the simulation view after 
-  /// successfully loading a snapshot.
-  final Function(int) onTabChange;
+  /// Optional callback function to trigger a tab change in the parent navigation shell.
+  /// Deprecated in favor of direct GoRouter navigation.
+  final Function(int)? onTabChange;
 
   /// Creates a new [VaultScreen] instance.
-  const VaultScreen({super.key, required this.onTabChange});
+  const VaultScreen({super.key, this.onTabChange});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -111,12 +110,17 @@ class VaultScreen extends ConsumerWidget {
   /// Injects the synaptic weights from a [snapshot] into the active simulation.
   /// 
   /// After updating the [simulationProvider], it displays a confirmation 
-  /// [SnackBar] and uses [onTabChange] to redirect the user to the simulation screen.
+  /// [SnackBar] and uses GoRouter to redirect the user to the simulation screen.
   void _loadSnapshot(BuildContext context, WidgetRef ref, ExperimentSnapshot snapshot) {
     ref.read(simulationProvider.notifier).loadSnapshot(snapshot.synapticWeights);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Loaded weights from "${snapshot.title}"')),
     );
-    onTabChange(0); // Switch to Simulate tab
+    
+    if (onTabChange != null) {
+      onTabChange!(0);
+    } else {
+      context.go('/shell/simulate');
+    }
   }
 }

@@ -1,15 +1,12 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
-import 'app_shell.dart';
 
 /// A screen for new users to create a CerebroSim account.
 /// 
 /// This screen provides an interface for registration via email and password,
 /// including a confirmation field. It utilizes [authProvider] for the registration 
-/// process and transitions users directly to the [AppShell] upon successful 
-/// account creation.
+/// process.
 class RegisterScreen extends ConsumerStatefulWidget {
   /// Creates a new [RegisterScreen] instance.
   const RegisterScreen({super.key});
@@ -46,28 +43,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authProvider);
     final isLoading = authState is AsyncLoading;
 
-    /// Listens for registration success or failure.
-    /// 
-    /// On success, it clears the navigation stack and transitions to [AppShell].
-    /// On failure, it shows an error message via [SnackBar].
-    ref.listen<AsyncValue<User?>>(authProvider, (previous, next) {
-      next.when(
-        data: (user) {
-          if (user != null) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const AppShell()),
-              (route) => false,
-            );
-          }
-        },
-        error: (e, s) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
-        },
-        loading: () {},
-      );
+    /// Listens for registration failure to show feedback.
+    ref.listen<AsyncValue<dynamic>>(authProvider, (previous, next) {
+      if (next is AsyncError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.error.toString())),
+        );
+      }
     });
 
     return Scaffold(
