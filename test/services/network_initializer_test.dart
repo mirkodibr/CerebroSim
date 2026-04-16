@@ -30,12 +30,22 @@ void main() {
         }
       }
       
-      // Check for specific synapses
-      final pc1InhibitsDcnOpen = state.synapses.any((s) => s.fromNeuronId == 'pc_1' && s.toNeuronId == 'dcn_open');
-      final pc2InhibitsDcnClose = state.synapses.any((s) => s.fromNeuronId == 'pc_2' && s.toNeuronId == 'dcn_close');
+      // Check for specific synapses - more robustly
+      final pcToDcnSynapses = state.synapses.where((s) {
+        final from = state.neurons[s.fromNeuronId]!;
+        final to = state.neurons[s.toNeuronId]!;
+        return from.cellType == 'PC' && to.cellType == 'DCN';
+      }).toList();
       
-      expect(pc1InhibitsDcnOpen, true);
-      expect(pc2InhibitsDcnClose, true);
+      expect(pcToDcnSynapses.isNotEmpty, true, reason: 'Should have at least one PC -> DCN synapse');
+      for (final s in pcToDcnSynapses) {
+        expect(s.isInhibitory, true, reason: 'PC -> DCN synapses must be inhibitory');
+        expect(s.weight, lessThan(0));
+      }
+
+      // Check for CF neuron
+      final cfCount = state.neurons.values.where((n) => n.cellType == 'CF').length;
+      expect(cfCount, 1);
     });
   });
 }

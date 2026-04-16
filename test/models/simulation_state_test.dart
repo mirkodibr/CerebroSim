@@ -6,8 +6,9 @@ void main() {
     test('initial factory should create correct structure', () {
       final state = SimulationState.initial();
 
-      expect(state.neurons.length, 5);
-      expect(state.synapses.length, 4);
+      // Based on default NetworkConfig (10 GC, 5 BC, 2 PC, 1 SC, 2 DCN) + 1 CF = 21 neurons
+      expect(state.neurons.length, 21);
+      expect(state.synapses.length, greaterThan(10));
       expect(state.isRunning, false);
       expect(state.episodeStep, 0);
       expect(state.episodeCount, 0);
@@ -16,8 +17,13 @@ void main() {
       expect(cellTypes.contains('GC'), true);
       expect(cellTypes.contains('PC'), true);
       expect(cellTypes.contains('BC'), true);
+      expect(cellTypes.contains('SC'), true);
       expect(cellTypes.contains('DCN'), true);
       expect(cellTypes.contains('CF'), true);
+
+      // Verify the presence of unified DCN IDs
+      expect(state.neurons.containsKey('dcn_open'), true);
+      expect(state.neurons.containsKey('dcn_close'), true);
     });
 
     test('copyWith should return updated state', () {

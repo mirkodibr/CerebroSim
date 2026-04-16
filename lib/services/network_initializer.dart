@@ -67,7 +67,10 @@ class NetworkInitializer {
       }
     }
 
-    // 6. Probabilistic GC Connections (Excitatory)
+    // 6. Climbing Fiber (CF) - Error Signal
+    neurons['cf_0'] = NeuronModel.initial(id: 'cf_0', cellType: 'CF');
+
+    // 7. Probabilistic GC Connections (Excitatory)
     // Connect each GC to 70% of PCs and BCs.
     final pcIds = neurons.values.where((n) => n.cellType == 'PC').map((n) => n.id).toList();
     final bcIds = neurons.values.where((n) => n.cellType == 'BC').map((n) => n.id).toList();

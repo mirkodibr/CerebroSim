@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 import 'neuron_model.dart';
 import 'synapse_model.dart';
+import '../services/network_initializer.dart';
 
 /// The complete snapshot of the simulation's current state at any given tick.
 ///
@@ -44,46 +45,12 @@ class SimulationState {
 
   /// Creates a default initial state for a new simulation.
   ///
-  /// This defines a basic cerebellar circuit with Granule, Purkinje, Basket,
-  /// Deep Cerebellar Nucleus, and Climbing Fiber neurons.
-  factory SimulationState.initial() {
-    final neuronsList = [
-      NeuronModel.initial(id: 'GC_01', cellType: 'GC'),
-      NeuronModel.initial(id: 'PC_01', cellType: 'PC'),
-      NeuronModel.initial(id: 'BC_01', cellType: 'BC'),
-      NeuronModel.initial(id: 'DCN_01', cellType: 'DCN'),
-      NeuronModel.initial(id: 'CF_01', cellType: 'CF'),
-    ];
-
-    final neuronsMap = {
-      for (final n in neuronsList) n.id: n,
-    };
-
-    final synapses = [
-      SynapseModel.initial(fromId: 'GC_01', toId: 'PC_01', isInhibitory: false),
-      SynapseModel.initial(fromId: 'GC_01', toId: 'BC_01', isInhibitory: false),
-      SynapseModel.initial(fromId: 'BC_01', toId: 'PC_01', isInhibitory: true),
-      SynapseModel.initial(fromId: 'PC_01', toId: 'DCN_01', isInhibitory: true),
-    ];
-
-    // Build the initial index
-    final Map<String, List<SynapseModel>> index = {};
-    for (final s in synapses) {
-      index.putIfAbsent(s.fromNeuronId, () => []).add(s);
-    }
-
-    return SimulationState(
-      neurons: neuronsMap,
-      synapses: synapses,
-      preSynapticIndex: index,
-      criticPrediction: 0.0,
-      tdError: 0.0,
-      climbingFiberSignal: 0.0,
-      rollingGainRatio: 0.0,
-      episodeStep: 0,
-      episodeCount: 0,
-      isRunning: false,
-    );
+  /// This utilizes the [NetworkInitializer] to build a standard 
+  /// cerebellar architecture rather than hardcoding neuron IDs.
+  factory SimulationState.initial({dynamic config}) {
+    // The config parameter is typed dynamic to avoid a circular dependency 
+    // with NetworkConfig in some build scenarios, though here we cast it.
+    return NetworkInitializer.createRLMockNetwork(config: config);
   }
 
   /// Returns a copy of the simulation state with updated fields.

@@ -124,7 +124,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 *Goal: Resolve App Store blockers, prevent silent failures, and fix architectural state drift before scaling the engine.*
 * [x] **Bundle ID & Metadata:** Replace placeholder bundle identifiers across all platforms to meet App Store and Firebase OAuth requirements.
 * [x] **Crashlytics Integration:** Implement Firebase Crashlytics to catch and report asynchronous and frame-level errors in production.
-* [ ] **Unified Network Builder:** Centralize all network topology generation inside `NetworkInitializer` to prevent state drift and failing CI tests.
+* [x] **Unified Network Builder:** Centralize all network topology generation inside `NetworkInitializer` to prevent state drift and failing CI tests.
 * [ ] **Offline & Lifecycle Management:** Enable Firestore offline persistence and use `AppLifecycleListener` to pause the 60Hz ticker when backgrounded.
 * [ ] **Account Deletion Flow:** Implement a complete, batch-based account deletion feature to comply with GDPR and App Store mandates.
 * [ ] **Auth & State Fixes:** Enforce email verification for public saves and ensure simulation buffers are cleared during task switching.

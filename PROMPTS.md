@@ -218,7 +218,7 @@
   5. Replace all remaining `print()` calls across the codebase with `debugPrint()`.
   6. Run `flutter analyze` — zero errors required.
 
-- [ ] **71. Unified Network Builder:** There are two competing network builders causing a silent logic bug. `SimulationState.initial()` creates a 5-neuron hardcoded network with IDs like `DCN_01`, while `NetworkInitializer.createRLMockNetwork()` (used by the actual engine) creates a proper network with `dcn_open` and `dcn_close` IDs. Environments (`SineWaveEnvironment`, `VorEnvironment`) silently fall back to `neurons.values.first` when these IDs are missing. Fix as follows:
+- [x] **71. Unified Network Builder:** There are two competing network builders causing a silent logic bug. `SimulationState.initial()` creates a 5-neuron hardcoded network with IDs like `DCN_01`, while `NetworkInitializer.createRLMockNetwork()` (used by the actual engine) creates a proper network with `dcn_open` and `dcn_close` IDs. Environments (`SineWaveEnvironment`, `VorEnvironment`) silently fall back to `neurons.values.first` when these IDs are missing. Fix as follows:
   1. In `lib/models/simulation_state.dart`, update `SimulationState.initial()` to call `NetworkInitializer.createRLMockNetwork()` instead of hand-building 5 neurons. Remove the hardcoded neuron/synapse construction from `initial()` entirely.
   2. Update the `SimulationState` constructor to keep the `const` keyword only where no factory calls are made. The `initial()` factory no longer needs to be `const`.
   3. In `test/models/simulation_state_test.dart`, update the test assertions to reflect the new 19+ neuron count and the presence of `dcn_open`/`dcn_close` IDs instead of `DCN_01`.
