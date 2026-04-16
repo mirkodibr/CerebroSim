@@ -104,6 +104,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: '/shell/vault/:id',
+            builder: (context, state) => VaultScreen(
+              highlightedId: state.pathParameters['id'],
+              onTabChange: (index) {
+                if (index == 0) context.go('/shell/simulate');
+                if (index == 2) context.go('/shell/profile');
+              },
+            ),
+          ),
+          GoRoute(
             path: '/shell/profile',
             builder: (context, state) => const ProfileScreen(),
           ),

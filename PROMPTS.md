@@ -442,8 +442,8 @@
 
 ## Phase 20: User Experience— Differentiating Features
 
-- [ ] **86. Export & Deep Linking:** Allow researchers to share and export experiments, creating organic virality.
-  1. Add `share_plus: ^10.0.0` to `pubspec.yaml`. Run `flutter pub get`.
+- [x] **86. Export & Deep Linking:** Allow researchers to share and export experiments, creating organic virality.
+  1. Add `share_plus: ^10.1.4` to `pubspec.yaml`. Run `flutter pub get`.
   2. In `lib/models/experiment_snapshot.dart`, add `String toJson()` that returns a clean JSON string of the snapshot (use `jsonEncode` with all fields except `userId` for privacy). Add `factory ExperimentSnapshot.fromJson(String json)` for import.
   3. In `lib/screens/vault_screen.dart`, add a share `IconButton` to each `SnapshotCard`'s trailing area (in addition to the chevron). On tap:
      - For public snapshots: `Share.share('Check out my CerebroSim experiment: ${snapshot.title}\nTask: ${snapshot.taskName} | Error rate: ${snapshot.finalErrorRate.toStringAsFixed(3)}\ncerebrosim://snapshot/${snapshot.id}')`.

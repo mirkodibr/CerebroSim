@@ -150,6 +150,6 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 * [x] **Parameter Sliders:** Add dynamic configuration sliders for the Eyeblink (CS window) and Sine Wave (Frequency/Amplitude) tasks.
 ### Phase 20: Differentiating Features
 *Goal: Introduce virality, AI interpretation, and educational value to capture the academic and institutional market.*
-* [ ] **Export & Deep Linking:** Enable JSON export of private experiments via `share_plus` and `cerebrosim://` deep-linking for public snapshots.
+* [x] **Export & Deep Linking:** Enable JSON export of private experiments via `share_plus` and `cerebrosim://` deep-linking for public snapshots.
 * [ ] **AI-Powered Interpretation:** Integrate a Firebase Cloud Function to query Anthropic's API, translating raw simulation data into plain-English neuroscience insights.
 * [ ] **Guided Experiments Mode:** Build an interactive educational mode featuring pre-configured experiments linked to foundational neuroscience papers.

@@ -1,13 +1,21 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/experiment_snapshot.dart';
 
 /// A card widget that displays a summary of a saved experiment snapshot.
 class SnapshotCard extends StatelessWidget {
   final ExperimentSnapshot snapshot;
   final VoidCallback onTap;
+  final bool isHighlighted;
 
-  const SnapshotCard({super.key, required this.snapshot, required this.onTap});
+  const SnapshotCard({
+    super.key, 
+    required this.snapshot, 
+    required this.onTap,
+    this.isHighlighted = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,14 +28,19 @@ class SnapshotCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 500),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: colorScheme.surface,
+            color: isHighlighted 
+                ? colorScheme.primaryContainer.withValues(alpha: 0.2) 
+                : colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: colorScheme.outline.withValues(alpha: 0.1),
-              width: 0.5,
+              color: isHighlighted 
+                  ? colorScheme.primary 
+                  : colorScheme.outline.withValues(alpha: 0.1),
+              width: isHighlighted ? 1.5 : 0.5,
             ),
           ),
           child: Row(
@@ -114,11 +127,35 @@ class SnapshotCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (isWide)
-                Icon(
-                  Icons.chevron_right,
-                  color: colorScheme.onSurface.withValues(alpha: 0.3),
-                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.share, size: 20, color: colorScheme.onSurface.withValues(alpha: 0.54)),
+                    onPressed: () {
+                      if (snapshot.isPublic) {
+                        Share.share(
+                          'Check out my CerebroSim experiment: ${snapshot.title}\n'
+                          'Task: ${snapshot.taskName} | Error rate: ${snapshot.finalErrorRate.toStringAsFixed(3)}\n'
+                          'cerebrosim://snapshot/${snapshot.id}'
+                        );
+                      } else {
+                        final json = snapshot.toJson();
+                        final bytes = utf8.encode(json);
+                        Share.shareXFiles(
+                          [XFile.fromData(bytes, name: '${snapshot.title}.json', mimeType: 'application/json')],
+                          text: 'CerebroSim Experiment Export: ${snapshot.title}',
+                        );
+                      }
+                    },
+                  ),
+                  if (isWide)
+                    Icon(
+                      Icons.chevron_right,
+                      color: colorScheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                ],
+              ),
             ],
           ),
         ),

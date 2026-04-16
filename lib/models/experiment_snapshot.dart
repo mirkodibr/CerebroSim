@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 import 'simulation_state.dart';
@@ -155,6 +156,57 @@ class ExperimentSnapshot {
       title: title ?? this.title,
       createdAt: createdAt ?? this.createdAt,
       networkConfig: networkConfig ?? this.networkConfig,
+    );
+  }
+
+  /// Converts the snapshot to a JSON string for export.
+  /// Excludes userId for privacy.
+  String toJson() {
+    final map = {
+      'userEmail': userEmail,
+      'taskName': taskName,
+      'finalErrorRate': finalErrorRate,
+      'finalVorGain': finalVorGain,
+      'synapticWeights': synapticWeights,
+      'episodeCount': episodeCount,
+      'isPublic': isPublic,
+      'title': title,
+      'createdAt': createdAt.toIso8601String(),
+      'networkConfig': networkConfig != null ? {
+        'gcCount': networkConfig!.gcCount,
+        'bcCount': networkConfig!.bcCount,
+        'pcCount': networkConfig!.pcCount,
+        'scCount': networkConfig!.scCount,
+        'dcnCount': networkConfig!.dcnCount,
+      } : null,
+    };
+    return jsonEncode(map);
+  }
+
+  /// Creates a snapshot from a JSON string.
+  factory ExperimentSnapshot.fromJson(String jsonStr) {
+    final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+    final configData = data['networkConfig'] as Map<String, dynamic>?;
+
+    return ExperimentSnapshot(
+      id: '', // Temporary ID
+      userId: '', // To be set on import/save
+      userEmail: data['userEmail'] ?? 'imported',
+      taskName: data['taskName'] ?? '',
+      finalErrorRate: (data['finalErrorRate'] as num?)?.toDouble() ?? 0.0,
+      finalVorGain: (data['finalVorGain'] as num?)?.toDouble(),
+      synapticWeights: List<double>.from((data['synapticWeights'] as List<dynamic>?) ?? []),
+      episodeCount: data['episodeCount'] ?? 0,
+      isPublic: data['isPublic'] ?? false,
+      title: data['title'] ?? 'Imported Experiment',
+      createdAt: data['createdAt'] != null ? DateTime.parse(data['createdAt']) : DateTime.now(),
+      networkConfig: configData != null ? NetworkConfig(
+        gcCount: configData['gcCount'] ?? 10,
+        bcCount: configData['bcCount'] ?? 5,
+        pcCount: configData['pcCount'] ?? 2,
+        scCount: configData['scCount'] ?? 1,
+        dcnCount: configData['dcnCount'] ?? 2,
+      ) : null,
     );
   }
 }

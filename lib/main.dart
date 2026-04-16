@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cerebrosim/firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -6,20 +7,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:uni_links2/uni_links.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
 import 'router/app_router.dart';
 
 /// The entry point of the CerebroSim application.
-///
-/// This function handles the initial setup of the application by:
-/// 1. Ensuring Flutter framework bindings are initialized.
-/// 2. Preserving the native splash screen.
-/// 3. Initializing Firebase with platform-specific options.
-/// 4. Setting up Crashlytics for error reporting.
-/// 5. Enabling Firestore offline persistence.
-/// 6. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
 void main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
@@ -47,8 +41,6 @@ void main() async {
     };
 
     if (kDebugMode) {
-      // Force disable Crashlytics collection while doing every day development.
-      // Temporarily toggle this to true if you want to test crash reporting in your app.
       await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
     }
   } catch (e) {
@@ -63,11 +55,6 @@ void main() async {
 }
 
 /// The root widget of the CerebroSim application.
-///
-/// This [ConsumerWidget] is responsible for:
-/// - Configuring the application-wide theme (light/dark) via [ThemeService] and [themeNotifierProvider].
-/// - Providing the [GoRouter] configuration from [routerProvider] to the application.
-/// - Removing the native splash screen once the initial authentication state is resolved.
 class CerebroSimApp extends ConsumerWidget {
   const CerebroSimApp({super.key});
 
@@ -83,13 +70,68 @@ class CerebroSimApp extends ConsumerWidget {
       }
     });
 
-    return MaterialApp.router(
-      routerConfig: router,
-      title: 'CerebroSim',
-      theme: ThemeService.presentationTheme,
-      darkTheme: ThemeService.cyberLabTheme,
-      themeMode: themeMode,
-      debugShowCheckedModeBanner: false,
+    return DeepLinkHandler(
+      child: MaterialApp.router(
+        routerConfig: router,
+        title: 'CerebroSim',
+        theme: ThemeService.presentationTheme,
+        darkTheme: ThemeService.cyberLabTheme,
+        themeMode: themeMode,
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
+}
+
+/// A widget that handles incoming deep links (cerebrosim://).
+class DeepLinkHandler extends ConsumerStatefulWidget {
+  final Widget child;
+  const DeepLinkHandler({super.key, required this.child});
+
+  @override
+  ConsumerState<DeepLinkHandler> createState() => _DeepLinkHandlerState();
+}
+
+class _DeepLinkHandlerState extends ConsumerState<DeepLinkHandler> {
+  StreamSubscription? _sub;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDeepLinks();
+  }
+
+  Future<void> _initDeepLinks() async {
+    try {
+      final initialUri = await getInitialUri();
+      if (initialUri != null) _handleUri(initialUri);
+    } catch (e) {
+      debugPrint('Initial Deep Link Error: $e');
+    }
+
+    _sub = uriLinkStream.listen((Uri? uri) {
+      if (uri != null) _handleUri(uri);
+    }, onError: (err) {
+      debugPrint('Deep Link Stream Error: $err');
+    });
+  }
+
+  void _handleUri(Uri uri) {
+    // Expected: cerebrosim://snapshot/{id}
+    if (uri.scheme == 'cerebrosim' && uri.host == 'snapshot') {
+      final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+      if (id != null) {
+        ref.read(routerProvider).go('/shell/vault/$id');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
