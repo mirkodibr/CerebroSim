@@ -55,21 +55,55 @@ class ConvergenceChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final double width = size.width;
-    final double height = size.height;
+    if (history.isEmpty) return;
+
+    const double leftMargin = 40.0;
+    const double bottomMargin = 20.0;
+    final double chartWidth = size.width - leftMargin;
+    final double chartHeight = size.height - bottomMargin;
+
+    final Paint gridPaint = Paint()
+      ..color = colorScheme.onSurface.withValues(alpha: 0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
 
     final Paint axisPaint = Paint()
       ..color = colorScheme.outline.withValues(alpha: 0.3)
       ..strokeWidth = 1.0;
 
-    // Draw axes
-    canvas.drawLine(Offset(0, height), Offset(width, height), axisPaint);
-    canvas.drawLine(Offset(0, 0), Offset(0, height), axisPaint);
+    // Draw Gridlines and Y-axis labels
+    final List<double> gridValues = [0.0, 0.25, 0.5, 0.75, 1.0];
+    for (final val in gridValues) {
+      final double y = chartHeight - (val * chartHeight);
+      
+      // Dashed gridline
+      _drawDashedLine(canvas, Offset(leftMargin, y), Offset(size.width, y), gridPaint);
 
-    if (history.isEmpty) return;
+      // Y-axis label
+      final TextPainter tp = TextPainter(
+        text: TextSpan(
+          text: val.toStringAsFixed(2),
+          style: labelStyle.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 10),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.right,
+      )..layout(maxWidth: 36);
+      tp.paint(canvas, Offset(0, y - tp.height / 2));
+    }
+
+    // Draw X-axis labels
+    final firstEp = history.first.episodeNumber;
+    final lastEp = history.last.episodeNumber;
+    
+    _drawXLabel(canvas, firstEp.toString(), leftMargin, size.height - tpHeight('0'));
+    _drawXLabel(canvas, lastEp.toString(), size.width - 20, size.height - tpHeight('0'));
+
+    // Draw axes
+    canvas.drawLine(Offset(leftMargin, chartHeight), Offset(size.width, chartHeight), axisPaint);
+    canvas.drawLine(Offset(leftMargin, 0), Offset(leftMargin, chartHeight), axisPaint);
 
     final int count = history.length;
-    final double dx = width / (count - 1).clamp(1, count);
+    final double dx = chartWidth / (count - 1).clamp(1, count);
 
     // Paints for the two metrics
     final Paint punishmentPaint = Paint()
@@ -87,25 +121,13 @@ class ConvergenceChartPainter extends CustomPainter {
     final Path punishmentPath = Path();
     final Path tdErrorPath = Path();
 
-    // Find max values for normalization
-    double maxPunishment = 0.1;
-    double maxTdError = 0.1;
-    for (var record in history) {
-      if (record.meanPunishment > maxPunishment) maxPunishment = record.meanPunishment;
-      if (record.finalTdError.abs() > maxTdError) maxTdError = record.finalTdError.abs();
-    }
-    
-    // Add some padding to max
-    maxPunishment *= 1.2;
-    maxTdError *= 1.2;
-
     for (int i = 0; i < count; i++) {
       final record = history[i];
-      final double x = i * dx;
+      final double x = leftMargin + (i * dx);
       
-      // Normalize Y (inverted for canvas coordinates)
-      final double yPunishment = height - (record.meanPunishment / maxPunishment * height).clamp(0, height);
-      final double yTdError = height - (record.finalTdError.abs() / maxTdError * height).clamp(0, height);
+      // Normalize Y (hardcoded 1.0 scale as per prompt)
+      final double yPunishment = chartHeight - (record.meanPunishment.clamp(0.0, 1.0) * chartHeight);
+      final double yTdError = chartHeight - (record.finalTdError.abs().clamp(0.0, 1.0) * chartHeight);
 
       if (i == 0) {
         punishmentPath.moveTo(x, yPunishment);
@@ -119,23 +141,55 @@ class ConvergenceChartPainter extends CustomPainter {
     canvas.drawPath(punishmentPath, punishmentPaint);
     canvas.drawPath(tdErrorPath, tdErrorPaint);
 
-    // Draw Legend
-    _drawLegend(canvas, width, punishmentPaint.color, tdErrorPaint.color);
+    // Draw Legend with current values
+    _drawLegend(canvas, leftMargin, chartWidth, punishmentPaint.color, tdErrorPaint.color);
   }
 
-  void _drawLegend(Canvas canvas, double width, Color punishmentColor, Color tdErrorColor) {
+  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+    const dashWidth = 4.0;
+    const dashSpace = 4.0;
+    double currentX = p1.dx;
+    while (currentX < p2.dx) {
+      canvas.drawLine(Offset(currentX, p1.dy), Offset(currentX + dashWidth, p1.dy), paint);
+      currentX += dashWidth + dashSpace;
+    }
+  }
+
+  double tpHeight(String text) {
+    return (TextPainter(
+      text: TextSpan(text: text, style: labelStyle),
+      textDirection: TextDirection.ltr,
+    )..layout()).height;
+  }
+
+  void _drawXLabel(Canvas canvas, String text, double x, double y) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: labelStyle.copyWith(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(x, y));
+  }
+
+  void _drawLegend(Canvas canvas, double left, double width, Color punishmentColor, Color tdErrorColor) {
+    final last = history.last;
     final TextPainter tpPunishment = TextPainter(
-      text: TextSpan(text: 'Mean Punishment', style: labelStyle.copyWith(color: punishmentColor)),
+      text: TextSpan(
+        text: 'Punishment: ${last.meanPunishment.toStringAsFixed(3)}', 
+        style: labelStyle.copyWith(color: punishmentColor, fontWeight: FontWeight.bold)
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
 
     final TextPainter tpTdError = TextPainter(
-      text: TextSpan(text: 'Final |TD Error|', style: labelStyle.copyWith(color: tdErrorColor)),
+      text: TextSpan(
+        text: '|TD error|: ${last.finalTdError.abs().toStringAsFixed(3)}', 
+        style: labelStyle.copyWith(color: tdErrorColor, fontWeight: FontWeight.bold)
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
 
-    tpPunishment.paint(canvas, Offset(width - tpPunishment.width - 8, 4));
-    tpTdError.paint(canvas, Offset(width - tpTdError.width - 8, tpPunishment.height + 8));
+    tpPunishment.paint(canvas, Offset(left + width - tpPunishment.width - 8, 4));
+    tpTdError.paint(canvas, Offset(left + width - tpTdError.width - 8, tpPunishment.height + 8));
   }
 
   @override

@@ -370,7 +370,7 @@
   5. Verify on screen sizes: iPhone SE (375×667), standard (390×844), and tablet (768×1024) using `flutter run` device preview. No overflow errors in any layout.
   Run `flutter analyze` — zero errors.
 
-- [ ] **82. Chart Axis Labels & Scales:** The convergence chart and signal plotter display data without any reference scale, making them informationally empty. Add axis labels and improve overall chart readability.
+- [x] **82. Chart Axis Labels & Scales:** The convergence chart and signal plotter display data without any reference scale, making them informationally empty. Add axis labels and improve overall chart readability.
   **ConvergenceChartPainter in `lib/widgets/convergence_chart.dart`:**
   1. Reserve `leftMargin = 40.0` and `bottomMargin = 20.0` inside `paint()`. All chart drawing must start at x=leftMargin, y=0 and end at x=size.width, y=size.height-bottomMargin.
   2. Draw 5 horizontal gridlines at Y positions corresponding to values 0.0, 0.25, 0.5, 0.75, 1.0. Use a dashed stroke: `strokeWidth: 0.5`, color `labelStyle.color?.withValues(alpha: 0.2)`.
@@ -378,6 +378,10 @@
   4. Draw X-axis episode labels: first episode number and last episode number at the bottom margin. Use `labelStyle` at 10px.
   5. Update the legend to also show current values: "Punishment: 0.42" and "|TD error|: 0.18" — read the last record from `history.last`.
   **SignalPlotterPainter in `lib/widgets/signal_plotter.dart`:**
+  1. Draw a single horizontal center line (y=0 reference) as a dashed 0.5px line in `colorScheme.outline.withValues(alpha: 0.2)`.
+  2. Draw Y-axis tick marks at +1.0 and -1.0 with tiny labels "1" and "-1" at the left edge.
+  3. Draw a vertical "now" indicator: a thin vertical line at x=size.width-1 to make it clear the chart scrolls right-to-left.
+  Run `flutter analyze` — zero errors.
   1. Draw a single horizontal center line (y=0 reference) as a dashed 0.5px line in `Colors.white24` → replace with `colorScheme.outline.withValues(alpha: 0.2)` after the theme fix prompt.
   2. Draw Y-axis tick marks at +1.0 and -1.0 with tiny labels "1" and "-1" at the left edge.
   3. Draw a vertical "now" indicator: a thin vertical line at x=size.width-1 to make it clear the chart scrolls right-to-left.

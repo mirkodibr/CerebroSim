@@ -90,6 +90,9 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 1. Draw Reference Grid
+    _drawReferenceLines(canvas, size);
+
     if (buffer.isEmpty) return;
 
     final paintCritic = Paint()..color = const Color(0xFF00FFFF)..strokeWidth = 2.0..style = PaintingStyle.stroke;
@@ -125,6 +128,47 @@ class SignalPlotterPainter extends CustomPainter {
     if (isVor) {
       canvas.drawPath(pathGain, paintGain);
     }
+
+    // 2. Draw "Now" Indicator
+    final nowPaint = Paint()
+      ..color = colorScheme.secondary.withValues(alpha: 0.5)
+      ..strokeWidth = 1.0;
+    canvas.drawLine(Offset(size.width - 1, 0), Offset(size.width - 1, size.height), nowPaint);
+  }
+
+  void _drawReferenceLines(Canvas canvas, Size size) {
+    final centerPaint = Paint()
+      ..color = colorScheme.outline.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.5;
+
+    // Center horizontal line (y=0)
+    _drawDashedLine(canvas, Offset(0, size.height / 2), Offset(size.width, size.height / 2), centerPaint);
+
+    // Y-axis markers at +1 and -1
+    _drawYLabel(canvas, "1", 2, 0);
+    _drawYLabel(canvas, "-1", 2, size.height - 12);
+  }
+
+  void _drawYLabel(Canvas canvas, String text, double x, double y) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text, 
+        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.3), fontSize: 9)
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(x, y));
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+    const dashWidth = 4.0;
+    const dashSpace = 4.0;
+    double currentX = p1.dx;
+    while (currentX < p2.dx) {
+      canvas.drawLine(Offset(currentX, p1.dy), Offset(currentX + dashWidth, p1.dy), paint);
+      currentX += dashWidth + dashSpace;
+    }
   }
 
   @override
@@ -132,4 +176,3 @@ class SignalPlotterPainter extends CustomPainter {
     return oldDelegate.buffer != buffer;
   }
 }
-
