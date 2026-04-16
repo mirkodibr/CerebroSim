@@ -4,6 +4,8 @@ import '../models/cerebellar_task.dart';
 import '../models/environment.dart';
 import '../models/simulation_state.dart';
 import '../models/vor_config.dart';
+import '../models/eyeblink_config.dart';
+import '../models/sine_config.dart';
 import '../models/network_config.dart';
 import '../services/eyeblink_environment.dart';
 import '../services/sine_wave_environment.dart';
@@ -12,27 +14,42 @@ import '../services/arm_reaching_environment.dart';
 import 'simulation_provider.dart';
 
 /// A notifier that manages the configuration for the Vestibulo-Ocular Reflex (VOR) task.
-/// It allows updating the parameters that define the VOR simulation environment.
 class VorConfigNotifier extends Notifier<VorConfig> {
-  /// Initializes the VOR configuration with default values.
   @override
   VorConfig build() => const VorConfig();
-
-  /// Updates the current VOR configuration.
   void update(VorConfig c) => state = c;
 }
 
-/// A global provider for the [VorConfigNotifier].
 final vorConfigProvider = NotifierProvider<VorConfigNotifier, VorConfig>(() {
   return VorConfigNotifier();
 });
 
+/// A notifier that manages the configuration for the Eyeblink Conditioning task.
+class EyeblinkConfigNotifier extends Notifier<EyeblinkConfig> {
+  @override
+  EyeblinkConfig build() => const EyeblinkConfig();
+  void update(EyeblinkConfig c) => state = c;
+}
+
+final eyeblinkConfigProvider = NotifierProvider<EyeblinkConfigNotifier, EyeblinkConfig>(() {
+  return EyeblinkConfigNotifier();
+});
+
+/// A notifier that manages the configuration for the Sine Wave Tracking task.
+class SineConfigNotifier extends Notifier<SineConfig> {
+  @override
+  SineConfig build() => const SineConfig();
+  void update(SineConfig c) => state = c;
+}
+
+final sineConfigProvider = NotifierProvider<SineConfigNotifier, SineConfig>(() {
+  return SineConfigNotifier();
+});
+
 /// A notifier that manages the active cerebellar task and its corresponding environment.
-/// It handles task selection and provides a way to step through the environment simulation.
 class EnvironmentNotifier extends Notifier<CerebellarTask> {
   late CerebellarEnvironment _activeEnv;
 
-  /// Initializes the environment by setting the default task to eyeblink conditioning.
   @override
   CerebellarTask build() {
     state = CerebellarTask.eyeblink;
@@ -40,7 +57,6 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
     return state;
   }
 
-  /// Changes the active cerebellar task, resets the environment, and resets the simulation episode.
   void selectTask(CerebellarTask task) {
     if (state == task) return;
     HapticFeedback.selectionClick();
@@ -48,7 +64,6 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
     _activeEnv = _buildEnv(task);
     _activeEnv.reset();
     
-    // For ArmReaching, we need a network with 4 DCNs for 2D control.
     NetworkConfig? config;
     if (task == CerebellarTask.armReaching) {
       config = NetworkConfig.defaultConfig().copyWith(dcnCount: 4);
@@ -57,20 +72,16 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
     ref.read(simulationProvider.notifier).resetEpisode(config: config);
   }
 
-  /// Advances the active environment by one time step (typically 1/60s).
-  /// It takes the current [SimulationState] and returns the resulting [EnvironmentStep].
   EnvironmentStep step(SimulationState s) {
-    // Tick is 1/60s
     return _activeEnv.step(s, 0.016);
   }
 
-  /// Factory method that creates a [CerebellarEnvironment] based on the provided [CerebellarTask].
   CerebellarEnvironment _buildEnv(CerebellarTask t) {
     switch (t) {
       case CerebellarTask.eyeblink:
-        return EyeblinkEnvironment();
+        return EyeblinkEnvironment(config: ref.read(eyeblinkConfigProvider));
       case CerebellarTask.sineWave:
-        return SineWaveEnvironment();
+        return SineWaveEnvironment(config: ref.read(sineConfigProvider));
       case CerebellarTask.vor:
         return VorEnvironment(config: ref.read(vorConfigProvider));
       case CerebellarTask.armReaching:
@@ -78,11 +89,9 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
     }
   }
 
-  /// Returns the currently active [CerebellarEnvironment].
   CerebellarEnvironment get activeEnv => _activeEnv;
 }
 
-/// A global provider for the [EnvironmentNotifier], used to observe and switch tasks.
 final environmentProvider = NotifierProvider<EnvironmentNotifier, CerebellarTask>(() {
   return EnvironmentNotifier();
 });

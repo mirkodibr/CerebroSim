@@ -429,7 +429,7 @@
   - `AppBar` actions: `IconButton` with `visualDensity: VisualDensity.compact` to tighten the tap targets.
   Run `flutter analyze` — zero errors.
 
-- [ ] **85. Task Parameter Sliders:** Currently only the VOR task has a config panel. Expose tunable parameters for Eyeblink and Sine Wave to match the educational depth of VOR.
+- [x] **85. Task Parameter Sliders:** Currently only the VOR task has a config panel. Expose tunable parameters for Eyeblink and Sine Wave to match the educational depth of VOR.
   1. Create `lib/models/eyeblink_config.dart` with `@immutable class EyeblinkConfig`: fields `double csDurationMs` (default 250), `double usDurationMs` (default 50), `double trialDurationS` (default 1.0). Include `copyWith`.
   2. Create `lib/models/sine_config.dart` with `@immutable class SineConfig`: fields `double frequencyHz` (default 1.0), `double amplitude` (default 1.0). Include `copyWith`.
   3. Create providers `eyeblinkConfigProvider` and `sineConfigProvider` as `NotifierProvider`s following the exact same pattern as `vorConfigProvider`.

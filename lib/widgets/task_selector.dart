@@ -5,10 +5,6 @@ import '../providers/environment_provider.dart';
 import '../providers/simulation_provider.dart';
 
 /// A widget that allows users to switch between different [CerebellarTask] environments.
-///
-/// It uses a [SegmentedButton] to select the task. If a simulation is currently
-/// running, it prompts the user for confirmation before resetting the state.
-/// For the VOR task, it also reveals a [VorConfigPanel] for parameter tuning.
 class TaskSelector extends ConsumerWidget {
   const TaskSelector({super.key});
 
@@ -55,17 +51,84 @@ class TaskSelector extends ConsumerWidget {
         AnimatedSize(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          child: task == CerebellarTask.vor ? const VorConfigPanel() : const SizedBox.shrink(),
+          child: _buildConfigPanel(task),
         ),
       ],
     );
   }
+
+  Widget _buildConfigPanel(CerebellarTask task) {
+    switch (task) {
+      case CerebellarTask.eyeblink:
+        return const EyeblinkConfigPanel();
+      case CerebellarTask.sineWave:
+        return const SineConfigPanel();
+      case CerebellarTask.vor:
+        return const VorConfigPanel();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 }
 
-/// A configuration panel for the Vestibulo-Ocular Reflex (VOR) task.
-///
-/// It provides sliders to adjust the target gain, signal amplitude, and
-/// frequency of the simulation, allowing users to model healthy or pathological states.
+class EyeblinkConfigPanel extends ConsumerWidget {
+  const EyeblinkConfigPanel({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(eyeblinkConfigProvider);
+    final status = config.csDurationMs < 150 ? "Short CS = harder association" : "Standard Pavlovian timing";
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Text(status, style: const TextStyle(fontWeight: FontWeight.bold)),
+            _buildSlider('CS window', config.csDurationMs, 50, 500, (v) {
+              ref.read(eyeblinkConfigProvider.notifier).update(config.copyWith(csDurationMs: v));
+            }, suffix: 'ms'),
+            _buildSlider('Trial duration', config.trialDurationS, 0.5, 3.0, (v) {
+              ref.read(eyeblinkConfigProvider.notifier).update(config.copyWith(trialDurationS: v));
+            }, suffix: 's'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SineConfigPanel extends ConsumerWidget {
+  const SineConfigPanel({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(sineConfigProvider);
+    final status = config.frequencyHz > 2.0 ? "High frequency = rapid adaptation required" : "Standard rhythmic tracking";
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Text(status, style: const TextStyle(fontWeight: FontWeight.bold)),
+            _buildSlider('Frequency', config.frequencyHz, 0.25, 4.0, (v) {
+              ref.read(sineConfigProvider.notifier).update(config.copyWith(frequencyHz: v));
+            }, suffix: 'Hz'),
+            _buildSlider('Amplitude', config.amplitude, 0.1, 2.0, (v) {
+              ref.read(sineConfigProvider.notifier).update(config.copyWith(amplitude: v));
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class VorConfigPanel extends ConsumerWidget {
   const VorConfigPanel({super.key});
 
@@ -78,7 +141,7 @@ class VorConfigPanel extends ConsumerWidget {
     if (config.targetGain > 1.4) status = 'Simulating gain-up adaptation';
 
     return Card(
-      margin: const EdgeInsets.all(8.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -93,36 +156,40 @@ class VorConfigPanel extends ConsumerWidget {
             }),
             _buildSlider('Frequency', config.frequency, 0.5, 3.0, (v) {
               ref.read(vorConfigProvider.notifier).update(config.copyWith(frequency: v));
-            }),
+            }, suffix: 'Hz'),
           ],
         ),
       ),
     );
   }
 
-  /// Maps the current gain value to a descriptive semantic color.
   Color _getStatusColor(double gain) {
     if (gain < 0.6) return Colors.redAccent;
     if (gain > 1.4) return Colors.blueAccent;
     return Colors.greenAccent;
   }
-
-  /// Helper for building a slider row with a label and its current value.
-  Widget _buildSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) {
-    return Row(
-      children: [
-        SizedBox(width: 80, child: Text(label, style: const TextStyle(fontSize: 12))),
-        Expanded(
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            onChanged: onChanged,
-          ),
-        ),
-        SizedBox(width: 40, child: Text(value.toStringAsFixed(1), style: const TextStyle(fontSize: 12))),
-      ],
-    );
-  }
 }
 
+/// Helper for building a slider row with a label and its current value.
+Widget _buildSlider(String label, double value, double min, double max, ValueChanged<double> onChanged, {String suffix = ''}) {
+  return Row(
+    children: [
+      SizedBox(width: 80, child: Text(label, style: const TextStyle(fontSize: 11))),
+      Expanded(
+        child: Slider(
+          value: value,
+          min: min,
+          max: max,
+          onChanged: onChanged,
+        ),
+      ),
+      SizedBox(
+        width: 50, 
+        child: Text(
+          '${value >= 10 ? value.round() : value.toStringAsFixed(value < 1 ? 2 : 1)}$suffix', 
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)
+        )
+      ),
+    ],
+  );
+}
