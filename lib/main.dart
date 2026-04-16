@@ -1,6 +1,8 @@
 import 'package:cerebrosim/firebase_options.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
@@ -16,17 +18,34 @@ import 'screens/onboarding_screen.dart';
 /// This function handles the initial setup of the application by:
 /// 1. Ensuring Flutter framework bindings are initialized.
 /// 2. Initializing Firebase with platform-specific options.
-/// 3. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
+/// 3. Setting up Crashlytics for error reporting.
+/// 4. Starting the application wrapped in a [ProviderScope] for state management via Riverpod.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // 2. UPDATE THIS LINE to include the options
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // Pass all uncaught "fatal" errors from the framework to Crashlytics
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+
+    // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    if (kDebugMode) {
+      // Force disable Crashlytics collection while doing every day development.
+      // Temporarily toggle this to true if you want to test crash reporting in your app.
+      await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(false);
+    }
   } catch (e) {
-    debugPrint("Firebase initialization failed: $e");
+    debugPrint("Firebase/Crashlytics initialization failed: $e");
   }
 
   runApp(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
 import '../models/simulation_constants.dart';
@@ -102,49 +103,54 @@ class SimulationNotifier extends Notifier<SimulationState> {
   /// 2. Updates the neural network state using [SimulationEngine.tick].
   /// 3. Updates the [state] with the new simulation data.
   void _tick() {
-    final previousEpisodeCount = state.episodeCount;
-    final env = ref.read(environmentProvider.notifier).step(state);
-    final learningRate = ref.read(learningRateProvider);
-    final gamma = ref.read(gammaProvider);
-    final dcnBaseline = ref.read(dcnBaselineProvider);
-    
-    final dt = 1.0 / SimulationConstants.kTickRateHz;
-    state = _engine.tick(
-      state, 
-      env, 
-      dt, 
-      learningRate: learningRate,
-      gamma: gamma,
-      dcnBaseline: dcnBaseline,
-    );
-
-    // Track statistics for convergence history
-    _episodePunishmentSum += state.climbingFiberSignal;
-    _episodeTickCount++;
-
-    // Check if an episode just completed
-    if (state.episodeCount > previousEpisodeCount) {
-      final record = EpisodeRecord(
-        episodeNumber: previousEpisodeCount,
-        meanPunishment: _episodeTickCount > 0 ? _episodePunishmentSum / _episodeTickCount : 0.0,
-        finalTdError: state.tdError,
+    try {
+      final previousEpisodeCount = state.episodeCount;
+      final env = ref.read(environmentProvider.notifier).step(state);
+      final learningRate = ref.read(learningRateProvider);
+      final gamma = ref.read(gammaProvider);
+      final dcnBaseline = ref.read(dcnBaselineProvider);
+      
+      final dt = 1.0 / SimulationConstants.kTickRateHz;
+      state = _engine.tick(
+        state, 
+        env, 
+        dt, 
+        learningRate: learningRate,
+        gamma: gamma,
+        dcnBaseline: dcnBaseline,
       );
-      
-      ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
-      
-      // Reset counters for next episode
-      _episodePunishmentSum = 0.0;
-      _episodeTickCount = 0;
-    }
 
-    // Update plot buffer with latest simulation data
-    ref.read(plotBufferProvider.notifier).addPoint(
-      PlotPoint(
-        criticPrediction: state.criticPrediction,
-        actualSignal: state.climbingFiberSignal,
-        gainRatio: state.rollingGainRatio,
-      ),
-    );
+      // Track statistics for convergence history
+      _episodePunishmentSum += state.climbingFiberSignal;
+      _episodeTickCount++;
+
+      // Check if an episode just completed
+      if (state.episodeCount > previousEpisodeCount) {
+        final record = EpisodeRecord(
+          episodeNumber: previousEpisodeCount,
+          meanPunishment: _episodeTickCount > 0 ? _episodePunishmentSum / _episodeTickCount : 0.0,
+          finalTdError: state.tdError,
+        );
+        
+        ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
+        
+        // Reset counters for next episode
+        _episodePunishmentSum = 0.0;
+        _episodeTickCount = 0;
+      }
+
+      // Update plot buffer with latest simulation data
+      ref.read(plotBufferProvider.notifier).addPoint(
+        PlotPoint(
+          criticPrediction: state.criticPrediction,
+          actualSignal: state.climbingFiberSignal,
+          gainRatio: state.rollingGainRatio,
+        ),
+      );
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
+      stopSimulation();
+    }
   }
 }
 

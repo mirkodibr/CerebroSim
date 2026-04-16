@@ -207,8 +207,8 @@
   9. `web/manifest.json` — update `name` and `short_name`.
   After updating, run `flutter clean && flutter pub get`. Also update the app display name in `CFBundleDisplayName` (iOS Info.plist) and the android `android:label` to "CerebroSim" (capitalised properly). Run `flutter analyze` — zero errors required before continuing.
 
-- [ ] **70. Production Crashlytics:** Add production crash and error reporting using Firebase Crashlytics.
-  1. Add `firebase_crashlytics: ^4.0.0` to `pubspec.yaml` under dependencies. Run `flutter pub get`.
+- [x] **70. Production Crashlytics:** Add production crash and error reporting using Firebase Crashlytics.
+  1. Add `firebase_crashlytics: ^5.0.0` to `pubspec.yaml` under dependencies. Run `flutter pub get`.
   2. In `main.dart`, after `Firebase.initializeApp(...)`, add the following error interception setup:
      - Set `FlutterError.onError` to `FirebaseCrashlytics.instance.recordFlutterFatalError`.
      - Wrap `runApp(...)` in `PlatformDispatcher.instance.onError` to catch async/isolate errors.

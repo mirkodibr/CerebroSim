@@ -123,7 +123,7 @@ Gemini: When reading this file to implement a step, you MUST adhere to the follo
 ### Phase 16 : Critical Blockers (Production Hardening)
 *Goal: Resolve App Store blockers, prevent silent failures, and fix architectural state drift before scaling the engine.*
 * [x] **Bundle ID & Metadata:** Replace placeholder bundle identifiers across all platforms to meet App Store and Firebase OAuth requirements.
-* [ ] **Crashlytics Integration:** Implement Firebase Crashlytics to catch and report asynchronous and frame-level errors in production.
+* [x] **Crashlytics Integration:** Implement Firebase Crashlytics to catch and report asynchronous and frame-level errors in production.
 * [ ] **Unified Network Builder:** Centralize all network topology generation inside `NetworkInitializer` to prevent state drift and failing CI tests.
 * [ ] **Offline & Lifecycle Management:** Enable Firestore offline persistence and use `AppLifecycleListener` to pause the 60Hz ticker when backgrounded.
 * [ ] **Account Deletion Flow:** Implement a complete, batch-based account deletion feature to comply with GDPR and App Store mandates.
