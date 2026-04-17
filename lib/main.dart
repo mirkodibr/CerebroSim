@@ -21,7 +21,7 @@ void main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    ).timeout(const Duration(seconds: 10));
 
     // Enable Firestore persistence
     FirebaseFirestore.instance.settings = const Settings(
@@ -45,6 +45,7 @@ void main() async {
     }
   } catch (e) {
     debugPrint("Firebase/Crashlytics initialization failed: $e");
+    FlutterNativeSplash.remove();
   }
 
   runApp(
@@ -93,6 +94,7 @@ class DeepLinkHandler extends ConsumerStatefulWidget {
 }
 
 class _DeepLinkHandlerState extends ConsumerState<DeepLinkHandler> {
+  final _appLinks = AppLinks();
   StreamSubscription? _sub;
 
   @override
@@ -102,31 +104,21 @@ class _DeepLinkHandlerState extends ConsumerState<DeepLinkHandler> {
   }
 
   Future<void> _initDeepLinks() async {
-  if (!kIsWeb) {
-    final appLinks = AppLinks();
-    
-    // Handle the initial link (app opened from closed state)
     try {
-      final initialUri = await appLinks.getInitialLink();
-      if (initialUri != null) {
-        _handleDeepLink(initialUri);
-      }
+      final initialUri = await _appLinks.getInitialLink();
+      if (initialUri != null) _handleUri(initialUri);
     } catch (e) {
-      debugPrint('Failed to get initial link: $e');
+      debugPrint('Initial Deep Link Error: $e');
     }
 
-    // Listen for links while the app is running
-    appLinks.uriLinkStream.listen((Uri? uri) {
-      if (uri != null) {
-        _handleDeepLink(uri);
-      }
+    _sub = _appLinks.uriLinkStream.listen((Uri? uri) {
+      if (uri != null) _handleUri(uri);
     }, onError: (err) {
-      debugPrint('Deep link stream error: $err');
+      debugPrint('Deep Link Stream Error: $err');
     });
   }
-}
 
-  void _handleDeepLink(Uri uri) {
+  void _handleUri(Uri uri) {
     // Expected: cerebrosim://snapshot/{id}
     if (uri.scheme == 'cerebrosim' && uri.host == 'snapshot') {
       final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
