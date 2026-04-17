@@ -71,6 +71,12 @@ class CerebroSimApp extends ConsumerWidget {
       }
     });
 
+    // Synchronous check: if already loaded, remove splash immediately
+    final authState = ref.read(authProvider);
+    if (!authState.isLoading) {
+      FlutterNativeSplash.remove();
+    }
+
     return DeepLinkHandler(
       child: MaterialApp.router(
         routerConfig: router,
