@@ -7,7 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
-import 'package:uni_links2/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -102,21 +102,31 @@ class _DeepLinkHandlerState extends ConsumerState<DeepLinkHandler> {
   }
 
   Future<void> _initDeepLinks() async {
+  if (!kIsWeb) {
+    final appLinks = AppLinks();
+    
+    // Handle the initial link (app opened from closed state)
     try {
-      final initialUri = await getInitialUri();
-      if (initialUri != null) _handleUri(initialUri);
+      final initialUri = await appLinks.getInitialLink();
+      if (initialUri != null) {
+        _handleDeepLink(initialUri);
+      }
     } catch (e) {
-      debugPrint('Initial Deep Link Error: $e');
+      debugPrint('Failed to get initial link: $e');
     }
 
-    _sub = uriLinkStream.listen((Uri? uri) {
-      if (uri != null) _handleUri(uri);
+    // Listen for links while the app is running
+    appLinks.uriLinkStream.listen((Uri? uri) {
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
     }, onError: (err) {
-      debugPrint('Deep Link Stream Error: $err');
+      debugPrint('Deep link stream error: $err');
     });
   }
+}
 
-  void _handleUri(Uri uri) {
+  void _handleDeepLink(Uri uri) {
     // Expected: cerebrosim://snapshot/{id}
     if (uri.scheme == 'cerebrosim' && uri.host == 'snapshot') {
       final id = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
