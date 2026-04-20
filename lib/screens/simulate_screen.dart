@@ -10,6 +10,7 @@ import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
+import '../widgets/simulation_status_bar.dart';
 import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
@@ -86,6 +87,14 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SliverToBoxAdapter(
+            child: Column(
+              children: [
+                SimulationStatusBar(),
+                Divider(height: 1),
+              ],
             ),
           ),
           SliverFillRemaining(
