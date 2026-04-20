@@ -1,11 +1,16 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vault_provider.dart';
 import '../providers/environment_provider.dart';
 import '../providers/episode_history_provider.dart';
+import '../providers/plot_buffer_provider.dart';
 import '../providers/network_config_provider.dart';
 import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
@@ -15,6 +20,7 @@ import '../widgets/simulation_status_bar.dart';
 import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
+import '../services/export_service.dart';
 
 /// The primary experimental workspace for CerebroSim.
 class SimulateScreen extends ConsumerStatefulWidget {
@@ -40,7 +46,11 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
     final vaultSnapshots = ref.watch(vaultProvider).value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    final isDesktop = defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux;
+
+    Widget content = Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -51,11 +61,18 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             elevation: 0,
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(1.0),
-              child: Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
+              child: Divider(
+                  height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
             ),
             actions: [
               _buildSimControlGroup(context, state, notifier),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.download_outlined, size: 22),
+                onPressed: () => _showExportOptions(context, ref),
+                tooltip: 'Export data',
+              ),
+              const SizedBox(width: 4),
               Badge(
                 label: Text(vaultSnapshots.length.toString()),
                 isLabelVisible: vaultSnapshots.isNotEmpty,
@@ -78,7 +95,8 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                     onTap: () => context.push('/network_config'),
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 2.0, horizontal: 12.0),
                       child: Text(
                         'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
                         style: TextStyle(
@@ -109,7 +127,8 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   flex: 8,
                   child: NeuralCanvas3D(),
                 ),
-                Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
+                Divider(
+                    height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
                 const SizedBox(
                   height: 110,
                   child: Padding(
@@ -130,9 +149,45 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         ],
       ),
     );
+
+    if (isDesktop) {
+      return Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          switch (event.logicalKey) {
+            case LogicalKeyboardKey.space:
+              state.isRunning
+                  ? notifier.pauseSimulation()
+                  : notifier.startSimulation();
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.keyR:
+              notifier.resetEpisode();
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.digit1:
+              notifier.setSpeed(SimulationConstants.kSpeedNormal);
+              setState(() => _speedIndex = 0);
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.digit5:
+              notifier.setSpeed(SimulationConstants.kSpeedFast);
+              setState(() => _speedIndex = 1);
+              return KeyEventResult.handled;
+            case LogicalKeyboardKey.digit0:
+              notifier.setSpeed(SimulationConstants.kSpeedVeryFast);
+              setState(() => _speedIndex = 2);
+              return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
+        },
+        child: content,
+      );
+    }
+
+    return content;
   }
 
-  Widget _buildSimControlGroup(BuildContext context, SimulationState state, SimulationNotifier notifier) {
+  Widget _buildSimControlGroup(
+      BuildContext context, SimulationState state, SimulationNotifier notifier) {
     final colorScheme = Theme.of(context).colorScheme;
     final isExpanded = state.isRunning || state.episodeCount > 0;
 
@@ -142,7 +197,9 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         // Play/Pause Toggle
         IconButton(
           icon: Icon(
-            state.isRunning ? Icons.pause_circle_filled : Icons.play_circle_filled,
+            state.isRunning
+                ? Icons.pause_circle_filled
+                : Icons.play_circle_filled,
             size: 28,
             color: state.isRunning ? colorScheme.tertiary : colorScheme.primary,
           ),
@@ -159,18 +216,23 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         // Stop/Reset
         if (isExpanded)
           IconButton(
-            icon: Icon(Icons.stop_circle_outlined, size: 24, color: colorScheme.error),
+            icon: Icon(Icons.stop_circle_outlined,
+                size: 24, color: colorScheme.error),
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: const Text('Reset Simulation?'),
-                  content: const Text('This clears all episode history and synaptic weights.'),
+                  content: const Text(
+                      'This clears all episode history and synaptic weights.'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel')),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                      style: TextButton.styleFrom(
+                          foregroundColor: colorScheme.error),
                       child: const Text('Reset'),
                     ),
                   ],
@@ -194,7 +256,8 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           style: TextButton.styleFrom(
             minimumSize: const Size(40, 36),
             padding: EdgeInsets.zero,
-            foregroundColor: _speedIndex > 0 ? colorScheme.tertiary : colorScheme.onSurface,
+            foregroundColor:
+                _speedIndex > 0 ? colorScheme.tertiary : colorScheme.onSurface,
           ),
           child: Text(
             '${_speeds[_speedIndex].toInt()}×',
@@ -202,6 +265,71 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showExportOptions(BuildContext context, WidgetRef ref) {
+    final history = ref.read(episodeHistoryProvider);
+    final plotPoints = ref.read(plotBufferProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (history.isEmpty && plotPoints.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Run simulation first to export data.')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colorScheme.surface,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text('Export Data',
+                  style: Theme.of(context).textTheme.titleMedium),
+            ),
+            if (history.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Export episode history (.csv)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final csv = ExportService.episodesToCsv(history);
+                  final bytes = utf8.encode(csv);
+                  Share.shareXFiles(
+                    [
+                      XFile.fromData(bytes,
+                          name: 'episode_history.csv', mimeType: 'text/csv')
+                    ],
+                    text: 'CerebroSim Episode History',
+                  );
+                },
+              ),
+            if (plotPoints.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.show_chart),
+                title: const Text('Export signal data (.csv)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  final csv = ExportService.plotBufferToCsv(plotPoints);
+                  final bytes = utf8.encode(csv);
+                  Share.shareXFiles(
+                    [
+                      XFile.fromData(bytes,
+                          name: 'signal_data.csv', mimeType: 'text/csv')
+                    ],
+                    text: 'CerebroSim Signal Data',
+                  );
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 
@@ -230,22 +358,33 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Save Experiment', style: TextStyle(color: colorScheme.onSurface, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Save Experiment',
+                    style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: titleController,
                   style: TextStyle(color: colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Experiment Title',
-                    labelStyle: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                    labelStyle: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.7)),
                     border: const OutlineInputBorder(),
                   ),
-                  validator: (v) => (v == null || v.length < 3) ? 'Minimum 3 characters' : null,
+                  validator: (v) => (v == null || v.length < 3)
+                      ? 'Minimum 3 characters'
+                      : null,
                 ),
                 SwitchListTile(
-                  title: Text('Share Publicly', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7))),
+                  title: Text('Share Publicly',
+                      style: TextStyle(
+                          color: colorScheme.onSurface.withValues(alpha: 0.7))),
                   value: isPublic,
-                  onChanged: isSaving ? null : (v) => setModalState(() => isPublic = v),
+                  onChanged: isSaving
+                      ? null
+                      : (v) => setModalState(() => isPublic = v),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
@@ -261,22 +400,26 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                               final task = ref.read(environmentProvider);
                               final simState = ref.read(simulationProvider);
 
-                              final snapshot = ExperimentSnapshot.fromSimulation(
+                              final snapshot =
+                                  ExperimentSnapshot.fromSimulation(
                                 userId: user.uid,
                                 userEmail: user.email ?? 'anon',
                                 taskName: task.name,
                                 title: titleController.text,
                                 isPublic: isPublic,
                                 state: simState,
-                                episodeHistory: ref.read(episodeHistoryProvider),
+                                episodeHistory:
+                                    ref.read(episodeHistoryProvider),
                                 networkConfig: ref.read(networkConfigProvider),
                               );
 
-                              await ref.read(vaultProvider.notifier).saveSnapshot(snapshot);
+                              await ref.read(vaultProvider.notifier)
+                                  .saveSnapshot(snapshot);
                               if (context.mounted) {
                                 Navigator.pop(context);
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Experiment saved!')),
+                                  const SnackBar(
+                                      content: Text('Experiment saved!')),
                                 );
                               }
                             } catch (e) {
