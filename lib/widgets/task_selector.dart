@@ -30,19 +30,21 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
           child: SegmentedButton<CerebellarTask>(
+            showSelectedIcon: false,
             style: SegmentedButton.styleFrom(
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               textStyle: const TextStyle(fontSize: 11),
             ),
             segments: const [
-              ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink'), icon: Icon(Icons.remove_red_eye, size: 18)),
-              ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine'), icon: Icon(Icons.waves, size: 18)),
-              ButtonSegment(value: CerebellarTask.vor, label: Text('VOR'), icon: Icon(Icons.sync, size: 18)),
-              ButtonSegment(value: CerebellarTask.armReaching, label: Text('Arm'), icon: Icon(Icons.gesture, size: 18)),
+              ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink')),
+              ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine')),
+              ButtonSegment(value: CerebellarTask.vor, label: Text('VOR')),
+              ButtonSegment(value: CerebellarTask.armReaching, label: Text('Arm')),
             ],
             selected: {task},
             onSelectionChanged: (newSelection) async {
