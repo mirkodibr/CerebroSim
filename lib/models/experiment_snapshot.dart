@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meta/meta.dart';
 import 'simulation_state.dart';
 import 'network_config.dart';
+import 'episode_record.dart';
 
 /// Represents a saved state of a cerebellar simulation experiment.
 ///
@@ -110,6 +111,7 @@ class ExperimentSnapshot {
     required String title,
     required bool isPublic,
     required SimulationState state,
+    required List<EpisodeRecord> episodeHistory,
     NetworkConfig? networkConfig,
   }) {
     return ExperimentSnapshot(
@@ -117,7 +119,9 @@ class ExperimentSnapshot {
       userId: userId,
       userEmail: userEmail,
       taskName: taskName,
-      finalErrorRate: state.tdError.abs(), // Simplified error rate
+      finalErrorRate: episodeHistory.isNotEmpty 
+        ? episodeHistory.last.meanPunishment 
+        : state.climbingFiberSignal,
       finalVorGain: state.rollingGainRatio,
       synapticWeights: state.synapses.map((s) => s.weight).toList(),
       episodeCount: state.episodeCount,

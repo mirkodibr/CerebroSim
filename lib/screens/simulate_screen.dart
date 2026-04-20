@@ -5,6 +5,7 @@ import '../providers/simulation_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vault_provider.dart';
 import '../providers/environment_provider.dart';
+import '../providers/episode_history_provider.dart';
 import '../providers/network_config_provider.dart';
 import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
@@ -69,7 +70,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              padding: const EdgeInsets.only(top: 4, bottom: 0),
               child: Column(
                 children: [
                   const TaskSelector(),
@@ -105,25 +106,24 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             child: Column(
               children: [
                 const Expanded(
-                  flex: 7,
+                  flex: 8,
                   child: NeuralCanvas3D(),
                 ),
                 Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
                 const SizedBox(
-                  height: 120,
+                  height: 110,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
                     child: SignalPlotter(),
                   ),
                 ),
                 const SizedBox(
-                  height: 90,
+                  height: 80,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(12, 4, 12, 4),
                     child: ConvergenceChart(),
                   ),
                 ),
-                const SizedBox(height: 8), // Minimal bottom breathing room
               ],
             ),
           ),
@@ -268,6 +268,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                                 title: titleController.text,
                                 isPublic: isPublic,
                                 state: simState,
+                                episodeHistory: ref.read(episodeHistoryProvider),
                                 networkConfig: ref.read(networkConfigProvider),
                               );
 
