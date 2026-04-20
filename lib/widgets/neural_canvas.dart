@@ -8,6 +8,7 @@ import '../services/neural_3d_projection.dart';
 import '../models/neuron_model.dart';
 import 'neuron_info_overlay.dart';
 import 'neural_canvas_3d_painter.dart';
+import 'simulation_hud.dart';
 
 /// An interactive 3D visualization of the cerebellar microcircuit.
 /// 
@@ -258,6 +259,8 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
             ],
           ),
         ),
+
+        const SimulationHud(),
 
         if (_selectedNeuronId != null) ...[
           () {

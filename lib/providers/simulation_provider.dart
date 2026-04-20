@@ -37,6 +37,8 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   double _speedMultiplier = SimulationConstants.kSpeedNormal;
   bool _wasRunningBeforePause = false;
 
+  double get speedMultiplier => _speedMultiplier;
+
   /// Initializes the simulation state using the [SimulationEngine]'s initial state.
   /// Ensures that any active timers are cancelled when the provider is disposed.
   @override
