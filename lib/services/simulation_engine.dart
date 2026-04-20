@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:meta/meta.dart';
 import '../models/simulation_state.dart';
 import '../models/neuron_model.dart';
 import '../models/synapse_model.dart';

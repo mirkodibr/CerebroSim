@@ -17,6 +17,17 @@ class SnapshotCard extends StatelessWidget {
     this.isHighlighted = false,
   });
 
+  // Parse taskName string back to enum for display:
+  String _taskDisplayName(String taskName) {
+    switch (taskName) {
+      case 'eyeblink': return 'EYEBLINK';
+      case 'sineWave': return 'SINE WAVE';
+      case 'vor': return 'VOR';
+      case 'armReaching': return 'ARM';
+      default: return taskName.toUpperCase();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -89,7 +100,7 @@ class SnapshotCard extends StatelessWidget {
                       children: [
                         _buildChip(
                           context,
-                          snapshot.taskName.toUpperCase(),
+                          _taskDisplayName(snapshot.taskName),
                           colorScheme.primaryContainer,
                           colorScheme.onPrimaryContainer,
                         ),

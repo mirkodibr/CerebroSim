@@ -132,6 +132,49 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
     );
   }
 
+  Widget _buildEmptyState(BuildContext context, bool isOwnVault) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(isOwnVault ? Icons.science_outlined : Icons.public,
+                size: 64, color: colorScheme.outline),
+            const SizedBox(height: 16),
+            Text(
+              isOwnVault ? 'No saved experiments yet' : 'No public experiments yet',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: colorScheme.onSurface),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isOwnVault
+                  ? 'Run a simulation and tap the save icon to archive your results here.'
+                  : 'Be the first to share a result publicly.',
+              style: TextStyle(
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
+                  fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            if (isOwnVault) ...[
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.biotech, size: 16),
+                label: const Text('Go to Simulate'),
+                onPressed: () => context.go('/shell/simulate'),
+              ),
+            ]
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Builds the list of snapshots owned by the authenticated user.
   Widget _buildUserSnapshots(BuildContext context, WidgetRef ref) {
     final snapshots = ref.watch(vaultProvider);
@@ -145,7 +188,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
-                  ? Center(child: Text('No matching experiments.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
+                  ? _buildEmptyState(context, true)
                   : ListView.builder(
                       itemCount: processed.length,
                       itemBuilder: (context, index) {
@@ -178,7 +221,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
-                  ? Center(child: Text('Gallery is empty.', style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.54))))
+                  ? _buildEmptyState(context, false)
                   : ListView.builder(
                       itemCount: processed.length,
                       itemBuilder: (context, index) {

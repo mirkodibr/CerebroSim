@@ -22,6 +22,7 @@ class ProfileScreen extends ConsumerWidget {
     
     /// Retrieves the currently authenticated user from Firebase.
     final user = FirebaseAuth.instance.currentUser;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -29,6 +30,28 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            alignment: Alignment.center,
+            child: Column(children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: colorScheme.primaryContainer,
+                child: Text(
+                  user?.email?.substring(0, 1).toUpperCase() ?? '?',
+                  style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onPrimaryContainer),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(user?.email ?? '',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: colorScheme.onSurface.withValues(alpha: 0.7))),
+            ]),
+          ),
           if (user != null && !user.emailVerified)
             Container(
               color: Theme.of(context).colorScheme.tertiaryContainer,
