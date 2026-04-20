@@ -81,14 +81,15 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
             ),
           ),
         ),
-        AnimatedContainer(
+        AnimatedSize(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          constraints: BoxConstraints(
-            maxHeight: _isExpanded ? 160.0 : 0.0,
-          ),
           clipBehavior: Clip.hardEdge,
-          child: _buildConfigPanel(task),
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: double.infinity,
+            child: _isExpanded ? _buildConfigPanel(task) : const SizedBox.shrink(),
+          ),
         ),
       ],
     );
