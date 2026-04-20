@@ -17,6 +17,7 @@ import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
 import '../widgets/simulation_status_bar.dart';
+import '../widgets/explanation_card.dart';
 import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
@@ -106,6 +107,13 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                         ),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    child: (state.episodeCount > 0 || !state.isRunning)
+                        ? const ExplanationCard()
+                        : const SizedBox.shrink(),
                   ),
                 ],
               ),
