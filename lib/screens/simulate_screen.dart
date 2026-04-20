@@ -65,7 +65,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Column(
                 children: [
                   const TaskSelector(),
@@ -73,7 +73,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                     onTap: () => context.push('/network_config'),
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 12.0),
+                      padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 12.0),
                       child: Text(
                         'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
                         style: TextStyle(
@@ -93,25 +93,25 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             child: Column(
               children: [
                 const Expanded(
-                  flex: 5,
+                  flex: 7,
                   child: NeuralCanvas3D(),
                 ),
                 Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
                 const SizedBox(
-                  height: 140,
+                  height: 120,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
                     child: SignalPlotter(),
                   ),
                 ),
                 const SizedBox(
-                  height: 110,
+                  height: 90,
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(12, 4, 12, 4),
                     child: ConvergenceChart(),
                   ),
                 ),
-                const SizedBox(height: 16), // Bottom breathing room
+                const SizedBox(height: 8), // Minimal bottom breathing room
               ],
             ),
           ),

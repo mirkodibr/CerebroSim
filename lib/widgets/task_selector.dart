@@ -5,27 +5,44 @@ import '../providers/environment_provider.dart';
 import '../providers/simulation_provider.dart';
 
 /// A widget that allows users to switch between different [CerebellarTask] environments.
-class TaskSelector extends ConsumerWidget {
+class TaskSelector extends ConsumerStatefulWidget {
   const TaskSelector({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskSelector> createState() => _TaskSelectorState();
+}
+
+class _TaskSelectorState extends ConsumerState<TaskSelector> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
     final task = ref.watch(environmentProvider);
     final isRunning = ref.watch(simulationProvider).isRunning;
+
+    String configLabel = 'Config';
+    switch (task) {
+      case CerebellarTask.eyeblink: configLabel = 'Eyeblink Config'; break;
+      case CerebellarTask.sineWave: configLabel = 'Sine Config'; break;
+      case CerebellarTask.vor: configLabel = 'VOR Config'; break;
+      case CerebellarTask.armReaching: configLabel = 'Arm Config'; break;
+    }
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
           child: SegmentedButton<CerebellarTask>(
-            style: const ButtonStyle(
+            style: SegmentedButton.styleFrom(
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 11),
             ),
             segments: const [
               ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink'), icon: Icon(Icons.remove_red_eye, size: 18)),
               ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine'), icon: Icon(Icons.waves, size: 18)),
               ButtonSegment(value: CerebellarTask.vor, label: Text('VOR'), icon: Icon(Icons.sync, size: 18)),
+              ButtonSegment(value: CerebellarTask.armReaching, label: Text('Arm'), icon: Icon(Icons.gesture, size: 18)),
             ],
             selected: {task},
             onSelectionChanged: (newSelection) async {
@@ -48,9 +65,27 @@ class TaskSelector extends ConsumerWidget {
             },
           ),
         ),
-        AnimatedSize(
+        InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(configLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 16),
+              ],
+            ),
+          ),
+        ),
+        AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeInOut,
+          constraints: BoxConstraints(
+            maxHeight: _isExpanded ? 160.0 : 0.0,
+          ),
+          clipBehavior: Clip.hardEdge,
           child: _buildConfigPanel(task),
         ),
       ],
