@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:meta/meta.dart';
 import '../models/simulation_state.dart';
 import '../models/neuron_model.dart';
@@ -16,6 +17,8 @@ import 'network_initializer.dart';
 ///   eligibility traces.
 /// - **Temporal Memory:** Eligibility trace updates for bridging time gaps.
 class SimulationEngine {
+  static const int _maxDelay = 10; // max axonal delay in ticks
+
   /// A temporal ring buffer to schedule future synaptic currents based on axonal delays.
   /// Key 1: Target tick (episodeStep).
   /// Key 2: Target neuron ID.
@@ -30,6 +33,13 @@ class SimulationEngine {
   /// Clears the temporal ring buffer. 
   /// Should be called during simulation resets or when loading new configurations.
   void clearBuffer() {
+    assert(() {
+      if (_potentialBuffer.isNotEmpty) {
+        debugPrint('SimulationEngine: clearing ${_potentialBuffer.length} '
+          'stale buffer entries');
+      }
+      return true;
+    }());
     _potentialBuffer.clear();
   }
 
@@ -73,6 +83,14 @@ class SimulationEngine {
       for (final entry in scheduledForNow.entries) {
         inputCurrents[entry.key] = (inputCurrents[entry.key] ?? 0.0) + entry.value;
       }
+    }
+
+    // Prune stale entries older than maxDelay ticks behind current step
+    final staleKeys = _potentialBuffer.keys
+      .where((k) => k < current.episodeStep - _maxDelay)
+      .toList();
+    for (final k in staleKeys) {
+      _potentialBuffer.remove(k);
     }
 
     // Optimized propagation: Iterate over neurons. If they have activity (membranePotential > 0),

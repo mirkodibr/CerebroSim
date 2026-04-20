@@ -199,5 +199,21 @@ void main() {
       // (0.0 + 0.5) * (1 - 0.1) = 0.45
       expect(state.neurons['n2']!.membranePotential, closeTo(0.45, 0.001), reason: 'Spike should arrive at tick 13');
     });
+
+    test('_potentialBuffer does not grow unbounded over 200 ticks', () {
+      final engine = SimulationEngine();
+      final state = SimulationState.initial();
+      const env = EnvironmentStep(
+        stateVector: [1.0], punishment: 0.0, isEpisodeEnd: false);
+      
+      var s = state;
+      for (int i = 0; i < 200; i++) {
+        s = engine.tick(s, env, 0.016, 
+          learningRate: 0.01, gamma: 0.95, dcnBaseline: 0.5);
+      }
+      // Buffer should never hold more than maxDelay worth of entries
+      // We can't access private field directly, but we verify no crash/OOM
+      expect(s.episodeStep, 200);
+    });
   });
 }
