@@ -24,11 +24,19 @@ class SimulateScreen extends ConsumerStatefulWidget {
 }
 
 class _SimulateScreenState extends ConsumerState<SimulateScreen> {
+  int _speedIndex = 0;
+  final List<double> _speeds = [
+    SimulationConstants.kSpeedNormal,
+    SimulationConstants.kSpeedFast,
+    SimulationConstants.kSpeedVeryFast,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
     final notifier = ref.read(simulationProvider.notifier);
     final networkConfig = ref.watch(networkConfigProvider);
+    final vaultSnapshots = ref.watch(vaultProvider).value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -46,22 +54,17 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             ),
             actions: [
               _buildSimControlGroup(context, state, notifier),
-              PopupMenuButton<double>(
-                icon: const Icon(Icons.speed, size: 20),
-                tooltip: 'Simulation Speed',
-                onSelected: (speed) => notifier.setSpeed(speed),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: SimulationConstants.kSpeedNormal, child: Text('1x Speed')),
-                  const PopupMenuItem(value: SimulationConstants.kSpeedFast, child: Text('5x Speed')),
-                  const PopupMenuItem(value: SimulationConstants.kSpeedVeryFast, child: Text('10x Speed')),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.save, size: 20),
-                onPressed: () => _showSaveDialog(context, ref),
-                tooltip: 'Save Snapshot',
-              ),
               const SizedBox(width: 8),
+              Badge(
+                label: Text(vaultSnapshots.length.toString()),
+                isLabelVisible: vaultSnapshots.isNotEmpty,
+                child: IconButton(
+                  icon: const Icon(Icons.bookmark_add_outlined, size: 22),
+                  onPressed: () => _showSaveDialog(context, ref),
+                  tooltip: 'Save Snapshot',
+                ),
+              ),
+              const SizedBox(width: 12),
             ],
           ),
           SliverToBoxAdapter(
@@ -130,42 +133,75 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   }
 
   Widget _buildSimControlGroup(BuildContext context, SimulationState state, SimulationNotifier notifier) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.refresh, size: 18),
-            onPressed: () => notifier.resetEpisode(),
-            tooltip: 'Reset',
+    final colorScheme = Theme.of(context).colorScheme;
+    final isExpanded = state.isRunning || state.episodeCount > 0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Play/Pause Toggle
+        IconButton(
+          icon: Icon(
+            state.isRunning ? Icons.pause_circle_filled : Icons.play_circle_filled,
+            size: 28,
+            color: state.isRunning ? colorScheme.tertiary : colorScheme.primary,
           ),
+          onPressed: () {
+            if (state.isRunning) {
+              notifier.pauseSimulation();
+            } else {
+              notifier.startSimulation();
+            }
+          },
+          tooltip: state.isRunning ? 'Pause' : 'Start simulation',
+        ),
+
+        // Stop/Reset
+        if (isExpanded)
           IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: Icon(state.isRunning ? Icons.pause : Icons.play_arrow, size: 18),
-            onPressed: () {
-              if (state.isRunning) {
-                notifier.pauseSimulation();
-              } else {
-                notifier.startSimulation();
+            icon: Icon(Icons.stop_circle_outlined, size: 24, color: colorScheme.error),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Reset Simulation?'),
+                  content: const Text('This clears all episode history and synaptic weights.'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                      child: const Text('Reset'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                notifier.resetEpisode();
               }
             },
-            tooltip: state.isRunning ? 'Pause' : 'Start',
+            tooltip: 'Reset simulation',
           ),
-          if (state.isRunning || state.episodeStep > 0 || state.episodeCount > 0)
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.stop, size: 18),
-              onPressed: () => notifier.stopSimulation(),
-              tooltip: 'Stop',
-            ),
-        ],
-      ),
+
+        // Speed Selector
+        TextButton(
+          onPressed: () {
+            setState(() {
+              _speedIndex = (_speedIndex + 1) % _speeds.length;
+            });
+            notifier.setSpeed(_speeds[_speedIndex]);
+          },
+          style: TextButton.styleFrom(
+            minimumSize: const Size(40, 36),
+            padding: EdgeInsets.zero,
+            foregroundColor: _speedIndex > 0 ? colorScheme.tertiary : colorScheme.onSurface,
+          ),
+          child: Text(
+            '${_speeds[_speedIndex].toInt()}×',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
     );
   }
 
