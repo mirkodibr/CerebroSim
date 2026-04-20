@@ -82,11 +82,23 @@ class SignalPlotterPainter extends CustomPainter {
   final bool isVor;
   final ColorScheme colorScheme;
 
+  late final TextPainter _labelTop = _makeLabel("1");
+  late final TextPainter _labelBottom = _makeLabel("-1");
+
   SignalPlotterPainter({
-    required this.buffer, 
+    required this.buffer,
     required this.isVor,
     required this.colorScheme,
   });
+
+  TextPainter _makeLabel(String text) => TextPainter(
+        text: TextSpan(
+            text: text,
+            style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.3),
+                fontSize: 9)),
+        textDirection: TextDirection.ltr,
+      )..layout();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -95,19 +107,29 @@ class SignalPlotterPainter extends CustomPainter {
 
     if (buffer.isEmpty) return;
 
-    final paintCritic = Paint()..color = const Color(0xFF00FFFF)..strokeWidth = 2.0..style = PaintingStyle.stroke;
-    final paintActual = Paint()..color = const Color(0xFFEF9F27)..strokeWidth = 2.0..style = PaintingStyle.stroke;
-    final paintGain = Paint()..color = const Color(0xFF8A2BE2)..strokeWidth = 2.0..style = PaintingStyle.stroke;
+    final paintCritic = Paint()
+      ..color = const Color(0xFF00FFFF)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    final paintActual = Paint()
+      ..color = const Color(0xFFEF9F27)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    final paintGain = Paint()
+      ..color = const Color(0xFF8A2BE2)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
 
     final pathCritic = Path();
     final pathActual = Path();
     final pathGain = Path();
 
-    final double stepX = size.width / (buffer.length > 1 ? buffer.length - 1 : 1);
-    
+    final double stepX =
+        size.width / (buffer.length > 1 ? buffer.length - 1 : 1);
+
     for (int i = 0; i < buffer.length; i++) {
       final x = i * stepX;
-      
+
       /// Maps a value between -1 and 1 to a Y coordinate on the canvas.
       /// 1.0 maps to top, -1.0 maps to bottom, 0.0 maps to center.
       double mapY(double val) => size.height / 2 - (val * size.height / 2);
@@ -133,7 +155,8 @@ class SignalPlotterPainter extends CustomPainter {
     final nowPaint = Paint()
       ..color = colorScheme.secondary.withValues(alpha: 0.5)
       ..strokeWidth = 1.0;
-    canvas.drawLine(Offset(size.width - 1, 0), Offset(size.width - 1, size.height), nowPaint);
+    canvas.drawLine(
+        Offset(size.width - 1, 0), Offset(size.width - 1, size.height), nowPaint);
   }
 
   void _drawReferenceLines(Canvas canvas, Size size) {
@@ -143,22 +166,12 @@ class SignalPlotterPainter extends CustomPainter {
       ..strokeWidth = 0.5;
 
     // Center horizontal line (y=0)
-    _drawDashedLine(canvas, Offset(0, size.height / 2), Offset(size.width, size.height / 2), centerPaint);
+    _drawDashedLine(canvas, Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2), centerPaint);
 
     // Y-axis markers at +1 and -1
-    _drawYLabel(canvas, "1", 2, 0);
-    _drawYLabel(canvas, "-1", 2, size.height - 12);
-  }
-
-  void _drawYLabel(Canvas canvas, String text, double x, double y) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text, 
-        style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.3), fontSize: 9)
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(x, y));
+    _labelTop.paint(canvas, const Offset(2, 0));
+    _labelBottom.paint(canvas, Offset(2, size.height - 12));
   }
 
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
@@ -166,7 +179,8 @@ class SignalPlotterPainter extends CustomPainter {
     const dashSpace = 4.0;
     double currentX = p1.dx;
     while (currentX < p2.dx) {
-      canvas.drawLine(Offset(currentX, p1.dy), Offset(currentX + dashWidth, p1.dy), paint);
+      canvas.drawLine(
+          Offset(currentX, p1.dy), Offset(currentX + dashWidth, p1.dy), paint);
       currentX += dashWidth + dashSpace;
     }
   }
