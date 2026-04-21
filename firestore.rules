@@ -16,7 +16,8 @@ service cloud.firestore {
              data.title is string && 
              data.title.size() >= 3 && 
              data.title.size() <= 50 &&
-             data.taskName in ['eyeblink', 'sineWave', 'vor'] &&
+             // FIX 1: Added 'armReaching' to the allowed task list
+             data.taskName in ['eyeblink', 'sineWave', 'vor', 'armReaching'] &&
              data.finalErrorRate is number &&
              data.finalErrorRate >= 0.0 &&
              data.finalErrorRate <= 1.0 &&
@@ -27,7 +28,11 @@ service cloud.firestore {
 
     // Rate Limiting: Ensure at least 60 seconds between snapshots
     function isNotSpamming() {
-      let lastSnapshot = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastSnapshotAt;
+      // FIX 2: Safe path checking using exists() and get()
+      let userDocPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let docExists = exists(userDocPath);
+      let lastSnapshot = docExists ? get(userDocPath).data.get('lastSnapshotAt', null) : null;
+      
       return lastSnapshot == null || request.time > lastSnapshot + duration.value(60, 's');
     }
 

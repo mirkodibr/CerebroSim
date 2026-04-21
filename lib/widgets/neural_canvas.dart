@@ -29,16 +29,18 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
   // State fields for 3D view
   double _rotX = 0.4;
   double _rotY = 0.6;
-  double _zoom = 120.0;
+  double? _zoom;
   String? _selectedNeuronId;
   Offset? _selectedNeuronPos;
 
   // For zoom tracking
   double _baseZoom = 120.0;
+  static const double _defaultZoomMarker = -1.0;
 
   @override
   void initState() {
     super.initState();
+    _zoom = _defaultZoomMarker;
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 1),
@@ -139,7 +141,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
         pos3d,
         rotX: _rotX,
         rotY: _rotY,
-        zoom: _zoom,
+        zoom: _zoom ?? 120.0,
         centerX: centerX,
         centerY: centerY,
       );
@@ -167,6 +169,11 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
 
+    // Auto-calculate zoom for initial view based on network size
+    if (_zoom == _defaultZoomMarker) {
+      _zoom = (60.0 + (state.neurons.length * 3.5)).clamp(80.0, 220.0);
+    }
+
     // Re-calculate selected neuron position for overlay tracking
     Offset? overlayPos = _selectedNeuronPos;
     if (_selectedNeuronId != null) {
@@ -188,7 +195,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
             pos3d,
             rotX: _rotX,
             rotY: _rotY,
-            zoom: _zoom,
+            zoom: _zoom!,
             centerX: centerX,
             centerY: centerY,
           );
@@ -203,7 +210,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
           onTapUp: _handleTapUp,
           onScaleStart: (details) {
             _dismissHint();
-            _baseZoom = _zoom;
+            _baseZoom = _zoom!;
           },
           onScaleUpdate: (details) {
             setState(() {
@@ -222,7 +229,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
               state: state,
               rotX: _rotX,
               rotY: _rotY,
-              zoom: _zoom,
+              zoom: _zoom!,
               selectedNeuronId: _selectedNeuronId,
               repaint: _animationController,
               colorScheme: Theme.of(context).colorScheme,

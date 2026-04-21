@@ -43,17 +43,17 @@ class NeuralCanvas3DPainter extends CustomPainter {
         final side = math.sqrt(count).ceil();
         final row = index ~/ side;
         final col = index % side;
-        x = (col - (side - 1) / 2) * 0.8;
-        z = (row - (side - 1) / 2) * 0.8;
+        x = (col - (side - 1) / 2) * 1.4;
+        z = (row - (side - 1) / 2) * 1.4;
         break;
       case 'PC':
         y = 0.0;
-        x = count > 1 ? (index - (count - 1) / 2) * 1.5 : 0.0;
+        x = count > 1 ? (index - (count - 1) / 2) * 2.0 : 0.0;
         z = 0.0;
         break;
       case 'BC':
         y = 0.4;
-        x = count > 1 ? (index - (count - 1) / 2) * 1.2 : 0.4;
+        x = count > 1 ? (index - (count - 1) / 2) * 1.8 : 0.4;
         z = -0.5;
         break;
       case 'SC':
@@ -63,7 +63,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
         break;
       case 'DCN':
         y = -2.0;
-        x = count > 1 ? (index - (count - 1) / 2) * 1.0 : 0.0;
+        x = count > 1 ? (index - (count - 1) / 2) * 1.6 : 0.0;
         z = 0.2;
         break;
       case 'CF':
@@ -71,6 +71,13 @@ class NeuralCanvas3DPainter extends CustomPainter {
         x = -1.5;
         z = 0.0;
         break;
+    }
+
+    // Add a minimum separation guarantee for large networks
+    if (count > 6) {
+      final spreadFactor = (count / 6.0).clamp(1.0, 3.0);
+      x *= spreadFactor;
+      z *= spreadFactor;
     }
 
     final random = math.Random(n.id.hashCode);

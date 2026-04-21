@@ -13,20 +13,22 @@ class TaskSelector extends ConsumerStatefulWidget {
 }
 
 class _TaskSelectorState extends ConsumerState<TaskSelector> {
-  bool _isExpanded = false;
+  bool _configExpanded = false;
+
+  String _configTitle(CerebellarTask task) {
+    switch (task) {
+      case CerebellarTask.eyeblink: return "Eyeblink Config";
+      case CerebellarTask.sineWave: return "Sine Config";
+      case CerebellarTask.vor: return "VOR Config";
+      case CerebellarTask.armReaching: return "Arm Config";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final task = ref.watch(environmentProvider);
     final isRunning = ref.watch(simulationProvider).isRunning;
-
-    String configLabel = 'Config';
-    switch (task) {
-      case CerebellarTask.eyeblink: configLabel = 'Eyeblink Config'; break;
-      case CerebellarTask.sineWave: configLabel = 'Sine Config'; break;
-      case CerebellarTask.vor: configLabel = 'VOR Config'; break;
-      case CerebellarTask.armReaching: configLabel = 'Arm Config'; break;
-    }
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -44,7 +46,11 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
               ButtonSegment(value: CerebellarTask.eyeblink, label: Text('Eyeblink')),
               ButtonSegment(value: CerebellarTask.sineWave, label: Text('Sine')),
               ButtonSegment(value: CerebellarTask.vor, label: Text('VOR')),
-              ButtonSegment(value: CerebellarTask.armReaching, label: Text('Arm')),
+              ButtonSegment(
+                value: CerebellarTask.armReaching, 
+                label: Text('Arm', style: TextStyle(fontSize: 10)),
+                icon: Icon(Icons.gesture, size: 16)
+              ),
             ],
             selected: {task},
             onSelectionChanged: (newSelection) async {
@@ -67,30 +73,31 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
             },
           ),
         ),
-        InkWell(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(configLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, size: 16),
-              ],
+        Column(children: [
+          InkWell(
+            onTap: () => setState(() => _configExpanded = !_configExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(_configTitle(task), style: TextStyle(
+                    fontSize: 11, color: colorScheme.secondary)),
+                  Icon(_configExpanded ? Icons.expand_less : Icons.expand_more, 
+                    size: 16, color: colorScheme.secondary),
+                ],
+              ),
             ),
           ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          clipBehavior: Clip.hardEdge,
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: double.infinity,
-            child: _isExpanded ? _buildConfigPanel(task) : const SizedBox.shrink(),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: _buildConfigPanel(task),
+            crossFadeState: _configExpanded 
+              ? CrossFadeState.showSecond 
+              : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
           ),
-        ),
+        ]),
       ],
     );
   }
