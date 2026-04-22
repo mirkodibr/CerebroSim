@@ -32,6 +32,10 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   Timer? _timer;
   final SimulationEngine _engine = SimulationEngine();
   
+  // Stream for convergence events
+  final StreamController<int> _convergenceController = StreamController<int>.broadcast();
+  Stream<int> get convergenceEventStream => _convergenceController.stream;
+
   double _episodePunishmentSum = 0.0;
   int _episodeTickCount = 0;
   double _speedMultiplier = SimulationConstants.kSpeedNormal;
@@ -166,12 +170,22 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
       // Check if an episode just completed
       if (state.episodeCount > previousEpisodeCount) {
+        assert(() {
+          debugPrint("Episode completed: ${state.episodeCount}");
+          return true;
+        }());
+        
         final record = EpisodeRecord(
           episodeNumber: previousEpisodeCount,
           meanPunishment: _episodeTickCount > 0 ? _episodePunishmentSum / _episodeTickCount : 0.0,
           finalTdError: state.tdError,
         );
         
+        // Emit convergence event if mean punishment is low enough
+        if (record.meanPunishment < 0.2) {
+          _convergenceController.add(state.episodeCount);
+        }
+
         ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
         
         // Reset counters for next episode

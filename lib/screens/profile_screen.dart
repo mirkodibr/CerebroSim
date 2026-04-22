@@ -22,7 +22,8 @@ class ProfileScreen extends ConsumerWidget {
     
     /// Retrieves the currently authenticated user from Firebase.
     final user = FirebaseAuth.instance.currentUser;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -31,56 +32,79 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: 32),
             alignment: Alignment.center,
             child: Column(children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Text(
-                  user?.email?.substring(0, 1).toUpperCase() ?? '?',
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onPrimaryContainer),
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 38,
+                  backgroundColor: colorScheme.surface,
+                  child: CircleAvatar(
+                    radius: 35,
+                    backgroundColor: colorScheme.primaryContainer,
+                    child: Text(
+                      user?.email?.substring(0, 1).toUpperCase() ?? '?',
+                      style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onPrimaryContainer),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               Text(user?.email ?? '',
-                  style: TextStyle(
-                      fontSize: 13,
-                      color: colorScheme.onSurface.withValues(alpha: 0.7))),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onSurface)),
             ]),
           ),
           if (user != null && !user.emailVerified)
-            Container(
-              color: Theme.of(context).colorScheme.tertiaryContainer,
-              child: ListTile(
-                leading: Icon(
-                  Icons.warning_amber_rounded,
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
-                title: const Text('Email not verified'),
-                subtitle: const Text('Check your inbox'),
-                trailing: TextButton(
-                  onPressed: () async {
-                    await user.sendEmailVerification();
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Verification email sent')),
-                      );
-                    }
-                  },
-                  child: const Text('Resend'),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Card(
+                elevation: 0,
+                color: colorScheme.tertiaryContainer,
+                child: ListTile(
+                  leading: Icon(
+                    Icons.mark_email_unread,
+                    color: colorScheme.tertiary,
+                  ),
+                  title: Text(
+                    'Email not verified',
+                    style: TextStyle(color: colorScheme.onTertiaryContainer, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    'Check your inbox to secure your account',
+                    style: TextStyle(color: colorScheme.onTertiaryContainer.withValues(alpha: 0.8)),
+                  ),
+                  trailing: TextButton(
+                    onPressed: () async {
+                      await user.sendEmailVerification();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Verification email sent')),
+                        );
+                      }
+                    },
+                    child: const Text('Resend'),
+                  ),
                 ),
               ),
             ),
-          if (user != null)
-            ListTile(
-              leading: const Icon(Icons.email),
-              title: const Text('Email'),
-              subtitle: Text(user.email ?? 'No email'),
-            ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('Settings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+          ),
           SwitchListTile(
             secondary: Icon(themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode),
             title: const Text('Dark Mode'),
@@ -98,17 +122,30 @@ class ProfileScreen extends ConsumerWidget {
             },
           ),
           const Divider(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text('Account', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey)),
+          ),
           ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+            leading: Icon(Icons.logout, color: colorScheme.onSurface),
+            title: const Text('Sign Out'),
+            subtitle: Text("You'll need to sign back in", 
+              style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 12)),
             onTap: () async {
               await ref.read(authProvider.notifier).signOut();
             },
           ),
+          const Divider(),
           ListTile(
-            leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Delete account', style: TextStyle(color: Colors.red)),
+            leading: Icon(Icons.delete_forever, color: colorScheme.error),
+            title: Text('Delete account', style: TextStyle(color: colorScheme.error)),
             onTap: () => _showDeleteConfirmation(context, ref),
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('App version'),
+            trailing: const Text('1.0.0+1', style: TextStyle(color: Colors.grey)),
           ),
         ],
       ),

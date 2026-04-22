@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +17,6 @@ import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
-import '../widgets/simulation_status_bar.dart';
-import '../widgets/explanation_card.dart';
 import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
@@ -33,11 +32,51 @@ class SimulateScreen extends ConsumerStatefulWidget {
 
 class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   int _speedIndex = 0;
+  StreamSubscription? _convergenceSub;
+  bool _chartsExpanded = false;
   final List<double> _speeds = [
     SimulationConstants.kSpeedNormal,
     SimulationConstants.kSpeedFast,
     SimulationConstants.kSpeedVeryFast,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _convergenceSub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((ep) {
+      if (mounted) {
+        _showConvergenceSnackBar(context, ep);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _convergenceSub?.cancel();
+    super.dispose();
+  }
+
+  void _showConvergenceSnackBar(BuildContext context, int episode) {
+    final colorScheme = Theme.of(context).colorScheme;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: colorScheme.primaryContainer,
+        duration: const Duration(seconds: 4),
+        content: Row(
+          children: [
+            Icon(Icons.emoji_events, color: colorScheme.onPrimaryContainer),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                "Convergence detected at episode $episode! The cerebellum has learned.",
+                style: TextStyle(color: colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +96,23 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           SliverAppBar(
             floating: true,
             snap: true,
-            title: const Text('CerebroSim RL Lab'),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('CerebroSim RL Lab'),
+                InkWell(
+                  onTap: () => context.push('/network_config'),
+                  child: Text(
+                    'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: colorScheme.secondary.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: colorScheme.surface,
             elevation: 0,
             bottom: PreferredSize(
@@ -86,71 +141,21 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
               const SizedBox(width: 12),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 0),
-              child: Column(
-                children: [
-                  const TaskSelector(),
-                  InkWell(
-                    onTap: () => context.push('/network_config'),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 2.0, horizontal: 12.0),
-                      child: Text(
-                        'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.secondary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    child: (state.episodeCount > 0 || !state.isRunning)
-                        ? const ExplanationCard()
-                        : const SizedBox.shrink(),
-                  ),
-                ],
-              ),
-            ),
-          ),
           const SliverToBoxAdapter(
-            child: Column(
-              children: [
-                SimulationStatusBar(),
-                Divider(height: 1),
-              ],
+            child: Padding(
+              padding: EdgeInsets.only(top: 4, bottom: 4),
+              child: TaskSelector(),
             ),
           ),
           SliverFillRemaining(
             hasScrollBody: false,
             child: Column(
+              mainAxisSize: MainAxisSize.max,
               children: [
                 const Expanded(
-                  flex: 8,
                   child: NeuralCanvas3D(),
                 ),
-                Divider(
-                    height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
-                const SizedBox(
-                  height: 110,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    child: SignalPlotter(),
-                  ),
-                ),
-                const SizedBox(
-                  height: 80,
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(12, 4, 12, 4),
-                    child: ConvergenceChart(),
-                  ),
-                ),
+                _buildChartsDrawer(colorScheme),
               ],
             ),
           ),
@@ -192,6 +197,68 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
     }
 
     return content;
+  }
+
+  Widget _buildChartsDrawer(ColorScheme colorScheme) {
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      bottom: true,
+      child: GestureDetector(
+        onTap: () => setState(() => _chartsExpanded = !_chartsExpanded),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height: _chartsExpanded ? 280 : 34,
+          decoration: BoxDecoration(
+            color: _chartsExpanded ? colorScheme.surface : colorScheme.surfaceContainerHighest,
+            border: Border(
+              top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.1)),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                height: 34,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.show_chart, size: 14, color: colorScheme.secondary),
+                    const SizedBox(width: 8),
+                    Text(
+                      _chartsExpanded ? 'Charts  ▼' : 'Charts  ▲',
+                      style: TextStyle(
+                        fontSize: 12, 
+                        color: colorScheme.secondary, 
+                        fontWeight: FontWeight.bold
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_chartsExpanded) ...[
+                const SizedBox(
+                  height: 120,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(8, 4, 8, 0),
+                    child: SignalPlotter(),
+                  ),
+                ),
+                const SizedBox(
+                  height: 110,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(8, 4, 8, 4),
+                    child: ConvergenceChart(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildSimControlGroup(
@@ -343,6 +410,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
 
   void _showSaveDialog(BuildContext context, WidgetRef ref) {
     final titleController = TextEditingController();
+    final notesController = TextEditingController();
     bool isPublic = false;
     bool isSaving = false;
     final formKey = GlobalKey<FormState>();
@@ -385,6 +453,19 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                       ? 'Minimum 3 characters'
                       : null,
                 ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: notesController,
+                  style: TextStyle(color: colorScheme.onSurface),
+                  maxLines: 3,
+                  maxLength: 300,
+                  decoration: InputDecoration(
+                    labelText: 'Notes (optional)',
+                    labelStyle: TextStyle(
+                        color: colorScheme.onSurface.withValues(alpha: 0.7)),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
                 SwitchListTile(
                   title: Text('Share Publicly',
                       style: TextStyle(
@@ -414,6 +495,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                                 userEmail: user.email ?? 'anon',
                                 taskName: task.name,
                                 title: titleController.text,
+                                notes: notesController.text,
                                 isPublic: isPublic,
                                 state: simState,
                                 episodeHistory:

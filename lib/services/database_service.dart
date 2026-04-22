@@ -19,7 +19,10 @@ class DatabaseService {
   /// Throws a timeout error if the operation takes longer than 10 seconds.
   Future<void> saveSnapshot(ExperimentSnapshot snap) async {
     try {
-      if (snap.isPublic && FirebaseAuth.instance.currentUser?.emailVerified == false) {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      assert(snap.userId == currentUser?.uid, 'Snapshot userId must match current authenticated UID');
+
+      if (snap.isPublic && currentUser?.emailVerified == false) {
         throw 'Please verify your email before saving public experiments.';
       }
 

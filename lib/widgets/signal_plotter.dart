@@ -18,29 +18,32 @@ class SignalPlotter extends ConsumerWidget {
     final buffer = ref.watch(plotBufferProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: colorScheme.scrim.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
-      ),
-      child: Column(
-        children: [
-          _buildLegend(context, task),
-          Expanded(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: SignalPlotterPainter(
-                buffer: buffer, 
-                isVor: task == CerebellarTask.vor,
-                colorScheme: colorScheme,
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            color: colorScheme.scrim.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.1)),
           ),
-        ],
-      ),
+          child: Column(
+            children: [
+              _buildLegend(context, task),
+              Expanded(
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: SignalPlotterPainter(
+                    buffer: buffer, 
+                    isVor: task == CerebellarTask.vor,
+                    colorScheme: colorScheme,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

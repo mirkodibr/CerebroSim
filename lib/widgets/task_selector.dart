@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cerebellar_task.dart';
 import '../providers/environment_provider.dart';
@@ -69,22 +70,37 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
                 );
                 if (confirm != true) return;
               }
+              setState(() => _configExpanded = false);
               ref.read(environmentProvider.notifier).selectTask(newTask);
             },
           ),
         ),
+        const SizedBox(height: 4),
         Column(children: [
           InkWell(
-            onTap: () => setState(() => _configExpanded = !_configExpanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _configExpanded = !_configExpanded);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(_configTitle(task), style: TextStyle(
-                    fontSize: 11, color: colorScheme.secondary)),
-                  Icon(_configExpanded ? Icons.expand_less : Icons.expand_more, 
-                    size: 16, color: colorScheme.secondary),
+                    fontSize: 12, color: colorScheme.secondary, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: _configExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(Icons.expand_more, 
+                      size: 18, color: colorScheme.secondary),
+                  ),
                 ],
               ),
             ),

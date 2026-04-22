@@ -31,4 +31,20 @@ class EpisodeRecord {
       finalTdError: finalTdError ?? this.finalTdError,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'episodeNumber': episodeNumber,
+      'meanPunishment': meanPunishment,
+      'finalTdError': finalTdError,
+    };
+  }
+
+  factory EpisodeRecord.fromJson(Map<String, dynamic> json) {
+    return EpisodeRecord(
+      episodeNumber: json['episodeNumber'] ?? 0,
+      meanPunishment: (json['meanPunishment'] as num?)?.toDouble() ?? 0.0,
+      finalTdError: (json['finalTdError'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
 }

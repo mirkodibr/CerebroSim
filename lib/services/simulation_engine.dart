@@ -188,11 +188,18 @@ class SimulationEngine {
       clearBuffer();
     }
 
+    // Step 6: Compute rolling performance metrics (Gain Ratio for VOR)
+    // The stateVector[2] contains the instant gain ratio in the VOR task.
+    final double instantGain = env.stateVector.length >= 4 ? env.stateVector[2] : 0.0;
+    final double newRollingGain = (0.95 * current.rollingGainRatio) + (0.05 * instantGain);
+
     return current.copyWith(
       neurons: nextNeurons,
       synapses: nextSynapses,
+      criticPrediction: nextV,
       tdError: td,
       climbingFiberSignal: env.punishment,
+      rollingGainRatio: newRollingGain,
       episodeStep: nextStep,
       episodeCount: nextEpisodeCount,
     );

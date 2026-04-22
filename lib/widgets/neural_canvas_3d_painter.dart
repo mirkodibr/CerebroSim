@@ -16,6 +16,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
   final double zoom;
   final String? selectedNeuronId;
   final ColorScheme colorScheme;
+  final double celebrationValue;
 
   NeuralCanvas3DPainter({
     required this.state,
@@ -24,6 +25,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
     required this.zoom,
     required this.colorScheme,
     this.selectedNeuronId,
+    this.celebrationValue = 0.0,
     super.repaint,
   });
 
@@ -118,7 +120,13 @@ class NeuralCanvas3DPainter extends CustomPainter {
     for (final n in state.neurons.values) {
       final p = projectedNeurons[n.id];
       if (p != null) {
-        items.add(_NeuronItem(n, p, colorScheme, isSelected: n.id == selectedNeuronId));
+        items.add(_NeuronItem(
+          n, 
+          p, 
+          colorScheme, 
+          isSelected: n.id == selectedNeuronId,
+          celebrationValue: celebrationValue,
+        ));
       }
     }
 
@@ -175,7 +183,8 @@ class NeuralCanvas3DPainter extends CustomPainter {
         oldDelegate.rotX != rotX ||
         oldDelegate.rotY != rotY ||
         oldDelegate.zoom != zoom ||
-        oldDelegate.selectedNeuronId != selectedNeuronId;
+        oldDelegate.selectedNeuronId != selectedNeuronId ||
+        oldDelegate.celebrationValue != celebrationValue;
   }
 }
 
@@ -189,8 +198,9 @@ class _NeuronItem extends _DepthItem {
   final ProjectedPoint projected;
   final bool isSelected;
   final ColorScheme colorScheme;
+  final double celebrationValue;
 
-  _NeuronItem(this.neuron, this.projected, this.colorScheme, {this.isSelected = false});
+  _NeuronItem(this.neuron, this.projected, this.colorScheme, {this.isSelected = false, this.celebrationValue = 0.0});
 
   @override
   double get depth => projected.zDepth;
@@ -200,6 +210,19 @@ class _NeuronItem extends _DepthItem {
     final pos = Offset(projected.x, projected.y);
     final radius = 16.0 * projected.scale / 30.0;
     
+    // Convergence celebration glow
+    if (celebrationValue > 0) {
+      final celebrateRadius = radius * (1.0 + celebrationValue);
+      canvas.drawCircle(
+        pos,
+        celebrateRadius * 2.5,
+        Paint()
+          ..color = _getNeuronColor(neuron.cellType).withValues(alpha: 0.1 * celebrationValue)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10)
+          ..style = PaintingStyle.fill,
+      );
+    }
+
     if (neuron.isFiring) {
       canvas.drawCircle(
         pos,

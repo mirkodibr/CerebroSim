@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 class ThemeService {
   /// A high-contrast, dark theme with a "cyberpunk" aesthetic.
   static ThemeData get cyberLabTheme {
+    final baseTheme = ThemeData.dark();
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: const Color(0xFF121212),
@@ -19,8 +20,34 @@ class ThemeService {
         onSurface: Colors.white,
         outline: Color(0x33FFFFFF),
       ),
-      textTheme: GoogleFonts.spaceMonoTextTheme(
-        ThemeData.dark().textTheme,
+      textTheme: GoogleFonts.spaceMonoTextTheme(baseTheme.textTheme).copyWith(
+        displayLarge: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.displayLarge,
+          fontWeight: FontWeight.w700,
+        ),
+        displayMedium: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.displayMedium,
+          fontWeight: FontWeight.w700,
+        ),
+        displaySmall: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.displaySmall,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineLarge: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.headlineLarge,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineMedium: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.headlineMedium,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineSmall: GoogleFonts.rajdhani(
+          textStyle: baseTheme.textTheme.headlineSmall,
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: GoogleFonts.inter(textStyle: baseTheme.textTheme.bodyLarge),
+        bodyMedium: GoogleFonts.inter(textStyle: baseTheme.textTheme.bodyMedium),
+        bodySmall: GoogleFonts.inter(textStyle: baseTheme.textTheme.bodySmall),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -34,9 +61,9 @@ class ThemeService {
         scrolledUnderElevation: 0,
         centerTitle: false,
         backgroundColor: const Color(0xFF121212),
-        titleTextStyle: GoogleFonts.spaceMono(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+        titleTextStyle: GoogleFonts.rajdhani(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
           color: const Color(0xFF00FFFF),
         ),
       ),
@@ -61,6 +88,7 @@ class ThemeService {
 
   /// A clean, professional light theme suitable for general use.
   static ThemeData get presentationTheme {
+    final baseTheme = ThemeData.light();
     return ThemeData(
       brightness: Brightness.light,
       scaffoldBackgroundColor: const Color(0xFFFAFAFA),
@@ -71,8 +99,31 @@ class ThemeService {
         onSurface: Colors.black,
         outline: Color(0x1A000000),
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        ThemeData.light().textTheme,
+      textTheme: GoogleFonts.interTextTheme(baseTheme.textTheme).copyWith(
+        displayLarge: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.displayLarge,
+          fontWeight: FontWeight.w700,
+        ),
+        displayMedium: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.displayMedium,
+          fontWeight: FontWeight.w700,
+        ),
+        displaySmall: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.displaySmall,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineLarge: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.headlineLarge,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineMedium: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.headlineMedium,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineSmall: GoogleFonts.plusJakartaSans(
+          textStyle: baseTheme.textTheme.headlineSmall,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -86,9 +137,9 @@ class ThemeService {
         scrolledUnderElevation: 0,
         centerTitle: false,
         backgroundColor: const Color(0xFFFAFAFA),
-        titleTextStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
           color: const Color(0xFF185FA5),
         ),
       ),

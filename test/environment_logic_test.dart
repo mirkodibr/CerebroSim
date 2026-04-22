@@ -50,6 +50,22 @@ void main() {
       final step = env.step(emptyState, 0.1); // 0.1s is CS window, not US
       expect(step.punishment, equals(0.0));
     });
+
+    test('isEpisodeEnd becomes true after trialDurationS is exceeded', () {
+      const double dt = 0.016;
+      const int ticksToExceed = 63; // 0.016 * 63 = 1.008
+      
+      bool foundEnd = false;
+      for (int i = 0; i < ticksToExceed; i++) {
+        final step = env.step(emptyState, dt);
+        if (step.isEpisodeEnd) {
+          foundEnd = true;
+          break;
+        }
+      }
+      
+      expect(foundEnd, isTrue, reason: 'Episode should end after 63 ticks of 0.016s for a 1.0s duration');
+    });
   });
 
   group('SineWaveEnvironment', () {

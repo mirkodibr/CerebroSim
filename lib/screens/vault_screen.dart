@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/vault_provider.dart';
-import '../providers/simulation_provider.dart';
+import '../providers/episode_history_provider.dart';
 import '../widgets/snapshot_card.dart';
+import '../widgets/snapshot_detail_sheet.dart';
+import '../widgets/vault_stats_card.dart';
+import '../widgets/comparison_chart.dart';
 import '../models/experiment_snapshot.dart';
 
 /// A repository for managing and exploring saved simulation states.
@@ -27,6 +30,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
   String _filterTask = 'all';
   String _sortBy = 'date';
   late TabController _tabController;
+  
+  bool _isCompareMode = false;
+  ExperimentSnapshot? _compareSnapshot;
 
   @override
   void initState() {
@@ -58,7 +64,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Research Vault'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Research Vault'),
+            if (_isCompareMode)
+              Text(
+                'Tap an experiment to compare',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -67,6 +85,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _isCompareMode ? Icons.compare_arrows : Icons.compare_arrows_outlined,
+              color: _isCompareMode ? Theme.of(context).colorScheme.primary : null,
+            ),
+            onPressed: () => setState(() {
+              _isCompareMode = !_isCompareMode;
+              _compareSnapshot = null;
+            }),
+            tooltip: 'Comparison Mode',
+          ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
             tooltip: 'Sort by',
@@ -185,6 +214,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
         final processed = _applyFilterAndSort(list);
         return Column(
           children: [
+            if (list.length >= 3)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: VaultStatsCard(snapshots: list),
+              ),
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
@@ -196,6 +230,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                         return SnapshotCard(
                           snapshot: snap,
                           onTap: () => _loadSnapshot(context, ref, snap),
+                          showCompareAction: _isCompareMode,
+                          isHighlighted: snap.id == _compareSnapshot?.id,
                         );
                       },
                     ),
@@ -218,6 +254,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
         final processed = _applyFilterAndSort(list);
         return Column(
           children: [
+            if (list.length >= 3)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: VaultStatsCard(snapshots: list),
+              ),
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
@@ -229,6 +270,8 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                         return SnapshotCard(
                           snapshot: snap,
                           onTap: () => _loadSnapshot(context, ref, snap),
+                          showCompareAction: _isCompareMode,
+                          isHighlighted: snap.id == _compareSnapshot?.id,
                         );
                       },
                     ),
@@ -260,17 +303,38 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
     );
   }
 
-  /// Injects the synaptic weights from a [snapshot] into the active simulation.
+  /// Shows a detail sheet for the selected snapshot or sets it for comparison.
   void _loadSnapshot(BuildContext context, WidgetRef ref, ExperimentSnapshot snapshot) {
-    ref.read(simulationProvider.notifier).loadSnapshot(snapshot);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Loaded weights from "${snapshot.title}"')),
-    );
-    
-    if (widget.onTabChange != null) {
-      widget.onTabChange!(0);
-    } else {
-      context.go('/shell/simulate');
+    if (_isCompareMode) {
+      if (_compareSnapshot == null) {
+        setState(() => _compareSnapshot = snapshot);
+      } else {
+        final snapA = _compareSnapshot!;
+        final snapB = snapshot;
+        setState(() {
+          _isCompareMode = false;
+          _compareSnapshot = null;
+        });
+        
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => ComparisonChart(
+            snapshotA: snapA,
+            snapshotB: snapB,
+            currentHistory: ref.read(episodeHistoryProvider),
+          ),
+        );
+      }
+      return;
     }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SnapshotDetailSheet(snapshot: snapshot),
+    );
   }
 }

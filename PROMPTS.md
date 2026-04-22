@@ -479,3 +479,4 @@
   4. Create `lib/screens/guided_experiment_detail_screen.dart` showing the full hypothesis, numbered steps in a `Stepper` widget (can mark each step complete), and a prominent "Run this experiment" `FilledButton` that applies the config and navigates to the simulate screen.
   5. Add a "Guided experiments" entry to `AppShell`'s bottom nav bar OR add it as a `ListTile` in `ProfileScreen` and a banner card at the top of `SimulateScreen`.
   6. Run `flutter analyze` — zero errors.
+

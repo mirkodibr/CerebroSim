@@ -30,6 +30,23 @@ void main() {
       expect(nextState.episodeStep, state.episodeStep + 1);
     });
 
+    test('criticPrediction is updated based on DCN activity', () {
+      final state = SimulationState.initial();
+      const env = EnvironmentStep(stateVector: [0.0], punishment: 0.0, isEpisodeEnd: false);
+      
+      final nextState = engine.tick(
+        state, 
+        env, 
+        0.016, 
+        learningRate: 0.01, 
+        gamma: 0.95,
+        dcnBaseline: 0.5, // Non-zero baseline drive
+      );
+      
+      expect(nextState.criticPrediction, greaterThan(0.0), 
+        reason: 'Critic prediction (average DCN potential) should be non-zero after baseline drive');
+    });
+
     test('isEpisodeEnd: true resets episodeStep to 0 and increments episodeCount', () {
       final state = SimulationState.initial().copyWith(episodeStep: 10, episodeCount: 5);
       const env = EnvironmentStep(stateVector: [1.0], punishment: 0.0, isEpisodeEnd: true);

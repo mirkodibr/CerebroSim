@@ -9,6 +9,8 @@ import '../models/neuron_model.dart';
 import 'neuron_info_overlay.dart';
 import 'neural_canvas_3d_painter.dart';
 import 'simulation_hud.dart';
+import 'simulation_status_bar.dart';
+import 'explanation_card.dart';
 
 /// An interactive 3D visualization of the cerebellar microcircuit.
 /// 
@@ -22,8 +24,10 @@ class NeuralCanvas3D extends ConsumerStatefulWidget {
   ConsumerState<NeuralCanvas3D> createState() => NeuralCanvas3DState();
 }
 
-class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTickerProviderStateMixin {
+class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _celebrationController;
+  StreamSubscription? _convergenceSub;
   OverlayEntry? _hintEntry;
   
   // State fields for 3D view
@@ -45,6 +49,17 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat();
+
+    _celebrationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _convergenceSub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((_) {
+      if (mounted) {
+        _celebrationController.forward(from: 0.0);
+      }
+    });
 
     _checkAndShowHint();
   }
@@ -99,6 +114,8 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
   void dispose() {
     _hintEntry?.remove();
     _animationController.dispose();
+    _celebrationController.dispose();
+    _convergenceSub?.cancel();
     super.dispose();
   }
 
@@ -204,6 +221,9 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
       }
     }
 
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Stack(
       children: [
         GestureDetector(
@@ -232,14 +252,40 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with SingleTicke
               zoom: _zoom!,
               selectedNeuronId: _selectedNeuronId,
               repaint: _animationController,
-              colorScheme: Theme.of(context).colorScheme,
+              colorScheme: colorScheme,
+              celebrationValue: Curves.elasticOut.transform(_celebrationController.value),
             ),
           ),
         ),
+
+        // Status Bar Overlay (Semi-transparent)
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            color: colorScheme.surface.withValues(alpha: 0.75),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: SimulationStatusBar(key: ValueKey(state.isRunning)),
+            ),
+          ),
+        ),
+
+        // Explanation Card Overlay (at top, ignored by gestures)
+        if (state.episodeCount > 0)
+          Positioned(
+            top: 0,
+            left: 8,
+            right: 8,
+            child: IgnorePointer(
+              child: const ExplanationCard(),
+            ),
+          ),
         
         // Floating Controls anchored to canvas
         Positioned(
-          bottom: 8,
+          bottom: 48, // Lifted to clear status bar
           right: 8,
           child: Column(
             children: [

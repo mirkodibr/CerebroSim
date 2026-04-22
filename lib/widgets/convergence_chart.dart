@@ -28,7 +28,7 @@ class ConvergenceChart extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: CustomPaint(
         size: Size.infinite,
         painter: ConvergenceChartPainter(
@@ -57,7 +57,7 @@ class ConvergenceChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (history.isEmpty) return;
 
-    const double leftMargin = 40.0;
+    const double leftMargin = 36.0;
     const double bottomMargin = 20.0;
     final double chartWidth = size.width - leftMargin;
     final double chartHeight = size.height - bottomMargin;
@@ -88,7 +88,7 @@ class ConvergenceChartPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.right,
       )..layout(maxWidth: 36);
-      tp.paint(canvas, Offset(0, y - tp.height / 2));
+      tp.paint(canvas, Offset(2, y - tp.height / 2));
     }
 
     // Draw X-axis labels
