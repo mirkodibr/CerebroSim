@@ -78,11 +78,7 @@ class ExperimentSnapshot {
         'scCount': networkConfig!.scCount,
         'dcnCount': networkConfig!.dcnCount,
       } : null,
-      'episodeHistory': episodeHistory.map((e) => {
-        'episodeNumber': e.episodeNumber,
-        'meanPunishment': e.meanPunishment,
-        'finalTdError': e.finalTdError,
-      }).toList(),
+      'episodeHistory': episodeHistory.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -114,11 +110,7 @@ class ExperimentSnapshot {
         scCount: configData['scCount'] ?? 1,
         dcnCount: configData['dcnCount'] ?? 2,
       ) : null,
-      episodeHistory: historyData?.map((e) => EpisodeRecord(
-        episodeNumber: e['episodeNumber'] ?? 0,
-        meanPunishment: (e['meanPunishment'] as num?)?.toDouble() ?? 0.0,
-        finalTdError: (e['finalTdError'] as num?)?.toDouble() ?? 0.0,
-      )).toList() ?? [],
+      episodeHistory: historyData?.map((e) => EpisodeRecord.fromJson(e as Map<String, dynamic>)).toList() ?? [],
     );
   }
 
@@ -218,14 +210,14 @@ class ExperimentSnapshot {
   }
 
   /// Creates a snapshot from a JSON string.
-  factory ExperimentSnapshot.fromJson(String jsonStr) {
+  factory ExperimentSnapshot.fromJson(String jsonStr, {String? currentUserId}) {
     final data = jsonDecode(jsonStr) as Map<String, dynamic>;
     final configData = data['networkConfig'] as Map<String, dynamic>?;
     final historyData = data['episodeHistory'] as List<dynamic>?;
 
     return ExperimentSnapshot(
       id: '', // Temporary ID
-      userId: '', // To be set on import/save
+      userId: currentUserId ?? data['userId'] ?? '',
       userEmail: data['userEmail'] ?? 'imported',
       taskName: data['taskName'] ?? '',
       finalErrorRate: (data['finalErrorRate'] as num?)?.toDouble() ?? 0.0,
@@ -243,7 +235,7 @@ class ExperimentSnapshot {
         scCount: configData['scCount'] ?? 1,
         dcnCount: configData['dcnCount'] ?? 2,
       ) : null,
-      episodeHistory: historyData?.map((e) => EpisodeRecord.fromJson(e)).toList() ?? [],
+      episodeHistory: historyData?.map((e) => EpisodeRecord.fromJson(e as Map<String, dynamic>)).toList() ?? [],
     );
   }
 }
