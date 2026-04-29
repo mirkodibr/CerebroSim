@@ -38,10 +38,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
   double _episodePunishmentSum = 0.0;
   int _episodeTickCount = 0;
-  double _speedMultiplier = SimulationConstants.kSpeedNormal;
   bool _wasRunningBeforePause = false;
-
-  double get speedMultiplier => _speedMultiplier;
 
   /// Initializes the simulation state using the [SimulationEngine]'s initial state.
   /// Ensures that any active timers are cancelled when the provider is disposed.
@@ -94,7 +91,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
   /// Sets the simulation speed multiplier and restarts the ticker if running.
   void setSpeed(double multiplier) {
-    _speedMultiplier = multiplier;
+    state = state.copyWith(speedMultiplier: multiplier);
     if (state.isRunning) {
       _timer?.cancel();
       _startTicker();
@@ -103,7 +100,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
   /// Private helper to start the periodic timer at the adjusted speed.
   void _startTicker() {
-    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * _speedMultiplier)).round();
+    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * state.speedMultiplier)).round();
     _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
       _tick();
     });
@@ -117,7 +114,9 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
     _engine.clearBuffer();
     ref.read(plotBufferProvider.notifier).clear();
     ref.read(episodeHistoryProvider.notifier).clear();
-    state = _engine.initialState(config: config);
+    state = _engine.initialState(config: config).copyWith(
+      speedMultiplier: SimulationConstants.kSpeedNormal,
+    );
   }
 
   /// Loads a previously saved snapshot into the current simulation state.

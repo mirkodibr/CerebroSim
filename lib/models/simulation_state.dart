@@ -30,6 +30,8 @@ class SimulationState {
   final int episodeCount;
   /// Whether the simulation is currently active and processing ticks.
   final bool isRunning;
+  /// The current simulation speed multiplier (e.g., 1.0, 5.0, 10.0).
+  final double speedMultiplier;
 
   const SimulationState({
     required this.neurons,
@@ -42,6 +44,7 @@ class SimulationState {
     this.episodeStep = 0,
     this.episodeCount = 0,
     this.isRunning = false,
+    this.speedMultiplier = 1.0, // Default to normal speed
   });
 
   /// Creates a default initial state for a new simulation.
@@ -66,6 +69,7 @@ class SimulationState {
     int? episodeStep,
     int? episodeCount,
     bool? isRunning,
+    double? speedMultiplier,
   }) {
     return SimulationState(
       neurons: neurons ?? this.neurons,
@@ -78,6 +82,7 @@ class SimulationState {
       episodeStep: episodeStep ?? this.episodeStep,
       episodeCount: episodeCount ?? this.episodeCount,
       isRunning: isRunning ?? this.isRunning,
+      speedMultiplier: speedMultiplier ?? this.speedMultiplier,
     );
   }
 

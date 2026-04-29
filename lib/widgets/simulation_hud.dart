@@ -11,7 +11,7 @@ class SimulationHud extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(simulationProvider);
     final task = ref.watch(environmentProvider);
-    final speedMultiplier = ref.watch(simulationProvider.notifier).speedMultiplier;
+    final speedMultiplier = state.speedMultiplier;
     final colorScheme = Theme.of(context).colorScheme;
 
     if (!state.isRunning && state.episodeCount == 0) {

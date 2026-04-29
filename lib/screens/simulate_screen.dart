@@ -17,7 +17,6 @@ import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
-import '../models/simulation_constants.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
 import '../services/export_service.dart';
@@ -31,14 +30,8 @@ class SimulateScreen extends ConsumerStatefulWidget {
 }
 
 class _SimulateScreenState extends ConsumerState<SimulateScreen> {
-  int _speedIndex = 0;
   StreamSubscription? _convergenceSub;
   bool _chartsExpanded = false;
-  final List<double> _speeds = [
-    SimulationConstants.kSpeedNormal,
-    SimulationConstants.kSpeedFast,
-    SimulationConstants.kSpeedVeryFast,
-  ];
 
   @override
   void initState() {
@@ -178,16 +171,13 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
               notifier.resetEpisode();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit1:
-              notifier.setSpeed(SimulationConstants.kSpeedNormal);
-              setState(() => _speedIndex = 0);
+              notifier.setSpeed(1.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit5:
-              notifier.setSpeed(SimulationConstants.kSpeedFast);
-              setState(() => _speedIndex = 1);
+              notifier.setSpeed(5.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit0:
-              notifier.setSpeed(SimulationConstants.kSpeedVeryFast);
-              setState(() => _speedIndex = 2);
+              notifier.setSpeed(10.0);
               return KeyEventResult.handled;
           }
           return KeyEventResult.ignored;
@@ -323,19 +313,25 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         // Speed Selector
         TextButton(
           onPressed: () {
-            setState(() {
-              _speedIndex = (_speedIndex + 1) % _speeds.length;
-            });
-            notifier.setSpeed(_speeds[_speedIndex]);
+            final currentSpeed = state.speedMultiplier;
+            double nextSpeed;
+            if (currentSpeed < 5.0) {
+              nextSpeed = 5.0;
+            } else if (currentSpeed < 10.0) {
+              nextSpeed = 10.0;
+            } else {
+              nextSpeed = 1.0;
+            }
+            notifier.setSpeed(nextSpeed);
           },
           style: TextButton.styleFrom(
             minimumSize: const Size(40, 36),
             padding: EdgeInsets.zero,
             foregroundColor:
-                _speedIndex > 0 ? colorScheme.tertiary : colorScheme.onSurface,
+                state.speedMultiplier > 1.0 ? colorScheme.tertiary : colorScheme.onSurface,
           ),
           child: Text(
-            '${_speeds[_speedIndex].toInt()}×',
+            '${state.speedMultiplier.toInt()}×',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
           ),
         ),
