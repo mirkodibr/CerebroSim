@@ -63,6 +63,40 @@ void main() {
       expect(nextState.episodeStep, 0);
       expect(nextState.episodeCount, 6);
     });
+
+    test('preSynapticIndex stays consistent with updated synapses after weight change', () {
+      final state = SimulationState.initial();
+      const env = EnvironmentStep(stateVector: [1.0], punishment: 1.0, isEpisodeEnd: false);
+      
+      // Run 5 ticks to ensure weight changes
+      var currentState = state;
+      for (int i = 0; i < 5; i++) {
+        currentState = engine.tick(
+          currentState, 
+          env, 
+          0.016, 
+          learningRate: 0.1, // High learning rate to ensure changes
+          gamma: 0.95,
+          dcnBaseline: 0.5,
+        );
+      }
+      
+      // Every synapse in the index must be the EXACT same instance as in the synapses list
+      for (final synapseList in currentState.preSynapticIndex.values) {
+        for (final s in synapseList) {
+          expect(currentState.synapses.contains(s), isTrue, 
+            reason: 'Synapse in index must exist in synapses list (stale object check)');
+        }
+      }
+      
+      // Verify weights match between synapses list and index
+      for (final s in currentState.synapses) {
+        final indexSynapses = currentState.preSynapticIndex[s.fromNeuronId];
+        expect(indexSynapses, isNotNull);
+        final indexSynapse = indexSynapses!.firstWhere((idxS) => idxS.id == s.id);
+        expect(indexSynapse.weight, equals(s.weight));
+      }
+    });
   });
 
   group('LIF Update', () {

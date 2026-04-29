@@ -14,6 +14,7 @@ class SimulationState {
   /// The list of all synaptic connections between neurons.
   final List<SynapseModel> synapses;
   /// An adjacency list for instant outbound connection lookups, keyed by the pre-synaptic neuron ID.
+  /// Always rebuilt during tick() to stay consistent with synapses. Call rebuildIndex() only when loading an external snapshot.
   final Map<String, List<SynapseModel>> preSynapticIndex;
   /// The current output of the cerebellar "critic" or prediction unit.
   final double criticPrediction;

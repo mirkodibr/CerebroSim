@@ -177,6 +177,13 @@ class SimulationEngine {
       learningRate: learningRate,
     );
 
+    // Step 4.5: Rebuild preSynapticIndex inline from nextSynapses.
+    // This ensures the index points to the new synapse objects with updated weights.
+    final Map<String, List<SynapseModel>> nextIndex = {};
+    for (final s in nextSynapses) {
+      nextIndex.putIfAbsent(s.fromNeuronId, () => []).add(s);
+    }
+
     // Step 5: handle episode logic and counter increments.
     int nextStep = current.episodeStep + 1;
     int nextEpisodeCount = current.episodeCount;
@@ -196,6 +203,7 @@ class SimulationEngine {
     return current.copyWith(
       neurons: nextNeurons,
       synapses: nextSynapses,
+      preSynapticIndex: nextIndex,
       criticPrediction: nextV,
       tdError: td,
       climbingFiberSignal: env.punishment,
