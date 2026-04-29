@@ -206,7 +206,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          height: _chartsExpanded ? 280 : 34,
+          height: _chartsExpanded ? 280 : 35,
           decoration: BoxDecoration(
             color: _chartsExpanded ? colorScheme.surface : colorScheme.surfaceContainerHighest,
             border: Border(

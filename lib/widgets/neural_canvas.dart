@@ -11,12 +11,11 @@ import 'neural_canvas_3d_painter.dart';
 import 'simulation_hud.dart';
 import 'simulation_status_bar.dart';
 import 'explanation_card.dart';
+import 'canvas_gesture_hint.dart';
+import 'canvas_controls.dart';
+import 'canvas_convergence_listener.dart';
 
 /// An interactive 3D visualization of the cerebellar microcircuit.
-/// 
-/// This widget allows users to rotate and zoom into the neural model using
-/// touch gestures. It leverages [Neural3DProjection] for math and 
-/// [NeuralCanvas3DPainter] for rendering depth-sorted neurons and synapses.
 class NeuralCanvas3D extends ConsumerStatefulWidget {
   const NeuralCanvas3D({super.key});
 
@@ -26,21 +25,18 @@ class NeuralCanvas3D extends ConsumerStatefulWidget {
 
 class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProviderStateMixin {
   late AnimationController _animationController;
-  late AnimationController _celebrationController;
-  StreamSubscription? _convergenceSub;
-  OverlayEntry? _hintEntry;
   
   // State fields for 3D view
   double _rotX = 0.4;
   double _rotY = 0.6;
   double? _zoom;
   String? _selectedNeuronId;
-  Offset? _selectedNeuronPos;
   int _lastNeuronCount = 0;
 
   // For zoom tracking
   double _baseZoom = 120.0;
   static const double _defaultZoomMarker = -1.0;
+  Timer? _hintTimer;
 
   @override
   void initState() {
@@ -51,17 +47,6 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
       duration: const Duration(seconds: 1),
     )..repeat();
 
-    _celebrationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-
-    _convergenceSub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((_) {
-      if (mounted) {
-        _celebrationController.forward(from: 0.0);
-      }
-    });
-
     _checkAndShowHint();
   }
 
@@ -69,54 +54,20 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
     final prefs = ref.read(prefsServiceProvider);
     final hasSeen = await prefs.hasSeenCanvasHint();
     if (!hasSeen) {
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) _showGestureHint();
+      _hintTimer = Timer(const Duration(seconds: 1), () {
+        if (mounted) {
+          CanvasGestureHint.show(context);
+          prefs.setCanvasHintSeen();
+        }
       });
-    }
-  }
-
-  void _showGestureHint() {
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    _hintEntry = OverlayEntry(
-      builder: (context) => Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: colorScheme.inverseSurface.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Swipe to rotate · Pinch to zoom · Tap to inspect',
-              style: TextStyle(color: colorScheme.onInverseSurface, fontSize: 14),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(_hintEntry!);
-
-    // Auto-dismiss after 3s
-    Future.delayed(const Duration(seconds: 3), () => _dismissHint());
-  }
-
-  void _dismissHint() {
-    if (_hintEntry != null) {
-      _hintEntry?.remove();
-      _hintEntry = null;
-      ref.read(prefsServiceProvider).setCanvasHintSeen();
     }
   }
 
   @override
   void dispose() {
-    _hintEntry?.remove();
+    _hintTimer?.cancel();
+    CanvasGestureHint.dismiss();
     _animationController.dispose();
-    _celebrationController.dispose();
-    _convergenceSub?.cancel();
     super.dispose();
   }
 
@@ -128,218 +79,138 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
       _rotY = 0.6;
       _zoom = 120.0;
       _selectedNeuronId = null;
-      _selectedNeuronPos = null;
     });
   }
 
-  /// Handles tap events to select a neuron in 3D space.
   void _handleTapUp(TapUpDetails details) {
-    _dismissHint();
+    CanvasGestureHint.dismiss();
     final RenderBox box = context.findRenderObject() as RenderBox;
     final Offset localPos = box.globalToLocal(details.globalPosition);
-    final Size size = box.size;
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
-
-    final state = ref.read(simulationProvider);
+    final size = box.size;
     
-    // Group neurons for procedural position calculation
+    final state = ref.read(simulationProvider);
     final Map<String, List<NeuronModel>> grouped = {};
     for (final n in state.neurons.values) {
       grouped.putIfAbsent(n.cellType, () => []).add(n);
     }
 
     String? nearestId;
-    Offset? nearestPos;
     double minDistance = 28.0;
 
     for (final n in state.neurons.values) {
       final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(n, grouped);
-
-      final projected = Neural3DProjection.project(
-        pos3d,
-        rotX: _rotX,
-        rotY: _rotY,
-        zoom: _zoom ?? 120.0,
-        centerX: centerX,
-        centerY: centerY,
-      );
+      final projected = Neural3DProjection.project(pos3d, 
+          rotX: _rotX, rotY: _rotY, zoom: _zoom ?? 120.0,
+          centerX: size.width / 2, centerY: size.height / 2);
 
       final screenPos = Offset(projected.x, projected.y);
-      final distance = (localPos - screenPos).distance;
-      if (distance < minDistance) {
-        minDistance = distance;
+      if ((localPos - screenPos).distance < minDistance) {
+        minDistance = (localPos - screenPos).distance;
         nearestId = n.id;
-        nearestPos = screenPos;
       }
     }
 
-    if (nearestId != null) {
-      HapticFeedback.lightImpact();
-    }
-
+    if (nearestId != null) HapticFeedback.lightImpact();
     setState(() {
       _selectedNeuronId = nearestId;
-      _selectedNeuronPos = nearestPos;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    // Invalidate cache if network structure changes
     if (state.neurons.length != _lastNeuronCount) {
       NeuralCanvas3DPainter.clearCache();
       _lastNeuronCount = state.neurons.length;
     }
 
-    // Auto-calculate zoom for initial view based on network size
     if (_zoom == _defaultZoomMarker) {
       _zoom = (60.0 + (state.neurons.length * 3.5)).clamp(80.0, 220.0);
     }
 
-    // Re-calculate selected neuron position for overlay tracking
-    Offset? overlayPos = _selectedNeuronPos;
-    if (_selectedNeuronId != null) {
-      final RenderBox? box = context.findRenderObject() as RenderBox?;
-      if (box != null && box.hasSize) {
-        final centerX = box.size.width / 2;
-        final centerY = box.size.height / 2;
-        
-        final neuron = state.neurons[_selectedNeuronId!];
-        if (neuron != null) {
-          // Group neurons for procedural position calculation
-          final Map<String, List<NeuronModel>> grouped = {};
-          for (final n in state.neurons.values) {
-            grouped.putIfAbsent(n.cellType, () => []).add(n);
-          }
+    return CanvasConvergenceListener(
+      builder: (context, celebrationValue) => Stack(
+        children: [
+          GestureDetector(
+            onTapUp: _handleTapUp,
+            onScaleStart: (_) {
+              CanvasGestureHint.dismiss();
+              _baseZoom = _zoom!;
+            },
+            onScaleUpdate: (details) {
+              setState(() {
+                if (details.pointerCount == 1) {
+                  _rotY += details.focalPointDelta.dx * 0.008;
+                  _rotX -= details.focalPointDelta.dy * 0.008;
+                } else {
+                  _zoom = (_baseZoom * details.scale).clamp(60.0, 280.0);
+                }
+              });
+            },
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: NeuralCanvas3DPainter(
+                state: state, rotX: _rotX, rotY: _rotY, zoom: _zoom!,
+                selectedNeuronId: _selectedNeuronId,
+                repaint: _animationController,
+                colorScheme: colorScheme,
+                celebrationValue: celebrationValue,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 0, left: 0, right: 0,
+            child: Container(
+              color: colorScheme.surface.withValues(alpha: 0.75),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: SimulationStatusBar(key: ValueKey(state.isRunning)),
+              ),
+            ),
+          ),
+          if (state.episodeCount > 0)
+            const Positioned(top: 0, left: 8, right: 8, child: IgnorePointer(child: ExplanationCard())),
+          
+          Positioned(
+            bottom: 48, right: 8,
+            child: CanvasControls(
+              onResetView: resetView,
+              onShowHint: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Swipe to rotate, pinch to zoom, tap to inspect.'), duration: Duration(seconds: 2)),
+              ),
+            ),
+          ),
+          const SimulationHud(),
+          if (_selectedNeuronId != null)
+            _buildNeuronOverlay(state),
+        ],
+      ),
+    );
+  }
 
-          final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(neuron, grouped);
-          final projected = Neural3DProjection.project(
-            pos3d,
-            rotX: _rotX,
-            rotY: _rotY,
-            zoom: _zoom!,
-            centerX: centerX,
-            centerY: centerY,
-          );
-          overlayPos = Offset(projected.x, projected.y);
-        }
-      }
+  Widget _buildNeuronOverlay(dynamic state) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return const SizedBox.shrink();
+    
+    final neuron = state.neurons[_selectedNeuronId!];
+    if (neuron == null) return const SizedBox.shrink();
+
+    final Map<String, List<NeuronModel>> grouped = {};
+    for (final n in state.neurons.values) {
+      grouped.putIfAbsent(n.cellType, () => []).add(n);
     }
 
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(neuron, grouped);
+    final projected = Neural3DProjection.project(pos3d, 
+        rotX: _rotX, rotY: _rotY, zoom: _zoom!,
+        centerX: box.size.width / 2, centerY: box.size.height / 2);
 
-    return Stack(
-      children: [
-        GestureDetector(
-          onTapUp: _handleTapUp,
-          onScaleStart: (details) {
-            _dismissHint();
-            _baseZoom = _zoom!;
-          },
-          onScaleUpdate: (details) {
-            setState(() {
-              if (details.pointerCount == 1) {
-                _rotY += details.focalPointDelta.dx * 0.008;
-                _rotX -= details.focalPointDelta.dy * 0.008;
-              }
-              if (details.pointerCount > 1) {
-                _zoom = (_baseZoom * details.scale).clamp(60.0, 280.0);
-              }
-            });
-          },
-          child: CustomPaint(
-            size: Size.infinite,
-            painter: NeuralCanvas3DPainter(
-              state: state,
-              rotX: _rotX,
-              rotY: _rotY,
-              zoom: _zoom!,
-              selectedNeuronId: _selectedNeuronId,
-              repaint: _animationController,
-              colorScheme: colorScheme,
-              celebrationValue: Curves.elasticOut.transform(_celebrationController.value),
-            ),
-          ),
-        ),
-
-        // Status Bar Overlay (Semi-transparent)
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            color: colorScheme.surface.withValues(alpha: 0.75),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: SimulationStatusBar(key: ValueKey(state.isRunning)),
-            ),
-          ),
-        ),
-
-        // Explanation Card Overlay (at top, ignored by gestures)
-        if (state.episodeCount > 0)
-          Positioned(
-            top: 0,
-            left: 8,
-            right: 8,
-            child: IgnorePointer(
-              child: const ExplanationCard(),
-            ),
-          ),
-        
-        // Floating Controls anchored to canvas
-        Positioned(
-          bottom: 48, // Lifted to clear status bar
-          right: 8,
-          child: Column(
-            children: [
-              FloatingActionButton.small(
-                heroTag: 'reset_view_canvas',
-                onPressed: resetView,
-                tooltip: 'Reset 3D View',
-                child: const Icon(Icons.center_focus_strong),
-              ),
-              const SizedBox(height: 8),
-              FloatingActionButton.small(
-                heroTag: 'rotation_hint_canvas',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Swipe to rotate, pinch to zoom, tap to inspect.'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                tooltip: 'Interaction Hint',
-                child: const Icon(Icons.help_outline),
-              ),
-            ],
-          ),
-        ),
-
-        const SimulationHud(),
-
-        if (_selectedNeuronId != null) ...[
-          () {
-            final neuron = state.neurons[_selectedNeuronId!];
-            if (neuron != null && overlayPos != null) {
-              return NeuronInfoOverlay(
-                neuron: neuron,
-                position: overlayPos,
-                onClose: () => setState(() {
-                  _selectedNeuronId = null;
-                  _selectedNeuronPos = null;
-                }),
-              );
-            }
-            return const SizedBox.shrink();
-          }(),
-        ],
-      ],
+    return NeuronInfoOverlay(
+      neuron: neuron,
+      position: Offset(projected.x, projected.y),
+      onClose: () => setState(() { _selectedNeuronId = null; }),
     );
   }
 }
