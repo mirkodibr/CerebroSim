@@ -70,17 +70,26 @@ class DatabaseService {
   /// 
   /// Results are limited to the specified [limit] (default: 50) and 
   /// sorted by creation date (newest first).
+  /// If [taskFilter] is provided, only snapshots matching that task will be returned.
   /// Throws a timeout error if the request exceeds 10 seconds.
-  Future<List<ExperimentSnapshot>> fetchPublicGallery({int limit = 50}) async {
+  Future<List<ExperimentSnapshot>> fetchPublicGallery({
+    int limit = 50,
+    String? taskFilter,
+  }) async {
     try {
-      final query = await _db
-          .collection('public_snapshots')
+      Query<Map<String, dynamic>> query = _db.collection('public_snapshots');
+
+      if (taskFilter != null && taskFilter != 'all') {
+        query = query.where('taskName', isEqualTo: taskFilter);
+      }
+
+      final querySnapshot = await query
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .get()
           .timeout(const Duration(seconds: 10));
 
-      return query.docs.map((doc) => ExperimentSnapshot.fromFirestore(doc)).toList();
+      return querySnapshot.docs.map((doc) => ExperimentSnapshot.fromFirestore(doc)).toList();
     } on TimeoutException {
       throw 'Connection timed out while fetching gallery.';
     } catch (e) {

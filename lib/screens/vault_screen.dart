@@ -55,7 +55,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
           _tabController.animateTo(0);
         }
       });
-      ref.listen(publicGalleryProvider, (prev, next) {
+      ref.listen(publicGalleryProvider(_filterTask), (prev, next) {
         if (next.hasValue && next.value!.any((s) => s.id == widget.highlightedId)) {
           _tabController.animateTo(1);
         }
@@ -161,8 +161,10 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, bool isOwnVault) {
+  Widget _buildEmptyState(BuildContext context, bool isOwnVault, {String? taskName}) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isFiltered = taskName != null && taskName != 'all';
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32.0),
@@ -173,7 +175,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                 size: 64, color: colorScheme.outline),
             const SizedBox(height: 16),
             Text(
-              isOwnVault ? 'No saved experiments yet' : 'No public experiments yet',
+              isOwnVault 
+                  ? (isFiltered ? 'No $taskName experiments found' : 'No saved experiments yet')
+                  : (isFiltered ? 'No $taskName experiments in the gallery yet' : 'No public experiments yet'),
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -222,7 +226,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
-                  ? _buildEmptyState(context, true)
+                  ? _buildEmptyState(context, true, taskName: _filterTask)
                   : ListView.builder(
                       itemCount: processed.length,
                       itemBuilder: (context, index) {
@@ -246,12 +250,19 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
 
   /// Builds the list of snapshots shared publicly by all users.
   Widget _buildPublicGallery(BuildContext context, WidgetRef ref) {
-    final snapshots = ref.watch(publicGalleryProvider);
+    final snapshots = ref.watch(publicGalleryProvider(_filterTask));
     final colorScheme = Theme.of(context).colorScheme;
 
     return snapshots.when(
       data: (list) {
-        final processed = _applyFilterAndSort(list);
+        // Only apply sort client-side (filter already applied at provider/Firestore level)
+        final processed = List<ExperimentSnapshot>.from(list);
+        if (_sortBy == 'date') {
+          processed.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        } else if (_sortBy == 'performance') {
+          processed.sort((a, b) => a.finalErrorRate.compareTo(b.finalErrorRate));
+        }
+
         return Column(
           children: [
             if (list.length >= 3)
@@ -262,7 +273,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
             _buildFilterChips(context),
             Expanded(
               child: processed.isEmpty
-                  ? _buildEmptyState(context, false)
+                  ? _buildEmptyState(context, false, taskName: _filterTask)
                   : ListView.builder(
                       itemCount: processed.length,
                       itemBuilder: (context, index) {

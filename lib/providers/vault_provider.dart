@@ -74,6 +74,9 @@ final vaultProvider = AsyncNotifierProvider<VaultNotifier, List<ExperimentSnapsh
 
 /// A provider that fetches a list of experiment snapshots that have been marked as public.
 /// Used to populate the community gallery of simulation results.
-final publicGalleryProvider = FutureProvider<List<ExperimentSnapshot>>((ref) async {
-  return await ref.read(databaseServiceProvider).fetchPublicGallery();
+/// Accepts a [taskFilter] to filter results by task type at the query level.
+final publicGalleryProvider = FutureProvider.family<List<ExperimentSnapshot>, String>((ref, taskFilter) async {
+  return await ref.read(databaseServiceProvider).fetchPublicGallery(
+    taskFilter: taskFilter == 'all' ? null : taskFilter,
+  );
 });
