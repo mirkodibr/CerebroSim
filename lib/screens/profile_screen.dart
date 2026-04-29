@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/tutorial_provider.dart';
 
 /// A screen for managing user settings and application preferences.
 /// 
@@ -119,6 +120,15 @@ class ProfileScreen extends ConsumerWidget {
             subtitle: const Text('Adjust neural topology'),
             onTap: () {
               context.push('/network_config');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.help_outline),
+            title: const Text('App Tutorial'),
+            subtitle: const Text('Learn how to use CerebroSim'),
+            onTap: () {
+              ref.read(tutorialProvider.notifier).startTutorial();
+              context.go('/shell/simulate');
             },
           ),
           const Divider(),

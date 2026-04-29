@@ -8,6 +8,7 @@ class PrefsService {
   static const _onboardingKey = 'onboarding_complete';
   static const _canvasHintKey = 'canvas_hint_seen';
   static const _onboardingStepKey = 'onboarding_step';
+  static const _tutorialSeenKey = 'tutorial_seen';
 
   /// Returns true if the user has completed the initial onboarding experience.
   Future<bool> isOnboardingComplete() async {
@@ -37,6 +38,18 @@ class PrefsService {
   Future<void> setCanvasHintSeen() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_canvasHintKey, true);
+  }
+
+  /// Returns true if the user has completed the in-app tutorial.
+  Future<bool> hasTutorialBeenSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_tutorialSeenKey) ?? false;
+  }
+
+  /// Records that the user has completed the in-app tutorial.
+  Future<void> setTutorialSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_tutorialSeenKey, true);
   }
 
   /// Gets the current onboarding step (0-2).

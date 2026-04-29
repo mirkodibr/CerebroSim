@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/connectivity_provider.dart';
+import '../providers/tutorial_provider.dart';
+import '../providers/prefs_provider.dart';
 
 /// The root navigation shell of the CerebroSim application.
 /// 
@@ -67,7 +69,20 @@ class AppShell extends ConsumerWidget {
     });
 
     return Scaffold(
-      body: child,
+      body: () {
+        // Auto-start tutorial once if onboarding is complete
+        final onboarding = ref.watch(onboardingCompleteProvider);
+        if (onboarding.value == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final prefs = ref.read(prefsServiceProvider);
+            final tutorialSeen = await prefs.hasTutorialBeenSeen();
+            if (!tutorialSeen && ref.read(tutorialProvider) == null) {
+              ref.read(tutorialProvider.notifier).startTutorial();
+            }
+          });
+        }
+        return child;
+      }(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onTabChange(context, index),

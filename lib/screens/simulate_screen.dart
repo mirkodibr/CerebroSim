@@ -20,6 +20,7 @@ import '../widgets/convergence_chart.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
 import '../services/export_service.dart';
+import '../widgets/tutorial_overlay.dart';
 
 /// The primary experimental workspace for CerebroSim.
 class SimulateScreen extends ConsumerStatefulWidget {
@@ -186,7 +187,12 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
       );
     }
 
-    return content;
+    return Stack(
+      children: [
+        content,
+        const TutorialOverlay(),
+      ],
+    );
   }
 
   Widget _buildChartsDrawer(ColorScheme colorScheme) {
