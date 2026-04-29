@@ -1,16 +1,15 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:async';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../models/episode_record.dart';
 
 /// A service that uses AI to interpret cerebellar simulation results.
+/// 
+/// Interpretation is handled securely via a Firebase Cloud Function to protect
+/// API keys and offload processing from the client device.
 class InterpretationService {
   final Map<String, String> _cache = {};
-  
-  // NOTE: In a real production app, this would be handled via a secure backend
-  // or a Cloud Function to protect the API key.
-  static const String _apiKey = String.fromEnvironment('ANTHROPIC_API_KEY');
 
-  /// Interprets the experiment results using the Anthropic API.
+  /// Interprets the experiment results using the 'interpretExperiment' Cloud Function.
   Future<String> interpretExperiment({
     required String snapshotId,
     List<EpisodeRecord>? history,
@@ -22,48 +21,26 @@ class InterpretationService {
       return _cache[snapshotId]!;
     }
 
-    if (_apiKey.isEmpty) {
-      return "Interpretation unavailable: API key not configured.";
-    }
-
     final String progressStr = history != null && history.isNotEmpty
         ? history.map((e) => e.meanPunishment.toStringAsFixed(3)).join(', ')
         : "N/A";
 
-    final String structuredSummary = '''
-Experiment Summary:
-- Task: $taskName
-- Total Episodes: $episodeCount
-- Final Error Rate: ${(finalErrorRate * 100).toStringAsFixed(2)}%
-- Learning Progress (mean punishments): $progressStr
-''';
-
     try {
-      final response = await http.post(
-        Uri.parse('https://api.anthropic.com/v1/messages'),
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': _apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: jsonEncode({
-          'model': 'claude-3-haiku-20240307',
-          'max_tokens': 1024,
-          'system': 'You are a neuroscience educator explaining cerebellar learning results to a graduate student. Be specific, cite Marr-Albus-Ito theory, reference LTD at PF-PC synapses, climbing fiber error signals, and DCN output. Maximum 3 short paragraphs. Be encouraging.',
-          'messages': [
-            {'role': 'user', 'content': structuredSummary}
-          ],
-        }),
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'interpretExperiment',
+        options: HttpsCallableOptions(timeout: const Duration(seconds: 30)),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['content'][0]['text'] as String;
-        _cache[snapshotId] = content;
-        return content;
-      } else {
-        throw Exception('Failed to call Anthropic API: ${response.statusCode}');
-      }
+      final result = await callable.call({
+        'taskName': taskName,
+        'episodeCount': episodeCount,
+        'finalErrorRate': finalErrorRate,
+        'learningProgress': progressStr,
+      });
+
+      final String content = result.data as String;
+      _cache[snapshotId] = content;
+      return content;
     } catch (e) {
       rethrow;
     }

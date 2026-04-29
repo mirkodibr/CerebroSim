@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../models/experiment_snapshot.dart';
 import '../services/interpretation_service.dart';
 
@@ -16,8 +17,8 @@ class InterpretationSheet extends ConsumerStatefulWidget {
 class _InterpretationSheetState extends ConsumerState<InterpretationSheet> {
   late Future<String> _interpretationFuture;
   final List<String> _loadingTexts = [
+    "Generating neuroscience interpretation...",
     "Analyzing convergence curve...",
-    "Checking LTD rates...",
     "Consulting Ito 1984...",
   ];
   int _loadingIndex = 0;
@@ -101,12 +102,27 @@ class _InterpretationSheetState extends ConsumerState<InterpretationSheet> {
                 }
 
                 if (snapshot.hasError) {
+                  final error = snapshot.error;
+                  String message = "Interpretation unavailable.";
+                  if (error is FirebaseException) {
+                    if (error.code == 'unavailable' || error.code == 'deadline-exceeded') {
+                      message = "AI interpretation requires an internet connection.";
+                    } else if (error.code == 'failed-precondition') {
+                      message = "Interpretation service not configured.";
+                    }
+                  }
+
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.error_outline, color: Colors.red, size: 48),
                       const SizedBox(height: 16),
-                      const Text("Interpretation unavailable."),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
                       TextButton(
                         onPressed: () {
                           setState(() {
