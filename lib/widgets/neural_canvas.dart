@@ -36,6 +36,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
   double? _zoom;
   String? _selectedNeuronId;
   Offset? _selectedNeuronPos;
+  int _lastNeuronCount = 0;
 
   // For zoom tracking
   double _baseZoom = 120.0;
@@ -121,6 +122,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
 
   /// Resets the view to the default rotation and zoom.
   void resetView() {
+    NeuralCanvas3DPainter.clearCache();
     setState(() {
       _rotX = 0.4;
       _rotY = 0.6;
@@ -185,6 +187,12 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(simulationProvider);
+
+    // Invalidate cache if network structure changes
+    if (state.neurons.length != _lastNeuronCount) {
+      NeuralCanvas3DPainter.clearCache();
+      _lastNeuronCount = state.neurons.length;
+    }
 
     // Auto-calculate zoom for initial view based on network size
     if (_zoom == _defaultZoomMarker) {

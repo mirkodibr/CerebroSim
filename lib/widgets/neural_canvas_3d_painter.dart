@@ -10,6 +10,10 @@ import '../services/neural_3d_projection.dart';
 /// It implements the Painter's Algorithm by sorting all elements by depth
 /// before drawing. It also visualizes neural activity through dynamic arcs.
 class NeuralCanvas3DPainter extends CustomPainter {
+  /// A static cache of calculated positions to avoid expensive math.Random 
+  /// allocations on every frame.
+  static final Map<String, Offset3D> _positionCache = {};
+
   final SimulationState state;
   final double rotX;
   final double rotY;
@@ -28,6 +32,19 @@ class NeuralCanvas3DPainter extends CustomPainter {
     this.celebrationValue = 0.0,
     super.repaint,
   });
+
+  /// Clears the static position cache. Should be called when the network structure changes.
+  static void clearCache() => _positionCache.clear();
+
+  /// Retrieves a cached position for a neuron or calculates it if missing.
+  static Offset3D _getCachedPosition(NeuronModel n, Map<String, List<NeuronModel>> grouped) {
+    if (_positionCache.containsKey(n.id)) {
+      return _positionCache[n.id]!;
+    }
+    final pos = calculateProceduralPosition(n, grouped);
+    _positionCache[n.id] = pos;
+    return pos;
+  }
 
   /// Calculates a procedural 3D position for a neuron based on its cell type.
   static Offset3D calculateProceduralPosition(NeuronModel n, Map<String, List<NeuronModel>> grouped) {
@@ -104,7 +121,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
     final Map<String, ProjectedPoint> projectedNeurons = {};
     for (final n in state.neurons.values) {
-      final pos3d = calculateProceduralPosition(n, grouped);
+      final pos3d = _getCachedPosition(n, grouped);
       projectedNeurons[n.id] = Neural3DProjection.project(
         pos3d,
         rotX: rotX,
