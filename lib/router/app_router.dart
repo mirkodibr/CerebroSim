@@ -13,14 +13,26 @@ import '../screens/vault_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/network_config_screen.dart';
 
+/*
+Manual Test Steps for Onboarding Flow:
+1. Fresh install -> expect /onboarding
+2. Complete onboarding -> expect /shell/simulate
+3. Sign out and sign back in -> expect /shell/simulate (not /onboarding again)
+4. Clear app data -> expect /onboarding again
+*/
+
 /// A [ChangeNotifier] that triggers a refresh in [GoRouter] when auth or onboarding states change.
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
 
   RouterNotifier(this._ref) {
     // Re-run the redirect logic whenever these providers change
-    _ref.listen<AsyncValue<User?>>(authProvider, (prev, next) => notifyListeners());
-    _ref.listen<AsyncValue<bool>>(onboardingCompleteProvider, (prev, next) => notifyListeners());
+    _ref.listen<AsyncValue<User?>>(authProvider, (prev, next) {
+      notifyListeners();
+    });
+    _ref.listen<AsyncValue<bool>>(onboardingCompleteProvider, (prev, next) {
+      notifyListeners();
+    });
   }
 }
 
@@ -30,36 +42,42 @@ class RouterNotifier extends ChangeNotifier {
 /// authentication status and onboarding progress.
 final routerProvider = Provider<GoRouter>((ref) {
   final routerNotifier = RouterNotifier(ref);
-  final authState = ref.watch(authProvider);
-  final onboardingState = ref.watch(onboardingCompleteProvider);
 
   return GoRouter(
     initialLocation: '/shell/simulate',
     refreshListenable: routerNotifier,
     redirect: (context, state) {
-      // If either auth or onboarding is still loading, don't redirect yet
-      if (authState.isLoading || onboardingState.isLoading) return null;
+      // Access current state via ref.read inside redirect triggered by refreshListenable
+      final authState = ref.read(authProvider);
+      final onboardingState = ref.read(onboardingCompleteProvider);
+
+      // 1. If either auth or onboarding is still loading, don't redirect yet
+      if (authState.isLoading || onboardingState.isLoading) {
+        return null;
+      }
 
       final user = authState.value;
+      // 2. Explicitly handle null value for onboardingState (treat as false)
       final onboardingComplete = onboardingState.value ?? false;
 
       final isLoggingIn = state.matchedLocation == '/login';
       final isRegistering = state.matchedLocation == '/register';
       final isOnboarding = state.matchedLocation == '/onboarding';
 
-      // 1. If not logged in, redirect to /login (unless already there or registering)
+      // 3. If not logged in, redirect to /login (unless already there or registering)
       if (user == null) {
         if (isLoggingIn || isRegistering) return null;
         return '/login';
       }
 
-      // 2. If logged in but onboarding not complete, redirect to /onboarding
+      // 4. Guard: If logged in but onboarding not complete, redirect to /onboarding
+      // This runs AFTER the null user check as requested.
       if (!onboardingComplete) {
         if (isOnboarding) return null;
         return '/onboarding';
       }
 
-      // 3. If logged in and onboarding complete, redirect away from auth screens
+      // 5. If logged in and onboarding complete, redirect away from auth/onboarding screens
       if (isLoggingIn || isRegistering || isOnboarding) {
         return '/shell/simulate';
       }
