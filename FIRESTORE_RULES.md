@@ -18,6 +18,8 @@ The `firestore.rules` file enforces:
 - **Ownership:** Users can only read/write their own `users/{uid}` documents.
 - **Validation:** snapshots must contain valid `synapticWeights`, `finalErrorRate` (0.0-1.0), and a `taskName` enum.
 - **Rate Limiting:** Users are restricted to one snapshot every 60 seconds to prevent gallery flooding.
+- **AI Rate Limiting:** AI interpretation is limited to 20 calls per user per day. Usage is tracked in `users/{uid}/usage/{YYYY-MM-DD}`.
+- **Global Safety Cap:** A system-wide daily token cap is enforced to control total API costs.
 - **Data Integrity:** `public_snapshots` are immutable after creation and can only be deleted by administrators.
 
 ## Manual Verification of Atomicity

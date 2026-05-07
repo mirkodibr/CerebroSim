@@ -41,6 +41,18 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId;
+
+      // AI Usage tracking: Managed by Cloud Functions
+      match /usage/{date} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false; // Only Cloud Functions (Admin SDK) can write
+      }
+    }
+    
+    // System limits and global usage: Managed by Cloud Functions
+    match /system/limits/usage/{date} {
+      allow read: if false; // System internal
+      allow write: if false;
     }
     
     // User-specific snapshots: Private research history

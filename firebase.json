@@ -1,0 +1,31 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cerebrosim",
+          "appId": "1:483574253016:android:f663ab2d446a5a24e85ead",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cerebrosim",
+          "configurations": {
+            "android": "1:483574253016:android:f663ab2d446a5a24e85ead",
+            "web": "1:483574253016:web:f06ab30d727f0772e85ead"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions"
+  }
+}
