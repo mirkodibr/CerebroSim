@@ -8,6 +8,8 @@ import '../models/simulation_constants.dart';
 import '../models/episode_record.dart';
 import '../models/network_config.dart';
 import '../models/experiment_snapshot.dart';
+import '../models/cold_sim_state.dart';
+import '../models/hot_sim_state.dart';
 import '../services/simulation_engine.dart';
 import 'environment_provider.dart';
 import 'plot_buffer_provider.dart';
@@ -207,4 +209,75 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 /// A global provider for the [SimulationNotifier].
 final simulationProvider = NotifierProvider<SimulationNotifier, SimulationState>(() {
   return SimulationNotifier();
+});
+
+// ---------------------------------------------------------------------------
+// Hot / Cold split providers (P1.2)
+// ---------------------------------------------------------------------------
+
+/// Exposes only the hot (per-tick) fields of the simulation as a [HotSimState].
+///
+/// This provider is re-evaluated every tick but its reference is the same as
+/// [simulationProvider] — use it in widgets that NEED per-tick updates (e.g.,
+/// the 3D canvas, charts).
+final hotSimulationProvider = Provider<HotSimState>((ref) {
+  final s = ref.watch(simulationProvider);
+  return HotSimState(
+    neurons: s.neurons,
+    synapses: s.synapses,
+    preSynapticIndex: s.preSynapticIndex,
+    criticPrediction: s.criticPrediction,
+    tdError: s.tdError,
+    climbingFiberSignal: s.climbingFiberSignal,
+    rollingGainRatio: s.rollingGainRatio,
+    episodeStep: s.episodeStep,
+  );
+});
+
+/// Exposes only the cold (slow-changing) fields as a [ColdSimState].
+///
+/// Because [ColdSimState] implements value equality, this provider only
+/// notifies listeners when [isRunning], [episodeCount], or [speedMultiplier]
+/// actually change — NOT on every 60 Hz tick.
+/// Widgets watching this provider will NOT rebuild during a normal tick.
+final coldSimulationProvider = Provider<ColdSimState>((ref) {
+  final s = ref.watch(simulationProvider);
+  return ColdSimState(
+    isRunning: s.isRunning,
+    episodeCount: s.episodeCount,
+    speedMultiplier: s.speedMultiplier,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SimulationController facade (P1.2)
+// ---------------------------------------------------------------------------
+
+/// Imperative API for controlling the simulation.
+///
+/// Prefer accessing this via [simulationControllerProvider] rather than
+/// using [simulationProvider.notifier] directly, so call sites do not need
+/// to depend on the concrete notifier type.
+class SimulationController {
+  final Ref _ref;
+  SimulationController(this._ref);
+
+  SimulationNotifier get _notifier =>
+      _ref.read(simulationProvider.notifier);
+
+  void startSimulation() => _notifier.startSimulation();
+  void pauseSimulation() => _notifier.pauseSimulation();
+  void stopSimulation() => _notifier.stopSimulation();
+  void resetEpisode({NetworkConfig? config}) =>
+      _notifier.resetEpisode(config: config);
+  void setSpeed(double multiplier) => _notifier.setSpeed(multiplier);
+  void loadSnapshot(ExperimentSnapshot snapshot) =>
+      _notifier.loadSnapshot(snapshot);
+  Stream<int> get convergenceEventStream =>
+      _notifier.convergenceEventStream;
+}
+
+/// Provider for the [SimulationController] facade.
+final simulationControllerProvider = Provider<SimulationController>((ref) {
+  return SimulationController(ref);
 });

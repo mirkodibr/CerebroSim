@@ -8,19 +8,19 @@ class SimulationStatusBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(simulationProvider);
+    // Watch only cold state — this widget will NOT rebuild on every 60 Hz tick.
+    final cold = ref.watch(coldSimulationProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    
-    // Get environment name safely
+
     final envName = ref.read(environmentProvider.notifier).activeEnv.taskName;
 
     Color dotColor;
     String statusText;
 
-    if (state.isRunning) {
+    if (cold.isRunning) {
       dotColor = Colors.green;
       statusText = "● Running";
-    } else if (state.episodeCount > 0) {
+    } else if (cold.episodeCount > 0) {
       dotColor = Colors.orange;
       statusText = "● Paused";
     } else {
@@ -35,7 +35,6 @@ class SimulationStatusBar extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Status indicator
           Row(
             children: [
               Container(
@@ -56,18 +55,14 @@ class SimulationStatusBar extends ConsumerWidget {
               ),
             ],
           ),
-          
-          // Episode count
-          if (state.episodeCount > 0)
+          if (cold.episodeCount > 0)
             Text(
-              "${state.episodeCount} episodes",
+              "${cold.episodeCount} episodes",
               style: TextStyle(
                 fontSize: 11,
                 color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-
-          // Task name
           Text(
             envName,
             style: TextStyle(

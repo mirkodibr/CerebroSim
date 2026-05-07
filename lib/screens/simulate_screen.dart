@@ -19,6 +19,7 @@ import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
+import '../models/cold_sim_state.dart';
 import '../services/export_service.dart';
 import '../widgets/tutorial_overlay.dart';
 
@@ -37,7 +38,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   @override
   void initState() {
     super.initState();
-    _convergenceSub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((ep) {
+    _convergenceSub = ref.read(simulationControllerProvider).convergenceEventStream.listen((ep) {
       if (mounted) {
         _showConvergenceSnackBar(context, ep);
       }
@@ -74,8 +75,10 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(simulationProvider);
-    final notifier = ref.read(simulationProvider.notifier);
+    // Use cold provider for the AppBar — it rebuilds only on user actions,
+    // not on every 60 Hz tick.
+    final cold = ref.watch(coldSimulationProvider);
+    final controller = ref.read(simulationControllerProvider);
     final networkConfig = ref.watch(networkConfigProvider);
     final vaultSnapshots = ref.watch(vaultProvider).value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
@@ -115,7 +118,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
             ),
             actions: [
-              _buildSimControlGroup(context, state, notifier),
+              _buildSimControlGroup(context, cold, controller),
               const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.download_outlined, size: 22),
@@ -164,21 +167,21 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           switch (event.logicalKey) {
             case LogicalKeyboardKey.space:
-              state.isRunning
-                  ? notifier.pauseSimulation()
-                  : notifier.startSimulation();
+              cold.isRunning
+                  ? controller.pauseSimulation()
+                  : controller.startSimulation();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.keyR:
-              notifier.resetEpisode();
+              controller.resetEpisode();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit1:
-              notifier.setSpeed(1.0);
+              controller.setSpeed(1.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit5:
-              notifier.setSpeed(5.0);
+              controller.setSpeed(5.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit0:
-              notifier.setSpeed(10.0);
+              controller.setSpeed(10.0);
               return KeyEventResult.handled;
           }
           return KeyEventResult.ignored;
@@ -258,9 +261,9 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   }
 
   Widget _buildSimControlGroup(
-      BuildContext context, SimulationState state, SimulationNotifier notifier) {
+      BuildContext context, ColdSimState cold, SimulationController controller) {
     final colorScheme = Theme.of(context).colorScheme;
-    final isExpanded = state.isRunning || state.episodeCount > 0;
+    final isExpanded = cold.isRunning || cold.episodeCount > 0;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -268,20 +271,20 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         // Play/Pause Toggle
         IconButton(
           icon: Icon(
-            state.isRunning
+            cold.isRunning
                 ? Icons.pause_circle_filled
                 : Icons.play_circle_filled,
             size: 28,
-            color: state.isRunning ? colorScheme.tertiary : colorScheme.primary,
+            color: cold.isRunning ? colorScheme.tertiary : colorScheme.primary,
           ),
           onPressed: () {
-            if (state.isRunning) {
-              notifier.pauseSimulation();
+            if (cold.isRunning) {
+              controller.pauseSimulation();
             } else {
-              notifier.startSimulation();
+              controller.startSimulation();
             }
           },
-          tooltip: state.isRunning ? 'Pause' : 'Start simulation',
+          tooltip: cold.isRunning ? 'Pause' : 'Start simulation',
         ),
 
         // Stop/Reset
@@ -310,7 +313,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                 ),
               );
               if (confirm == true) {
-                notifier.resetEpisode();
+                controller.resetEpisode();
               }
             },
             tooltip: 'Reset simulation',
@@ -319,7 +322,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         // Speed Selector
         TextButton(
           onPressed: () {
-            final currentSpeed = state.speedMultiplier;
+            final currentSpeed = cold.speedMultiplier;
             double nextSpeed;
             if (currentSpeed < 5.0) {
               nextSpeed = 5.0;
@@ -328,16 +331,16 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             } else {
               nextSpeed = 1.0;
             }
-            notifier.setSpeed(nextSpeed);
+            controller.setSpeed(nextSpeed);
           },
           style: TextButton.styleFrom(
             minimumSize: const Size(40, 36),
             padding: EdgeInsets.zero,
             foregroundColor:
-                state.speedMultiplier > 1.0 ? colorScheme.tertiary : colorScheme.onSurface,
+                cold.speedMultiplier > 1.0 ? colorScheme.tertiary : colorScheme.onSurface,
           ),
           child: Text(
-            '${state.speedMultiplier.toInt()}×',
+            '${cold.speedMultiplier.toInt()}×',
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
           ),
         ),
@@ -347,10 +350,10 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
 
   void _showExportOptions(BuildContext context, WidgetRef ref) {
     final history = ref.read(episodeHistoryProvider);
-    final plotPoints = ref.read(plotBufferProvider);
+    final ringBuffer = ref.read(plotRingBufferProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (history.isEmpty && plotPoints.isEmpty) {
+    if (history.isEmpty && ringBuffer.filled == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Run simulation first to export data.')),
       );
@@ -386,13 +389,13 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   );
                 },
               ),
-            if (plotPoints.isNotEmpty)
+            if (ringBuffer.filled > 0)
               ListTile(
                 leading: const Icon(Icons.show_chart),
                 title: const Text('Export signal data (.csv)'),
                 onTap: () {
                   Navigator.pop(context);
-                  final csv = ExportService.plotBufferToCsv(plotPoints);
+                  final csv = ExportService.plotBufferToCsv(ringBuffer);
                   final bytes = utf8.encode(csv);
                   Share.shareXFiles(
                     [
