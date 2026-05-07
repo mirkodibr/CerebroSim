@@ -1,33 +1,44 @@
-import 'dart:collection';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/plot_ring_buffer.dart';
 import '../models/plot_point.dart';
 
-/// A [Notifier] that manages a sliding buffer of [PlotPoint]s for real-time visualization.
+/// Holds the single [PlotRingBuffer] instance for the lifetime of the app.
+/// Consumers read signal data from here; they never materialise a List.
+final plotRingBufferProvider = Provider<PlotRingBuffer>((ref) {
+  return PlotRingBuffer();
+});
+
+/// A [Notifier] whose state is a monotonically-increasing tick counter.
 ///
-/// It maintains a maximum of 200 points to ensure smooth performance while
-/// providing enough history for the user to observe trends in the simulation.
-class PlotBufferNotifier extends Notifier<List<PlotPoint>> {
-  static const int _maxSize = 200;
+/// Each [push] writes one sample into the shared [PlotRingBuffer] and
+/// increments the counter so painter subscribers know to repaint —
+/// without ever allocating a copy of the data.
+class PlotBufferNotifier extends Notifier<int> {
+  static const int _maxSize = 200; // kept as a constant for test assertions
 
   @override
-  List<PlotPoint> build() => [];
+  int build() => 0;
 
-  /// Adds a new [point] to the buffer and removes the oldest point if the
-  /// limit is exceeded.
-  void addPoint(PlotPoint point) {
-    final queue = Queue<PlotPoint>.from(state);
-    if (queue.length >= _maxSize) queue.removeFirst();
-    queue.addLast(point);
-    state = queue.toList(growable: false);
+  /// Writes one sample directly into the ring buffer. O(1), zero allocation.
+  void push(double critic, double actual, double gain) {
+    ref.read(plotRingBufferProvider).push(critic, actual, gain);
+    state = state + 1;
   }
 
-  /// Clears the entire buffer.
+  /// Convenience wrapper accepting a [PlotPoint] for any serialization call
+  /// sites that still construct one. The [PlotPoint] itself is NOT placed
+  /// in the ring buffer — only its scalar fields are forwarded.
+  void addPoint(PlotPoint point) {
+    push(point.criticPrediction, point.actualSignal, point.gainRatio);
+  }
+
+  /// Clears the ring buffer and resets the tick counter.
   void clear() {
-    state = [];
+    ref.read(plotRingBufferProvider).clear();
+    state = 0;
   }
 }
 
 /// Provider for the [PlotBufferNotifier].
-final plotBufferProvider = NotifierProvider<PlotBufferNotifier, List<PlotPoint>>(() {
-  return PlotBufferNotifier();
-});
+final plotBufferProvider =
+    NotifierProvider<PlotBufferNotifier, int>(() => PlotBufferNotifier());

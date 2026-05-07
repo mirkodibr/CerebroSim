@@ -5,7 +5,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/simulation_state.dart';
 import '../models/simulation_constants.dart';
-import '../models/plot_point.dart';
 import '../models/episode_record.dart';
 import '../models/network_config.dart';
 import '../models/experiment_snapshot.dart';
@@ -192,13 +191,11 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
         _episodeTickCount = 0;
       }
 
-      // Update plot buffer with latest simulation data
-      ref.read(plotBufferProvider.notifier).addPoint(
-        PlotPoint(
-          criticPrediction: state.criticPrediction,
-          actualSignal: state.climbingFiberSignal,
-          gainRatio: state.rollingGainRatio,
-        ),
+      // Update plot buffer with latest simulation data — no PlotPoint allocation.
+      ref.read(plotBufferProvider.notifier).push(
+        state.criticPrediction,
+        state.climbingFiberSignal,
+        state.rollingGainRatio,
       );
     } catch (e, s) {
       FirebaseCrashlytics.instance.recordError(e, s, fatal: false);

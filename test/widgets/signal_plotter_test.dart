@@ -18,7 +18,7 @@ void main() {
     // Verify Legend items
     expect(find.text('Critic'), findsOneWidget);
     expect(find.text('Actual'), findsOneWidget);
-    
+
     // Verify CustomPaint is present
     expect(find.byType(CustomPaint), findsAtLeastNWidgets(1));
   });

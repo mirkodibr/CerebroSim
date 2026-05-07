@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/plot_point.dart';
 import '../models/cerebellar_task.dart';
 import '../providers/environment_provider.dart';
 import '../providers/plot_buffer_provider.dart';
+import '../services/plot_ring_buffer.dart';
 
 /// A widget that displays a real-time line chart of simulation signals.
 ///
@@ -15,7 +15,10 @@ class SignalPlotter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(environmentProvider);
-    final buffer = ref.watch(plotBufferProvider);
+    // Watch the tick counter so Flutter schedules a repaint each tick.
+    final tickCount = ref.watch(plotBufferProvider);
+    // Read the ring buffer — same object reference every frame, mutated in-place.
+    final ringBuffer = ref.read(plotRingBufferProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
@@ -34,7 +37,8 @@ class SignalPlotter extends ConsumerWidget {
                 child: CustomPaint(
                   size: Size.infinite,
                   painter: SignalPlotterPainter(
-                    buffer: buffer, 
+                    buffer: ringBuffer,
+                    tickCount: tickCount,
                     isVor: task == CerebellarTask.vor,
                     colorScheme: colorScheme,
                   ),
@@ -78,18 +82,39 @@ class SignalPlotter extends ConsumerWidget {
 
 /// A [CustomPainter] that draws the signal paths on the canvas.
 ///
-/// It maps normalized signal values (-1.0 to 1.0) to the vertical space of the
-/// widget, where 0.0 is the vertical center.
+/// Reads directly from a [PlotRingBuffer] — no list copies. The [tickCount]
+/// parameter drives [shouldRepaint] without requiring a new buffer reference.
 class SignalPlotterPainter extends CustomPainter {
-  final List<PlotPoint> buffer;
+  final PlotRingBuffer buffer;
+  final int tickCount;
   final bool isVor;
   final ColorScheme colorScheme;
 
   late final TextPainter _labelTop = _makeLabel("1");
   late final TextPainter _labelBottom = _makeLabel("-1");
 
+  // Cached Paint objects — mutated each frame, never reallocated.
+  final Paint _paintCritic = Paint()
+    ..color = const Color(0xFF00FFFF)
+    ..strokeWidth = 2.0
+    ..style = PaintingStyle.stroke;
+  final Paint _paintActual = Paint()
+    ..color = const Color(0xFFEF9F27)
+    ..strokeWidth = 2.0
+    ..style = PaintingStyle.stroke;
+  final Paint _paintGain = Paint()
+    ..color = const Color(0xFF8A2BE2)
+    ..strokeWidth = 2.0
+    ..style = PaintingStyle.stroke;
+
+  // Cached Path objects — reset each frame via path.reset().
+  final Path _pathCritic = Path();
+  final Path _pathActual = Path();
+  final Path _pathGain = Path();
+
   SignalPlotterPainter({
     required this.buffer,
+    required this.tickCount,
     required this.isVor,
     required this.colorScheme,
   });
@@ -105,56 +130,40 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw Reference Grid
     _drawReferenceLines(canvas, size);
 
-    if (buffer.isEmpty) return;
+    final int count = buffer.filled;
+    if (count == 0) return;
 
-    final paintCritic = Paint()
-      ..color = const Color(0xFF00FFFF)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-    final paintActual = Paint()
-      ..color = const Color(0xFFEF9F27)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-    final paintGain = Paint()
-      ..color = const Color(0xFF8A2BE2)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
+    _pathCritic.reset();
+    _pathActual.reset();
+    _pathGain.reset();
 
-    final pathCritic = Path();
-    final pathActual = Path();
-    final pathGain = Path();
+    final double stepX = size.width / (count > 1 ? count - 1 : 1);
 
-    final double stepX =
-        size.width / (buffer.length > 1 ? buffer.length - 1 : 1);
-
-    for (int i = 0; i < buffer.length; i++) {
+    for (int i = 0; i < count; i++) {
       final x = i * stepX;
 
-      /// Maps a value between -1 and 1 to a Y coordinate on the canvas.
-      /// 1.0 maps to top, -1.0 maps to bottom, 0.0 maps to center.
       double mapY(double val) => size.height / 2 - (val * size.height / 2);
 
       if (i == 0) {
-        pathCritic.moveTo(x, mapY(buffer[i].criticPrediction));
-        pathActual.moveTo(x, mapY(buffer[i].actualSignal));
-        pathGain.moveTo(x, mapY(buffer[i].gainRatio));
+        _pathCritic.moveTo(x, mapY(buffer.getCritic(i)));
+        _pathActual.moveTo(x, mapY(buffer.getActual(i)));
+        _pathGain.moveTo(x, mapY(buffer.getGain(i)));
       } else {
-        pathCritic.lineTo(x, mapY(buffer[i].criticPrediction));
-        pathActual.lineTo(x, mapY(buffer[i].actualSignal));
-        pathGain.lineTo(x, mapY(buffer[i].gainRatio));
+        _pathCritic.lineTo(x, mapY(buffer.getCritic(i)));
+        _pathActual.lineTo(x, mapY(buffer.getActual(i)));
+        _pathGain.lineTo(x, mapY(buffer.getGain(i)));
       }
     }
 
-    canvas.drawPath(pathCritic, paintCritic);
-    canvas.drawPath(pathActual, paintActual);
+    canvas.drawPath(_pathCritic, _paintCritic);
+    canvas.drawPath(_pathActual, _paintActual);
     if (isVor) {
-      canvas.drawPath(pathGain, paintGain);
+      canvas.drawPath(_pathGain, _paintGain);
     }
 
-    // 2. Draw "Now" Indicator
+    // "Now" indicator
     final nowPaint = Paint()
       ..color = colorScheme.secondary.withValues(alpha: 0.5)
       ..strokeWidth = 1.0;
@@ -168,11 +177,9 @@ class SignalPlotterPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
 
-    // Center horizontal line (y=0)
     _drawDashedLine(canvas, Offset(0, size.height / 2),
         Offset(size.width, size.height / 2), centerPaint);
 
-    // Y-axis markers at +1 and -1
     _labelTop.paint(canvas, const Offset(2, 0));
     _labelBottom.paint(canvas, Offset(2, size.height - 12));
   }
@@ -190,6 +197,6 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant SignalPlotterPainter oldDelegate) {
-    return oldDelegate.buffer != buffer;
+    return oldDelegate.tickCount != tickCount;
   }
 }
