@@ -22,6 +22,11 @@ import 'network_config_provider.dart';
 
 bool kUseIsolate = !kIsWeb && !bool.fromEnvironment('dart.library.ui');
 
+/// Provider for the [SimulationEngine] instance, enabling test overrides.
+final simulationEngineProvider = Provider<SimulationEngine>((ref) {
+  return SimulationEngine();
+});
+
 /// A notifier for high-frequency simulation state (neurons, synapses, etc.)
 class HotSimulationNotifier extends Notifier<HotSimState> {
   @override
@@ -58,7 +63,7 @@ final coldSimulationProvider = NotifierProvider<ColdSimulationNotifier, ColdSimS
 class SimulationController with WidgetsBindingObserver {
   final Ref _ref;
   late final Ticker _ticker;
-  final SimulationEngine _engine = SimulationEngine();
+  late final SimulationEngine _engine;
   SimulationIsolateController? _isolateController;
   
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
@@ -75,6 +80,7 @@ class SimulationController with WidgetsBindingObserver {
   static const int _kRecoveryThresholdFrames = 60; // ~1s at 60Hz
 
   SimulationController(this._ref) {
+    _engine = _ref.read(simulationEngineProvider);
     _ticker = Ticker(_onFrame);
     WidgetsBinding.instance.addObserver(this);
     

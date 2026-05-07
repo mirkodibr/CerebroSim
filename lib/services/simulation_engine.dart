@@ -26,6 +26,11 @@ class SimulationEngine {
     return NetworkInitializer.createRLMockNetwork(config: config);
   }
 
+  /// Returns the number of slots in the temporal ring buffer.
+  /// Always equals [_maxDelay] + 1 (bounded by construction).
+  @visibleForTesting
+  int get bufferSize => _potentialBuffer.length;
+
   /// Clears all scheduled currents in the temporal ring buffer.
   void clearBuffer() {
     for (final map in _potentialBuffer) {
