@@ -53,11 +53,43 @@ void main() {
         meanPunishment: 0.1,
         finalTdError: 0.0,
       ));
-      
+
       expect(container.read(episodeHistoryProvider), isNotEmpty);
-      
+
       notifier.clear();
       expect(container.read(episodeHistoryProvider), isEmpty);
+    });
+
+    test('recording 1000 episodes keeps length at 50', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(episodeHistoryProvider.notifier);
+
+      for (int i = 0; i < 1000; i++) {
+        notifier.recordEpisode(EpisodeRecord(
+          episodeNumber: i,
+          meanPunishment: 0.1,
+          finalTdError: 0.0,
+        ));
+      }
+
+      expect(container.read(episodeHistoryProvider).length, 50);
+    });
+
+    test('state is immutable — consumers cannot mutate it', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(episodeHistoryProvider.notifier);
+
+      notifier.recordEpisode(const EpisodeRecord(
+          episodeNumber: 0, meanPunishment: 0.0, finalTdError: 0.0));
+
+      final state = container.read(episodeHistoryProvider);
+      expect(
+        () => (state as dynamic).add(
+            const EpisodeRecord(episodeNumber: 99, meanPunishment: 0.0, finalTdError: 0.0)),
+        throwsUnsupportedError,
+      );
     });
   });
 }

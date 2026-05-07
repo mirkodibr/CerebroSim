@@ -1,27 +1,38 @@
+import 'dart:collection';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/episode_record.dart';
 
+const int _kMaxHistory = 50;
+
 /// A notifier that maintains a historical list of [EpisodeRecord]s.
 ///
-/// It provides a moving window of the last 50 episodes to visualize 
-/// how the cerebellar network's learning is converging over time.
+/// Internally uses a [Queue] so each call to [recordEpisode] performs
+/// at most one allocation (the new record itself) instead of copying
+/// the entire list with a spread operator.
 class EpisodeHistoryNotifier extends Notifier<List<EpisodeRecord>> {
-  @override
-  List<EpisodeRecord> build() => [];
+  final Queue<EpisodeRecord> _queue = Queue();
 
-  /// Appends a new [record] to the history and removes the oldest if the 
-  /// limit is reached.
+  @override
+  List<EpisodeRecord> build() => const [];
+
+  /// Appends a new [record] and evicts the oldest when capacity is exceeded.
   void recordEpisode(EpisodeRecord record) {
-    state = [...state.skip(state.length >= 50 ? 1 : 0), record];
+    if (_queue.length >= _kMaxHistory) {
+      _queue.removeFirst();
+    }
+    _queue.addLast(record);
+    state = UnmodifiableListView(_queue.toList(growable: false));
   }
 
-  /// Clears the entire history, typically called when the simulation is reset.
+  /// Clears the entire history without reallocation.
   void clear() {
-    state = [];
+    _queue.clear();
+    state = const [];
   }
 }
 
 /// A global provider for the [EpisodeHistoryNotifier].
-final episodeHistoryProvider = NotifierProvider<EpisodeHistoryNotifier, List<EpisodeRecord>>(() {
+final episodeHistoryProvider =
+    NotifierProvider<EpisodeHistoryNotifier, List<EpisodeRecord>>(() {
   return EpisodeHistoryNotifier();
 });
