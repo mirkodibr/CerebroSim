@@ -43,6 +43,25 @@ void main() {
       expect(state.last.episodeNumber, 59);
     });
 
+    test('recordEpisode maintains max size of 50 even after 1000 entries', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(episodeHistoryProvider.notifier);
+
+      for (int i = 0; i < 1000; i++) {
+        notifier.recordEpisode(EpisodeRecord(
+          episodeNumber: i,
+          meanPunishment: i / 1000.0,
+          finalTdError: 0.0,
+        ));
+      }
+
+      final state = container.read(episodeHistoryProvider);
+      expect(state.length, 50);
+      expect(state.first.episodeNumber, 950);
+      expect(state.last.episodeNumber, 999);
+    });
+
     test('clear() resets history to empty', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
