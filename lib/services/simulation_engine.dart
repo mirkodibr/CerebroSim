@@ -8,51 +8,32 @@ import '../models/network_config.dart';
 import 'network_initializer.dart';
 
 /// The core computational engine of the cerebellar simulation.
-/// 
-/// This class implements the mathematical models for:
-/// - **Neuron Dynamics:** Leaky Integrate-and-Fire (LIF) equations.
-/// - **Synaptic Propagation:** Weighted summation of pre-synaptic activity.
-/// - **Synaptic Plasticity:** Temporal Difference (TD) learning using 
-///   eligibility traces.
-/// - **Temporal Memory:** Eligibility trace updates for bridging time gaps.
 class SimulationEngine {
   static const int _maxDelay = 10; // max axonal delay in ticks
+  static const int _bufferSize = _maxDelay + 1;
 
   /// A temporal ring buffer to schedule future synaptic currents based on axonal delays.
-  /// Key 1: Target tick (episodeStep).
-  /// Key 2: Target neuron ID.
-  /// Value: Accumulated current to be applied at that tick.
-  final Map<int, Map<String, double>> _potentialBuffer = {};
+  /// This is implemented as a fixed-size list of maps to ensure O(1) access and 
+  /// zero allocation overhead during the hot path.
+  final List<Map<String, double>> _potentialBuffer = List.generate(
+    _bufferSize, 
+    (_) => {}, 
+    growable: false
+  );
 
   /// Returns a [SimulationState] initialized based on the provided [config].
   SimulationState initialState({NetworkConfig? config}) {
     return NetworkInitializer.createRLMockNetwork(config: config);
   }
 
-  /// Clears the temporal ring buffer. 
-  /// Should be called during simulation resets or when loading new configurations.
+  /// Clears all scheduled currents in the temporal ring buffer.
   void clearBuffer() {
-    assert(() {
-      if (_potentialBuffer.isNotEmpty) {
-        debugPrint('SimulationEngine: clearing ${_potentialBuffer.length} '
-          'stale buffer entries');
-      }
-      return true;
-    }());
-    _potentialBuffer.clear();
+    for (final map in _potentialBuffer) {
+      map.clear();
+    }
   }
 
   /// Advances the simulation by a single time step [dt].
-  /// 
-  /// The [tick] process follows these stages:
-  /// 1. **Compute Input Currents:** Aggregate sensory input and synaptic currents.
-  /// 2. **Update Neurons:** Apply [lifUpdate] to membrane potentials and 
-  ///    [eligibilityUpdate] to traces.
-  /// 3. **Calculate Error:** Determine the [tdError] based on environmental 
-  ///    reward and DCN activity.
-  /// 4. **Apply Plasticity:** Use [updateWeights] to modify synapses based on
-  ///    the TD error.
-  /// 5. **Update State:** Manage episode counting and step tracking.
   SimulationState tick(
     SimulationState current,
     EnvironmentStep env,
@@ -61,7 +42,6 @@ class SimulationEngine {
     required double gamma,
     required double dcnBaseline,
   }) {
-    // Step 1: compute input currents
     final Map<String, double> inputCurrents = {};
     
     // CF receives env.punishment (representing the error signal)
@@ -76,24 +56,18 @@ class SimulationEngine {
       }
     }
 
-    // Pull scheduled currents from the buffer for the current tick.
-    final scheduledForNow = _potentialBuffer.remove(current.episodeStep);
-    if (scheduledForNow != null) {
-      for (final entry in scheduledForNow.entries) {
-        inputCurrents[entry.key] = (inputCurrents[entry.key] ?? 0.0) + entry.value;
-      }
+    // Pull scheduled currents for the current tick from the ring buffer.
+    final int currentIndex = current.episodeStep % _bufferSize;
+    final scheduledForNow = _potentialBuffer[currentIndex];
+    
+    for (final entry in scheduledForNow.entries) {
+      inputCurrents[entry.key] = (inputCurrents[entry.key] ?? 0.0) + entry.value;
     }
+    
+    // CRITICAL: Clear the buffer slot after consuming it so it's ready for future use
+    scheduledForNow.clear();
 
-    // Prune stale entries older than maxDelay ticks behind current step
-    final staleKeys = _potentialBuffer.keys
-      .where((k) => k < current.episodeStep - _maxDelay)
-      .toList();
-    for (final k in staleKeys) {
-      _potentialBuffer.remove(k);
-    }
-
-    // Optimized propagation: Iterate over neurons. If they have activity (membranePotential > 0),
-    // propagate to downstream targets via the preSynapticIndex.
+    // Optimized propagation: Iterate over neurons with activity
     for (final n in current.neurons.values) {
       if (n.membranePotential > 0) {
         final downstreamSynapses = current.preSynapticIndex[n.id];
@@ -103,19 +77,19 @@ class SimulationEngine {
             final currentIn = s.weight * n.membranePotential;
             
             if (s.axonalDelay == 0) {
-              // Instantaneous propagation
               inputCurrents[s.toNeuronId] = (inputCurrents[s.toNeuronId] ?? 0.0) + currentIn;
             } else {
-              // Schedule for future tick
-              final tickBuffer = _potentialBuffer.putIfAbsent(targetTick, () => {});
-              tickBuffer[s.toNeuronId] = (tickBuffer[s.toNeuronId] ?? 0.0) + currentIn;
+              // Schedule for future tick using modulo indexing
+              final int targetIndex = targetTick % _bufferSize;
+              final targetMap = _potentialBuffer[targetIndex];
+              targetMap[s.toNeuronId] = (targetMap[s.toNeuronId] ?? 0.0) + currentIn;
             }
           }
         }
       }
     }
 
-    // Apply baseline tonic firing to DCN neurons to represent spontaneous activity.
+    // Apply baseline tonic firing to DCN neurons
     for (final n in current.neurons.values) {
       if (n.cellType == 'DCN') {
         inputCurrents[n.id] = (inputCurrents[n.id] ?? 0.0) + dcnBaseline;
@@ -128,12 +102,10 @@ class SimulationEngine {
       double newPotential = lifUpdate(n, input);
       bool isFiring = newPotential >= n.threshold;
       
-      // If firing, reset potential back to resting level.
       if (isFiring) {
         newPotential = n.restingPotential;
       }
 
-      // Update eligibility trace based on current firing activity.
       final double activity = isFiring ? 1.0 : 0.0;
       final newTrace = eligibilityUpdate(n.eligibilityTrace, activity, n.decayRate);
 
@@ -145,10 +117,6 @@ class SimulationEngine {
     });
 
     // Step 3: compute tdError
-    // In this cerebellar context, reward is defined as (1.0 - punishment).
-    // The DCN neuron acts as the state-value estimator.
-    // For tasks with multiple DCNs (like ArmReaching), we use the average 
-    // membrane potential to estimate the state value.
     final dcns = current.neurons.values.where((n) => n.cellType == 'DCN').toList();
     
     double oldV = 0.0;
@@ -162,14 +130,13 @@ class SimulationEngine {
       oldV /= dcns.length;
       nextV /= dcns.length;
     } else {
-      // Fallback
       oldV = current.neurons.values.first.membranePotential;
       nextV = nextNeurons.values.first.membranePotential;
     }
     
     final td = tdError(1.0 - env.punishment, nextV, oldV, gamma: gamma);
 
-    // Step 4: call updateWeights to adjust synaptic strengths based on learning.
+    // Step 4: Plasticity
     final List<SynapseModel> nextSynapses = updateWeights(
       current.synapses,
       nextNeurons, 
@@ -177,26 +144,20 @@ class SimulationEngine {
       learningRate: learningRate,
     );
 
-    // Step 4.5: Rebuild preSynapticIndex inline from nextSynapses.
-    // This ensures the index points to the new synapse objects with updated weights.
     final Map<String, List<SynapseModel>> nextIndex = {};
     for (final s in nextSynapses) {
       nextIndex.putIfAbsent(s.fromNeuronId, () => []).add(s);
     }
 
-    // Step 5: handle episode logic and counter increments.
+    // Step 5: handle episode logic
     int nextStep = current.episodeStep + 1;
     int nextEpisodeCount = current.episodeCount;
     if (env.isEpisodeEnd) {
       nextStep = 0;
       nextEpisodeCount++;
-      // Biologically, axonal delays are usually cleared at the end of an episode/trial
-      // to prevent "leakage" into the next one.
       clearBuffer();
     }
 
-    // Step 6: Compute rolling performance metrics (Gain Ratio for VOR)
-    // The stateVector[2] contains the instant gain ratio in the VOR task.
     final double instantGain = env.stateVector.length >= 4 ? env.stateVector[2] : 0.0;
     final double newRollingGain = (0.95 * current.rollingGainRatio) + (0.05 * instantGain);
 
@@ -213,19 +174,16 @@ class SimulationEngine {
     );
   }
 
-  /// Calculates the next membrane potential using a Leaky Integrate-and-Fire model.
   @visibleForTesting
   double lifUpdate(NeuronModel n, double inputCurrent) {
     return (n.membranePotential + inputCurrent) * (1 - n.decayRate);
   }
 
-  /// Calculates the Temporal Difference (TD) error for reinforcement learning.
   @visibleForTesting
   double tdError(double reward, double vNext, double vCurrent, {double gamma = 0.95}) {
     return reward + gamma * vNext - vCurrent;
   }
 
-  /// Updates synaptic weights according to the TD-learning rule and eligibility traces.
   @visibleForTesting
   List<SynapseModel> updateWeights(
     List<SynapseModel> synapses,
@@ -244,7 +202,6 @@ class SimulationEngine {
     }).toList();
   }
 
-  /// Updates a neuron's eligibility trace, representing a temporal memory of activity.
   @visibleForTesting
   double eligibilityUpdate(double currentTrace, double preSynapticActivity, double decayRate) {
     return currentTrace * (1 - decayRate) + preSynapticActivity;

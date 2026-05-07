@@ -4,8 +4,7 @@ import 'package:cerebrosim/providers/simulation_provider.dart';
 import 'package:cerebrosim/providers/plot_buffer_provider.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  test('SimulationNotifier appends points to PlotRingBuffer on tick', () async {
+  testWidgets('SimulationController appends points to PlotRingBuffer on tick', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -16,11 +15,10 @@ void main() {
     // Start simulation
     container.read(simulationControllerProvider).startSimulation();
 
-    // Wait for at least one tick
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    // Stop simulation to prevent further ticks
-    container.read(simulationControllerProvider).stopSimulation();
+    // Pump a few frames
+    for (int i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
 
     // The buffer should no longer be empty
     final tick = container.read(plotBufferProvider);
@@ -29,8 +27,11 @@ void main() {
     
     final lastCount = tick;
     
-    // Wait more - should NOT increase because simulation is stopped
-    await Future.delayed(const Duration(milliseconds: 100));
+    // Stop simulation
+    container.read(simulationControllerProvider).stopSimulation();
+
+    // Wait more - should NOT increase
+    await tester.pump(const Duration(milliseconds: 100));
     expect(container.read(plotBufferProvider), equals(lastCount));
   });
 }

@@ -6,8 +6,7 @@ import 'package:cerebrosim/providers/environment_provider.dart';
 import 'package:cerebrosim/models/cerebellar_task.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  test('Simulation heartbeat records EpisodeRecord when episode completes', () async {
+  testWidgets('Simulation heartbeat records EpisodeRecord when episode completes', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -17,26 +16,22 @@ void main() {
     // Initial state
     expect(container.read(episodeHistoryProvider), isEmpty);
 
-    // Start simulation and wait for an episode to complete
-    // Eyeblink episode is 1 second. With kTickRateHz=60, that's 60 ticks.
-    // We can't wait 1s in a unit test easily without fake time, 
-    // but SimulationNotifier uses a real Timer.
-    // Alternatively, we can use fakeAsync if needed, but let's try a short wait first
-    // or manually trigger ticks if possible (but _tick is private).
-    
-    // Since _tick is private and uses real timer, we'll use a small delay 
-    // and hope for the best, or better, use a more controlled approach.
-    // For now, let's just start and wait a bit more than 1s.
-    
     container.read(simulationControllerProvider).startSimulation();
     
-    // Wait for ~1.5 seconds to ensure at least one episode completes
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Pump frames to advance the simulation
+    for (int i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    
+    final currentHistory = container.read(episodeHistoryProvider);
+    final hot = container.read(hotSimulationProvider);
+    final cold = container.read(coldSimulationProvider);
+    print('DEBUG: episodeCount=${cold.episodeCount}, historyLen=${currentHistory.length}, step=${hot.episodeStep}');
     
     container.read(simulationControllerProvider).stopSimulation();
     
     final history = container.read(episodeHistoryProvider);
-    expect(history, isNotEmpty, reason: 'Episode history should not be empty after 1.5s of simulation');
+    expect(history, isNotEmpty, reason: 'Episode history should not be empty after 3s of simulation');
     expect(history.first.episodeNumber, 0);
     expect(history.first.meanPunishment, greaterThanOrEqualTo(0.0));
 
