@@ -27,7 +27,16 @@ class NeuralCanvas3DPainter extends CustomPainter {
   final Paint _granularPaint = Paint()..style = PaintingStyle.fill;
   final TextPainter _layerTextPainter = TextPainter(textDirection: TextDirection.ltr);
 
-  final List<_DepthItem> _depthItems = [];
+  // Persistent items to avoid per-frame allocations
+  static final List<_DepthItem> _stableItems = [];
+  static final Map<String, _NeuronItem> _neuronItemMap = {};
+  static final List<_SynapseItem> _synapseItemList = [];
+  
+  // Cache keys to detect changes
+  static int _lastCameraKey = 0;
+  static int _lastNetworkKey = 0;
+  static String? _lastSelectedId;
+
   final Map<String, List<NeuronModel>> _groupedNeurons = {};
   final Map<String, ProjectedPoint> _projectedNeurons = {};
 
@@ -47,7 +56,13 @@ class NeuralCanvas3DPainter extends CustomPainter {
   }
 
   /// Clears the static position cache. Should be called when the network structure changes.
-  static void clearCache() => _positionCache.clear();
+  static void clearCache() {
+    _positionCache.clear();
+    _stableItems.clear();
+    _neuronItemMap.clear();
+    _synapseItemList.clear();
+    _lastNetworkKey = 0;
+  }
 
   /// Retrieves a cached position for a neuron or calculates it if missing.
   static Offset3D _getCachedPosition(NeuronModel n, Map<String, List<NeuronModel>> grouped) {
@@ -127,6 +142,96 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
     _drawLayers(canvas, size);
 
+    // 1. Detect Network Change
+    final networkKey = Object.hash(state.neurons.length, state.synapses.length);
+    if (networkKey != _lastNetworkKey) {
+      _rebuildStableItems();
+      _lastNetworkKey = networkKey;
+    }
+
+    // 2. Detect Camera Change
+    final cameraKey = Object.hash(rotX, rotY, zoom, centerX, centerY);
+    final bool cameraChanged = cameraKey != _lastCameraKey;
+    final bool selectionChanged = selectedNeuronId != _lastSelectedId;
+
+    if (cameraChanged) {
+      _updateProjections(centerX, centerY);
+      _lastCameraKey = cameraKey;
+    }
+
+    // 3. Update Activity (always)
+    for (final n in state.neurons.values) {
+      final item = _neuronItemMap[n.id];
+      if (item != null) {
+        item.neuron = n;
+        item.isSelected = n.id == selectedNeuronId;
+        item.celebrationValue = celebrationValue;
+        item.colorScheme = colorScheme;
+        if (cameraChanged) {
+          item.projected = _projectedNeurons[n.id]!;
+        }
+      }
+    }
+
+    if (cameraChanged) {
+      for (final item in _synapseItemList) {
+        item.from = _projectedNeurons[item.synapse.fromNeuronId]!;
+        item.to = _projectedNeurons[item.synapse.toNeuronId]!;
+      }
+      
+      // Re-sort only when camera changes
+      _stableItems.sort((a, b) => b.depth.compareTo(a.depth));
+    } else if (selectionChanged) {
+        _lastSelectedId = selectedNeuronId;
+    }
+
+    // 4. Draw
+    for (final item in _stableItems) {
+      // Skip the selected neuron in the main pass if we want it strictly on top
+      if (item is _NeuronItem && item.neuron.id == selectedNeuronId) continue;
+      item.draw(canvas);
+    }
+
+    // 5. Draw selected neuron on top
+    if (selectedNeuronId != null) {
+      final selectedItem = _neuronItemMap[selectedNeuronId];
+      selectedItem?.draw(canvas);
+    }
+  }
+
+  void _rebuildStableItems() {
+    _stableItems.clear();
+    _neuronItemMap.clear();
+    _synapseItemList.clear();
+
+    _groupedNeurons.clear();
+    for (final n in state.neurons.values) {
+      _groupedNeurons.putIfAbsent(n.cellType, () => []).add(n);
+    }
+
+    // We need dummy projections for initial build, will be updated in paint()
+    const dummyProj = ProjectedPoint(0, 0, 1, 0);
+
+    for (final n in state.neurons.values) {
+      final item = _NeuronItem(
+        n, 
+        dummyProj, 
+        colorScheme, 
+        isSelected: n.id == selectedNeuronId,
+        celebrationValue: celebrationValue,
+      );
+      _neuronItemMap[n.id] = item;
+      _stableItems.add(item);
+    }
+
+    for (final s in state.synapses) {
+      final item = _SynapseItem(s, dummyProj, dummyProj);
+      _synapseItemList.add(item);
+      _stableItems.add(item);
+    }
+  }
+
+  void _updateProjections(double centerX, double centerY) {
     _groupedNeurons.clear();
     for (final n in state.neurons.values) {
       _groupedNeurons.putIfAbsent(n.cellType, () => []).add(n);
@@ -143,35 +248,6 @@ class NeuralCanvas3DPainter extends CustomPainter {
         centerX: centerX,
         centerY: centerY,
       );
-    }
-
-    _depthItems.clear();
-
-    for (final n in state.neurons.values) {
-      final p = _projectedNeurons[n.id];
-      if (p != null) {
-        _depthItems.add(_NeuronItem(
-          n, 
-          p, 
-          colorScheme, 
-          isSelected: n.id == selectedNeuronId,
-          celebrationValue: celebrationValue,
-        ));
-      }
-    }
-
-    for (final s in state.synapses) {
-      final pFrom = _projectedNeurons[s.fromNeuronId];
-      final pTo = _projectedNeurons[s.toNeuronId];
-      if (pFrom != null && pTo != null) {
-        _depthItems.add(_SynapseItem(s, pFrom, pTo));
-      }
-    }
-
-    _depthItems.sort((a, b) => b.depth.compareTo(a.depth));
-
-    for (final item in _depthItems) {
-      item.draw(canvas);
     }
   }
 
@@ -219,11 +295,11 @@ abstract class _DepthItem {
 }
 
 class _NeuronItem extends _DepthItem {
-  final NeuronModel neuron;
-  final ProjectedPoint projected;
-  final bool isSelected;
-  final ColorScheme colorScheme;
-  final double celebrationValue;
+  NeuronModel neuron;
+  ProjectedPoint projected;
+  bool isSelected;
+  ColorScheme colorScheme;
+  double celebrationValue;
 
   static final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
   static final Paint _strokePaint = Paint()..style = PaintingStyle.stroke;
@@ -292,8 +368,8 @@ class _NeuronItem extends _DepthItem {
 
 class _SynapseItem extends _DepthItem {
   final SynapseModel synapse;
-  final ProjectedPoint from;
-  final ProjectedPoint to;
+  ProjectedPoint from;
+  ProjectedPoint to;
 
   static final Paint _synapsePaint = Paint()..style = PaintingStyle.stroke;
 
