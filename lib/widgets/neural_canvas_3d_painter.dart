@@ -203,12 +203,13 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant NeuralCanvas3DPainter oldDelegate) {
-    return oldDelegate.state != state ||
+    return oldDelegate.state.episodeStep != state.episodeStep ||
         oldDelegate.rotX != rotX ||
         oldDelegate.rotY != rotY ||
         oldDelegate.zoom != zoom ||
         oldDelegate.selectedNeuronId != selectedNeuronId ||
-        oldDelegate.celebrationValue != celebrationValue;
+        oldDelegate.celebrationValue != celebrationValue ||
+        oldDelegate.colorScheme != colorScheme;
   }
 }
 

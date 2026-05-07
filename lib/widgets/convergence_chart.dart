@@ -187,6 +187,8 @@ class ConvergenceChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ConvergenceChartPainter oldDelegate) {
-    return oldDelegate.history != history;
+    return oldDelegate.history.length != history.length ||
+        (history.isNotEmpty && !identical(oldDelegate.history.last, history.last)) ||
+        oldDelegate.colorScheme != colorScheme;
   }
 }

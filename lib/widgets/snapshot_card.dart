@@ -385,6 +385,13 @@ class _SparklinePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
+    if (color != oldDelegate.color) return true;
+    if (values.length != oldDelegate.values.length) return true;
+    for (int i = 0; i < values.length; i++) {
+      if (values[i] != oldDelegate.values[i]) return true;
+    }
+    return false;
+  }
 }
 

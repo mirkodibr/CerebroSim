@@ -187,6 +187,8 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant SignalPlotterPainter oldDelegate) {
-    return oldDelegate.tick != tick || oldDelegate.isVor != isVor;
+    return oldDelegate.tick != tick || 
+           oldDelegate.isVor != isVor || 
+           oldDelegate.colorScheme != colorScheme;
   }
 }
