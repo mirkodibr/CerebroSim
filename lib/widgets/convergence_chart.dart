@@ -47,11 +47,33 @@ class ConvergenceChartPainter extends CustomPainter {
   final TextStyle labelStyle;
   final ColorScheme colorScheme;
 
+  static const List<double> kGridValues = [0.0, 0.25, 0.5, 0.75, 1.0];
+
+  final Paint _gridPaint = Paint()..style = PaintingStyle.stroke..strokeWidth = 0.5;
+  final Paint _axisPaint = Paint()..strokeWidth = 1.0;
+  final Paint _punishmentPaint = Paint()
+    ..color = const Color(0xFFE24B4A)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0
+    ..strokeCap = StrokeCap.round;
+  final Paint _tdErrorPaint = Paint()
+    ..color = const Color(0xFF00FFFF)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0
+    ..strokeCap = StrokeCap.round;
+
+  final Path _punishmentPath = Path();
+  final Path _tdErrorPath = Path();
+  final TextPainter _textPainter = TextPainter(textDirection: TextDirection.ltr);
+
   ConvergenceChartPainter({
     required this.history,
     required this.labelStyle,
     required this.colorScheme,
-  });
+  }) {
+    _gridPaint.color = colorScheme.onSurface.withValues(alpha: 0.1);
+    _axisPaint.color = colorScheme.outline.withValues(alpha: 0.3);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -62,33 +84,20 @@ class ConvergenceChartPainter extends CustomPainter {
     final double chartWidth = size.width - leftMargin;
     final double chartHeight = size.height - bottomMargin;
 
-    final Paint gridPaint = Paint()
-      ..color = colorScheme.onSurface.withValues(alpha: 0.1)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5;
-
-    final Paint axisPaint = Paint()
-      ..color = colorScheme.outline.withValues(alpha: 0.3)
-      ..strokeWidth = 1.0;
-
     // Draw Gridlines and Y-axis labels
-    final List<double> gridValues = [0.0, 0.25, 0.5, 0.75, 1.0];
-    for (final val in gridValues) {
+    for (final val in kGridValues) {
       final double y = chartHeight - (val * chartHeight);
       
       // Dashed gridline
-      _drawDashedLine(canvas, Offset(leftMargin, y), Offset(size.width, y), gridPaint);
+      _drawDashedLine(canvas, Offset(leftMargin, y), Offset(size.width, y), _gridPaint);
 
       // Y-axis label
-      final TextPainter tp = TextPainter(
-        text: TextSpan(
-          text: val.toStringAsFixed(2),
-          style: labelStyle.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 10),
-        ),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.right,
-      )..layout(maxWidth: 36);
-      tp.paint(canvas, Offset(2, y - tp.height / 2));
+      _textPainter.text = TextSpan(
+        text: val.toStringAsFixed(2),
+        style: labelStyle.copyWith(color: colorScheme.onSurface.withValues(alpha: 0.5), fontSize: 10),
+      );
+      _textPainter.layout(maxWidth: 36);
+      _textPainter.paint(canvas, Offset(2, y - _textPainter.height / 2));
     }
 
     // Draw X-axis labels
@@ -99,27 +108,14 @@ class ConvergenceChartPainter extends CustomPainter {
     _drawXLabel(canvas, lastEp.toString(), size.width - 20, size.height - tpHeight('0'));
 
     // Draw axes
-    canvas.drawLine(Offset(leftMargin, chartHeight), Offset(size.width, chartHeight), axisPaint);
-    canvas.drawLine(Offset(leftMargin, 0), Offset(leftMargin, chartHeight), axisPaint);
+    canvas.drawLine(Offset(leftMargin, chartHeight), Offset(size.width, chartHeight), _axisPaint);
+    canvas.drawLine(Offset(leftMargin, 0), Offset(leftMargin, chartHeight), _axisPaint);
 
     final int count = history.length;
     final double dx = chartWidth / (count - 1).clamp(1, count);
 
-    // Paints for the two metrics
-    final Paint punishmentPaint = Paint()
-      ..color = const Color(0xFFE24B4A) // Red
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-
-    final Paint tdErrorPaint = Paint()
-      ..color = const Color(0xFF00FFFF) // Cyan
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-
-    final Path punishmentPath = Path();
-    final Path tdErrorPath = Path();
+    _punishmentPath.reset();
+    _tdErrorPath.reset();
 
     for (int i = 0; i < count; i++) {
       final record = history[i];
@@ -130,19 +126,19 @@ class ConvergenceChartPainter extends CustomPainter {
       final double yTdError = chartHeight - (record.finalTdError.abs().clamp(0.0, 1.0) * chartHeight);
 
       if (i == 0) {
-        punishmentPath.moveTo(x, yPunishment);
-        tdErrorPath.moveTo(x, yTdError);
+        _punishmentPath.moveTo(x, yPunishment);
+        _tdErrorPath.moveTo(x, yTdError);
       } else {
-        punishmentPath.lineTo(x, yPunishment);
-        tdErrorPath.lineTo(x, yTdError);
+        _punishmentPath.lineTo(x, yPunishment);
+        _tdErrorPath.lineTo(x, yTdError);
       }
     }
 
-    canvas.drawPath(punishmentPath, punishmentPaint);
-    canvas.drawPath(tdErrorPath, tdErrorPaint);
+    canvas.drawPath(_punishmentPath, _punishmentPaint);
+    canvas.drawPath(_tdErrorPath, _tdErrorPaint);
 
     // Draw Legend with current values
-    _drawLegend(canvas, leftMargin, chartWidth, punishmentPaint.color, tdErrorPaint.color);
+    _drawLegend(canvas, leftMargin, chartWidth, _punishmentPaint.color, _tdErrorPaint.color);
   }
 
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
@@ -156,40 +152,37 @@ class ConvergenceChartPainter extends CustomPainter {
   }
 
   double tpHeight(String text) {
-    return (TextPainter(
-      text: TextSpan(text: text, style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout()).height;
+    _textPainter.text = TextSpan(text: text, style: labelStyle);
+    _textPainter.layout();
+    return _textPainter.height;
   }
 
   void _drawXLabel(Canvas canvas, String text, double x, double y) {
-    final tp = TextPainter(
-      text: TextSpan(text: text, style: labelStyle.copyWith(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5))),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(x, y));
+    _textPainter.text = TextSpan(
+      text: text, 
+      style: labelStyle.copyWith(fontSize: 10, color: colorScheme.onSurface.withValues(alpha: 0.5))
+    );
+    _textPainter.layout();
+    _textPainter.paint(canvas, Offset(x, y));
   }
 
   void _drawLegend(Canvas canvas, double left, double width, Color punishmentColor, Color tdErrorColor) {
     final last = history.last;
-    final TextPainter tpPunishment = TextPainter(
-      text: TextSpan(
-        text: 'Punishment: ${last.meanPunishment.toStringAsFixed(3)}', 
-        style: labelStyle.copyWith(color: punishmentColor, fontWeight: FontWeight.bold)
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    
+    _textPainter.text = TextSpan(
+      text: 'Punishment: ${last.meanPunishment.toStringAsFixed(3)}', 
+      style: labelStyle.copyWith(color: punishmentColor, fontWeight: FontWeight.bold)
+    );
+    _textPainter.layout();
+    _textPainter.paint(canvas, Offset(left + width - _textPainter.width - 8, 4));
+    final pHeight = _textPainter.height;
 
-    final TextPainter tpTdError = TextPainter(
-      text: TextSpan(
-        text: '|TD error|: ${last.finalTdError.abs().toStringAsFixed(3)}', 
-        style: labelStyle.copyWith(color: tdErrorColor, fontWeight: FontWeight.bold)
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    tpPunishment.paint(canvas, Offset(left + width - tpPunishment.width - 8, 4));
-    tpTdError.paint(canvas, Offset(left + width - tpTdError.width - 8, tpPunishment.height + 8));
+    _textPainter.text = TextSpan(
+      text: '|TD error|: ${last.finalTdError.abs().toStringAsFixed(3)}', 
+      style: labelStyle.copyWith(color: tdErrorColor, fontWeight: FontWeight.bold)
+    );
+    _textPainter.layout();
+    _textPainter.paint(canvas, Offset(left + width - _textPainter.width - 8, pHeight + 8));
   }
 
   @override

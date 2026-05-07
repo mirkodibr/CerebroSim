@@ -346,19 +346,21 @@ class _SparklinePainter extends CustomPainter {
   final List<double> values;
   final Color color;
 
-  _SparklinePainter({required this.values, required this.color});
+  final Paint _paint = Paint()
+    ..strokeWidth = 1.5
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final Path _path = Path();
+
+  _SparklinePainter({required this.values, required this.color}) {
+    _paint.color = color;
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     if (values.length < 2) return;
 
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
+    _path.reset();
     final xStep = size.width / (values.length - 1);
     
     // Simple normalization for visualization
@@ -374,14 +376,15 @@ class _SparklinePainter extends CustomPainter {
       final x = i * xStep;
       final y = size.height - ((values[i] - minVal) / range * size.height);
       if (i == 0) {
-        path.moveTo(x, y);
+        _path.moveTo(x, y);
       } else {
-        path.lineTo(x, y);
+        _path.lineTo(x, y);
       }
     }
-    canvas.drawPath(path, paint);
+    canvas.drawPath(_path, _paint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+

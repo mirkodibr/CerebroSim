@@ -22,6 +22,15 @@ class NeuralCanvas3DPainter extends CustomPainter {
   final ColorScheme colorScheme;
   final double celebrationValue;
 
+  final Paint _molecularPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _purkinjePaint = Paint()..style = PaintingStyle.fill;
+  final Paint _granularPaint = Paint()..style = PaintingStyle.fill;
+  final TextPainter _layerTextPainter = TextPainter(textDirection: TextDirection.ltr);
+
+  final List<_DepthItem> _depthItems = [];
+  final Map<String, List<NeuronModel>> _groupedNeurons = {};
+  final Map<String, ProjectedPoint> _projectedNeurons = {};
+
   NeuralCanvas3DPainter({
     required this.state,
     required this.rotX,
@@ -31,7 +40,11 @@ class NeuralCanvas3DPainter extends CustomPainter {
     this.selectedNeuronId,
     this.celebrationValue = 0.0,
     super.repaint,
-  });
+  }) {
+    _molecularPaint.color = colorScheme.primary.withValues(alpha: 0.15);
+    _purkinjePaint.color = colorScheme.secondary.withValues(alpha: 0.15);
+    _granularPaint.color = colorScheme.tertiary.withValues(alpha: 0.15);
+  }
 
   /// Clears the static position cache. Should be called when the network structure changes.
   static void clearCache() => _positionCache.clear();
@@ -114,15 +127,15 @@ class NeuralCanvas3DPainter extends CustomPainter {
 
     _drawLayers(canvas, size);
 
-    final Map<String, List<NeuronModel>> grouped = {};
+    _groupedNeurons.clear();
     for (final n in state.neurons.values) {
-      grouped.putIfAbsent(n.cellType, () => []).add(n);
+      _groupedNeurons.putIfAbsent(n.cellType, () => []).add(n);
     }
 
-    final Map<String, ProjectedPoint> projectedNeurons = {};
+    _projectedNeurons.clear();
     for (final n in state.neurons.values) {
-      final pos3d = _getCachedPosition(n, grouped);
-      projectedNeurons[n.id] = Neural3DProjection.project(
+      final pos3d = _getCachedPosition(n, _groupedNeurons);
+      _projectedNeurons[n.id] = Neural3DProjection.project(
         pos3d,
         rotX: rotX,
         rotY: rotY,
@@ -132,12 +145,12 @@ class NeuralCanvas3DPainter extends CustomPainter {
       );
     }
 
-    final List<_DepthItem> items = [];
+    _depthItems.clear();
 
     for (final n in state.neurons.values) {
-      final p = projectedNeurons[n.id];
+      final p = _projectedNeurons[n.id];
       if (p != null) {
-        items.add(_NeuronItem(
+        _depthItems.add(_NeuronItem(
           n, 
           p, 
           colorScheme, 
@@ -148,16 +161,16 @@ class NeuralCanvas3DPainter extends CustomPainter {
     }
 
     for (final s in state.synapses) {
-      final pFrom = projectedNeurons[s.fromNeuronId];
-      final pTo = projectedNeurons[s.toNeuronId];
+      final pFrom = _projectedNeurons[s.fromNeuronId];
+      final pTo = _projectedNeurons[s.toNeuronId];
       if (pFrom != null && pTo != null) {
-        items.add(_SynapseItem(s, pFrom, pTo));
+        _depthItems.add(_SynapseItem(s, pFrom, pTo));
       }
     }
 
-    items.sort((a, b) => b.depth.compareTo(a.depth));
+    _depthItems.sort((a, b) => b.depth.compareTo(a.depth));
 
-    for (final item in items) {
+    for (final item in _depthItems) {
       item.draw(canvas);
     }
   }
@@ -165,13 +178,9 @@ class NeuralCanvas3DPainter extends CustomPainter {
   void _drawLayers(Canvas canvas, Size size) {
     final h = size.height / 3;
     
-    final molecularPaint = Paint()..color = colorScheme.primary.withValues(alpha: 0.15);
-    final purkinjePaint = Paint()..color = colorScheme.secondary.withValues(alpha: 0.15);
-    final granularPaint = Paint()..color = colorScheme.tertiary.withValues(alpha: 0.15);
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, h), molecularPaint);
-    canvas.drawRect(Rect.fromLTWH(0, h, size.width, h), purkinjePaint);
-    canvas.drawRect(Rect.fromLTWH(0, 2 * h, size.width, h), granularPaint);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, h), _molecularPaint);
+    canvas.drawRect(Rect.fromLTWH(0, h, size.width, h), _purkinjePaint);
+    canvas.drawRect(Rect.fromLTWH(0, 2 * h, size.width, h), _granularPaint);
 
     _drawLayerLabel(canvas, 'Molecular', h * 0.5, size.width);
     _drawLayerLabel(canvas, 'Purkinje', h * 1.5, size.width);
@@ -179,20 +188,18 @@ class NeuralCanvas3DPainter extends CustomPainter {
   }
 
   void _drawLayerLabel(Canvas canvas, String text, double y, double width) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontSize: 9,
-          color: colorScheme.onSurface.withValues(alpha: 0.3),
-          fontWeight: FontWeight.bold,
-        ),
+    _layerTextPainter.text = TextSpan(
+      text: text,
+      style: TextStyle(
+        fontSize: 9,
+        color: colorScheme.onSurface.withValues(alpha: 0.3),
+        fontWeight: FontWeight.bold,
       ),
-      textDirection: TextDirection.ltr,
     );
-    tp.layout();
-    tp.paint(canvas, Offset(width - 60, y - tp.height / 2));
+    _layerTextPainter.layout();
+    _layerTextPainter.paint(canvas, Offset(width - 60, y - _layerTextPainter.height / 2));
   }
+
 
   @override
   bool shouldRepaint(covariant NeuralCanvas3DPainter oldDelegate) {
@@ -217,6 +224,13 @@ class _NeuronItem extends _DepthItem {
   final ColorScheme colorScheme;
   final double celebrationValue;
 
+  static final Paint _fillPaint = Paint()..style = PaintingStyle.fill;
+  static final Paint _strokePaint = Paint()..style = PaintingStyle.stroke;
+  static final Paint _glowPaint = Paint()..style = PaintingStyle.fill;
+  static final Paint _arcPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+
   _NeuronItem(this.neuron, this.projected, this.colorScheme, {this.isSelected = false, this.celebrationValue = 0.0});
 
   @override
@@ -226,58 +240,39 @@ class _NeuronItem extends _DepthItem {
   void draw(Canvas canvas) {
     final pos = Offset(projected.x, projected.y);
     final radius = 16.0 * projected.scale / 30.0;
+    final neuronColor = _getNeuronColor(neuron.cellType);
     
     // Convergence celebration glow
     if (celebrationValue > 0) {
       final celebrateRadius = radius * (1.0 + celebrationValue);
-      canvas.drawCircle(
-        pos,
-        celebrateRadius * 2.5,
-        Paint()
-          ..color = _getNeuronColor(neuron.cellType).withValues(alpha: 0.1 * celebrationValue)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10)
-          ..style = PaintingStyle.fill,
-      );
+      _glowPaint.color = neuronColor.withValues(alpha: 0.1 * celebrationValue);
+      _glowPaint.maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+      canvas.drawCircle(pos, celebrateRadius * 2.5, _glowPaint);
     }
 
     if (neuron.isFiring) {
-      canvas.drawCircle(
-        pos,
-        radius * 2.2,
-        Paint()
-          ..color = _getNeuronColor(neuron.cellType).withValues(alpha: 0.25)
-          ..style = PaintingStyle.fill,
-      );
+      _fillPaint.color = neuronColor.withValues(alpha: 0.25);
+      canvas.drawCircle(pos, radius * 2.2, _fillPaint);
     }
 
-    final paint = Paint()
-      ..color = _getNeuronColor(neuron.cellType)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(pos, radius, paint);
+    _fillPaint.color = neuronColor;
+    canvas.drawCircle(pos, radius, _fillPaint);
 
     if (neuron.isFiring || isSelected) {
-      canvas.drawCircle(
-        pos,
-        radius * 1.3,
-        Paint()
-          ..color = isSelected ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0,
-      );
+      _strokePaint.color = isSelected ? colorScheme.onSurface : colorScheme.onSurface.withValues(alpha: 0.5);
+      _strokePaint.strokeWidth = 2.0;
+      canvas.drawCircle(pos, radius * 1.3, _strokePaint);
     }
 
     final double sweepAngle = 2 * math.pi * neuron.membranePotential.clamp(0.0, 1.0);
+    _arcPaint.color = neuronColor.withValues(alpha: 0.9);
+    _arcPaint.strokeWidth = 4.0 * (projected.scale / 30.0);
     canvas.drawArc(
       Rect.fromCircle(center: pos, radius: radius * 0.85),
       -math.pi / 2,
       sweepAngle,
       false,
-      Paint()
-        ..color = _getNeuronColor(neuron.cellType).withValues(alpha: 0.9)
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = 4.0 * (projected.scale / 30.0),
+      _arcPaint,
     );
   }
 
@@ -299,6 +294,8 @@ class _SynapseItem extends _DepthItem {
   final ProjectedPoint from;
   final ProjectedPoint to;
 
+  static final Paint _synapsePaint = Paint()..style = PaintingStyle.stroke;
+
   _SynapseItem(this.synapse, this.from, this.to);
 
   @override
@@ -310,15 +307,13 @@ class _SynapseItem extends _DepthItem {
     final avgScale = (from.scale + to.scale) / 2;
     final opacity = (avgScale / 40.0).clamp(0.2, 0.9);
     
-    final paint = Paint()
-      ..color = baseColor.withValues(alpha: opacity)
-      ..strokeWidth = (synapse.weight.abs() * 3.0 + 0.8) * (avgScale / 30.0)
-      ..style = PaintingStyle.stroke;
+    _synapsePaint.color = baseColor.withValues(alpha: opacity);
+    _synapsePaint.strokeWidth = (synapse.weight.abs() * 3.0 + 0.8) * (avgScale / 30.0);
 
     if (synapse.isInhibitory) {
-      _drawDashedLine(canvas, Offset(from.x, from.y), Offset(to.x, to.y), paint);
+      _drawDashedLine(canvas, Offset(from.x, from.y), Offset(to.x, to.y), _synapsePaint);
     } else {
-      canvas.drawLine(Offset(from.x, from.y), Offset(to.x, to.y), paint);
+      canvas.drawLine(Offset(from.x, from.y), Offset(to.x, to.y), _synapsePaint);
     }
   }
 
@@ -341,3 +336,4 @@ class _SynapseItem extends _DepthItem {
     }
   }
 }
+
