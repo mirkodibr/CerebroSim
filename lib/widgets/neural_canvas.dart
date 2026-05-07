@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/prefs_provider.dart';
+import '../models/simulation_state.dart';
 import '../services/neural_3d_projection.dart';
 import '../models/neuron_model.dart';
 import 'neuron_info_overlay.dart';
@@ -37,6 +38,9 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
   double _baseZoom = 120.0;
   static const double _defaultZoomMarker = -1.0;
   Timer? _hintTimer;
+
+  // Active tap ripples (max 5)
+  final List<_TapRipple> _ripples = [];
 
   @override
   void initState() {
@@ -110,10 +114,32 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
       }
     }
 
-    if (nearestId != null) HapticFeedback.lightImpact();
+    if (nearestId != null) {
+      HapticFeedback.selectionClick();
+      final neuron = ref.read(hotSimulationProvider).neurons[nearestId];
+      final rippleColor = neuron != null ? _neuronColor(neuron.cellType) : Colors.white;
+
+      // Prune expired ripples before adding a new one.
+      final now = DateTime.now();
+      _ripples.removeWhere((r) => now.difference(r.startTime).inMilliseconds > 350);
+      if (_ripples.length >= 5) _ripples.removeAt(0);
+      _ripples.add(_TapRipple(position: localPos, color: rippleColor, startTime: now));
+    }
     setState(() {
       _selectedNeuronId = nearestId;
     });
+  }
+
+  static Color _neuronColor(String type) {
+    switch (type) {
+      case 'GC': return const Color(0xFFEF9F27);
+      case 'PC': return const Color(0xFF8A2BE2);
+      case 'BC': return const Color(0xFFD85A30);
+      case 'DCN': return const Color(0xFF1D9E75);
+      case 'CF': return const Color(0xFFE24B4A);
+      case 'SC': return const Color(0xFF00FFFF);
+      default: return Colors.white;
+    }
   }
 
   @override
@@ -184,6 +210,17 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
             ),
           ),
           const SimulationHud(),
+          // Ripple overlay — redrawn by the animation controller
+          if (_ripples.isNotEmpty)
+            IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (_, __) => CustomPaint(
+                  size: Size.infinite,
+                  painter: _RipplePainter(ripples: List.unmodifiable(_ripples)),
+                ),
+              ),
+            ),
           if (_selectedNeuronId != null)
             _buildNeuronOverlay(hotState),
         ],
@@ -214,4 +251,38 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
       onClose: () => setState(() { _selectedNeuronId = null; }),
     );
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Ripple support (P4.8)
+// ──────────────────────────────────────────────────────────────────────────────
+
+class _TapRipple {
+  final Offset position;
+  final Color color;
+  final DateTime startTime;
+  const _TapRipple({required this.position, required this.color, required this.startTime});
+}
+
+class _RipplePainter extends CustomPainter {
+  final List<_TapRipple> ripples;
+  final Paint _paint = Paint()..style = PaintingStyle.stroke..strokeWidth = 2.0;
+
+  _RipplePainter({required this.ripples});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final now = DateTime.now();
+    for (final ripple in ripples) {
+      final double elapsed = now.difference(ripple.startTime).inMilliseconds / 350.0;
+      if (elapsed > 1.0) continue;
+      final double radius = elapsed * 80.0;
+      final double alpha = (1.0 - elapsed) * 0.8;
+      _paint.color = ripple.color.withValues(alpha: alpha);
+      canvas.drawCircle(ripple.position, radius, _paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RipplePainter old) => true;
 }

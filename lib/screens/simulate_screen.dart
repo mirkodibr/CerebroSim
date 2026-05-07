@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/simulation_provider.dart';
 import '../providers/auth_provider.dart';
@@ -17,8 +16,11 @@ import '../widgets/task_selector.dart';
 import '../widgets/neural_canvas.dart';
 import '../widgets/signal_plotter.dart';
 import '../widgets/convergence_chart.dart';
+import '../widgets/network_config_breadcrumb.dart';
+import '../widgets/speed_segmented_control.dart';
 import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
+import '../models/plot_point.dart';
 import '../services/export_service.dart';
 import '../widgets/tutorial_overlay.dart';
 import '../widgets/throttle_banner.dart';
@@ -77,7 +79,6 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   Widget build(BuildContext context) {
     final coldState = ref.watch(coldSimulationProvider);
     final controller = ref.read(simulationControllerProvider);
-    final networkConfig = ref.watch(networkConfigProvider);
     final vaultSnapshots = ref.watch(vaultProvider).value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -95,17 +96,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('CerebroSim RL Lab'),
-                InkWell(
-                  onTap: () => context.push('/network_config'),
-                  child: Text(
-                    'GC: ${networkConfig.gcCount} | BC: ${networkConfig.bcCount} | PC: ${networkConfig.pcCount} | SC: ${networkConfig.scCount}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: colorScheme.secondary.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                const NetworkConfigBreadcrumb(),
               ],
             ),
             backgroundColor: colorScheme.surface,
@@ -150,6 +141,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                 const Expanded(
                   child: NeuralCanvas3D(),
                 ),
+                const SpeedSegmentedControl(),
                 _buildChartsDrawer(colorScheme),
               ],
             ),
@@ -319,31 +311,6 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             tooltip: 'Reset simulation',
           ),
 
-        // Speed Selector
-        TextButton(
-          onPressed: () {
-            final currentSpeed = state.speedMultiplier;
-            double nextSpeed;
-            if (currentSpeed < 5.0) {
-              nextSpeed = 5.0;
-            } else if (currentSpeed < 10.0) {
-              nextSpeed = 10.0;
-            } else {
-              nextSpeed = 1.0;
-            }
-            controller.setSpeed(nextSpeed);
-          },
-          style: TextButton.styleFrom(
-            minimumSize: const Size(40, 36),
-            padding: EdgeInsets.zero,
-            foregroundColor:
-                state.speedMultiplier > 1.0 ? colorScheme.tertiary : colorScheme.onSurface,
-          ),
-          child: Text(
-            '${state.speedMultiplier.toInt()}×',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-          ),
-        ),
       ],
     );
   }
