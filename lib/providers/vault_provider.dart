@@ -20,29 +20,26 @@ class VaultNotifier extends AsyncNotifier<List<ExperimentSnapshot>> {
   /// Automatically re-syncs when the authenticated user changes.
   @override
   FutureOr<List<ExperimentSnapshot>> build() async {
+    // Synchronously clear previous subscription before any async work.
+    unawaited(_vaultSubscription?.cancel());
+    _vaultSubscription = null;
+
     final user = ref.watch(authProvider).value;
     if (user == null) return [];
 
-    final completer = Completer<List<ExperimentSnapshot>>();
+    final stream = ref.read(databaseServiceProvider).watchUserSnapshots(user.uid);
     
-    await _vaultSubscription?.cancel();
-    _vaultSubscription = ref.read(databaseServiceProvider).watchUserSnapshots(user.uid).listen((snaps) {
-      if (!completer.isCompleted) {
-        completer.complete(snaps);
-      } else {
-        state = AsyncData(snaps);
-      }
+    // Setup the listener for real-time updates after the initial load.
+    _vaultSubscription = stream.listen((snaps) {
+      state = AsyncData(snaps);
     }, onError: (e, s) {
-      if (!completer.isCompleted) {
-        completer.completeError(e, s);
-      } else {
-        state = AsyncError(e, s);
-      }
+      state = AsyncError(e, s);
     });
 
     ref.onDispose(() => _vaultSubscription?.cancel());
 
-    return completer.future;
+    // Return the first emission as the initial state.
+    return await stream.first;
   }
 
   /// Saves a new [ExperimentSnapshot] to the user's vault in Firestore.
