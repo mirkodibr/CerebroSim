@@ -11,6 +11,7 @@ import '../models/episode_record.dart';
 import '../models/network_config.dart';
 import '../models/experiment_snapshot.dart';
 import '../services/simulation_engine.dart';
+import '../services/simulation_isolate.dart';
 import 'environment_provider.dart';
 import 'plot_buffer_provider.dart';
 import 'learning_rate_provider.dart';
@@ -18,6 +19,8 @@ import 'episode_history_provider.dart';
 import 'gamma_provider.dart';
 import 'dcn_baseline_provider.dart';
 import 'network_config_provider.dart';
+
+bool kUseIsolate = !kIsWeb && !bool.fromEnvironment('dart.library.ui');
 
 /// A notifier for high-frequency simulation state (neurons, synapses, etc.)
 class HotSimulationNotifier extends Notifier<HotSimState> {
@@ -56,6 +59,7 @@ class SimulationController with WidgetsBindingObserver {
   final Ref _ref;
   late final Ticker _ticker;
   final SimulationEngine _engine = SimulationEngine();
+  SimulationIsolateController? _isolateController;
   
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
   Stream<int> get convergenceEventStream => _convergenceController.stream;
@@ -72,9 +76,37 @@ class SimulationController with WidgetsBindingObserver {
   SimulationController(this._ref) {
     _ticker = Ticker(_onFrame);
     WidgetsBinding.instance.addObserver(this);
+    
+    if (kUseIsolate) {
+      _isolateController = SimulationIsolateController();
+      _isolateController!.spawn().then((_) {
+        if (_isolateController == null) return; // Disposed while spawning
+        _isolateController!.sendReset(_ref.read(networkConfigProvider));
+        _isolateController!.stateStream.listen((hot) {
+          _ref.read(hotSimulationProvider.notifier).setState(hot);
+          _ref.read(plotBufferProvider.notifier).addPoint(
+            hot.criticPrediction,
+            hot.climbingFiberSignal,
+            hot.rollingGainRatio,
+          );
+        }, onError: (e, s) {
+          FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
+          stopSimulation();
+        });
+
+        _isolateController!.episodeStream.listen((count) {
+          final cold = _ref.read(coldSimulationProvider);
+          if (count > cold.episodeCount) {
+            _handleEpisodeEnd(count, _ref.read(hotSimulationProvider));
+          }
+        });
+      });
+    }
+
     _ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
       _ticker.dispose();
+      _isolateController?.dispose();
     });
   }
 
@@ -110,7 +142,6 @@ class SimulationController with WidgetsBindingObserver {
   void setSpeed(double multiplier) {
     final cold = _ref.read(coldSimulationProvider);
     _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: multiplier));
-    // Ticker naturally adapts because it reads speedMultiplier in _onFrame
   }
 
   void _onFrame(Duration elapsed) {
@@ -118,14 +149,31 @@ class SimulationController with WidgetsBindingObserver {
     final int ticksToRun = cold.speedMultiplier.round();
     final stopwatch = Stopwatch()..start();
 
-    for (int i = 0; i < ticksToRun; i++) {
-      _tick();
+    if (kUseIsolate && _isolateController != null) {
+      // In Isolate mode, we delegate the batch to the isolate
+      final hot = _ref.read(hotSimulationProvider);
+      final currentState = SimulationState(hot: hot, cold: cold);
+      final env = _ref.read(environmentProvider.notifier).step(currentState);
+      
+      _isolateController!.sendTick(
+        env,
+        1.0 / SimulationConstants.kTickRateHz,
+        _ref.read(learningRateProvider),
+        _ref.read(gammaProvider),
+        _ref.read(dcnBaselineProvider),
+        ticksToRun: ticksToRun,
+      );
+    } else {
+      // In-process fallback
+      for (int i = 0; i < ticksToRun; i++) {
+        _tick();
+      }
     }
 
     stopwatch.stop();
     final elapsedMs = stopwatch.elapsedMilliseconds;
 
-    // Governor logic
+    // Governor logic (still applies in both modes)
     if (elapsedMs > 12) {
       if (kDebugMode) {
         print('âš ï¸ Simulation Overload: Frame took ${elapsedMs}ms. Throttling speed.');
@@ -133,7 +181,6 @@ class SimulationController with WidgetsBindingObserver {
       _isOverloaded = true;
       _cleanFrameCount = 0;
       
-      // Degrade speed for next frame
       final newSpeed = (cold.speedMultiplier / 2).clamp(1.0, 10.0);
       if (newSpeed != cold.speedMultiplier) {
         _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: newSpeed));
@@ -144,9 +191,6 @@ class SimulationController with WidgetsBindingObserver {
         if (_cleanFrameCount >= _kRecoveryThresholdFrames) {
           _isOverloaded = false;
           _cleanFrameCount = 0;
-          if (kDebugMode) {
-            print('âœ… Simulation Performance Recovered. Governor disengaged.');
-          }
         }
       }
     }
@@ -165,6 +209,10 @@ class SimulationController with WidgetsBindingObserver {
     _ref.read(coldSimulationProvider.notifier).setState(newState.cold.copyWith(
       speedMultiplier: SimulationConstants.kSpeedNormal,
     ));
+
+    if (kUseIsolate) {
+      _isolateController?.sendReset(config ?? _ref.read(networkConfigProvider));
+    }
   }
 
   void loadSnapshot(ExperimentSnapshot snapshot) {
@@ -172,20 +220,47 @@ class SimulationController with WidgetsBindingObserver {
       _ref.read(networkConfigProvider.notifier).update(snapshot.networkConfig!);
       final newState = SimulationState.initial(config: snapshot.networkConfig!);
       _ref.read(hotSimulationProvider.notifier).setState(newState.hot);
+      if (kUseIsolate) {
+        _isolateController?.sendReset(snapshot.networkConfig!);
+      }
     }
 
     final hot = _ref.read(hotSimulationProvider);
     final weights = snapshot.synapticWeights;
     if (weights.length != hot.synapses.length) return;
     
-    final nextSynapses = List.generate(hot.synapses.length, (i) {
-      return hot.synapses[i].copyWith(weight: weights[i]);
-    });
+    if (kUseIsolate) {
+      _isolateController?.sendLoadSnapshot(weights);
+    } else {
+      final nextSynapses = List.generate(hot.synapses.length, (i) {
+        return hot.synapses[i].copyWith(weight: weights[i]);
+      });
+      
+      _engine.clearBuffer();
+      _ref.read(hotSimulationProvider.notifier).setState(
+        hot.copyWith(synapses: nextSynapses).rebuildIndex()
+      );
+    }
+  }
+
+  void _handleEpisodeEnd(int nextEpisodeCount, HotSimState nextHot) {
+    final cold = _ref.read(coldSimulationProvider);
     
-    _engine.clearBuffer();
-    _ref.read(hotSimulationProvider.notifier).setState(
-      hot.copyWith(synapses: nextSynapses).rebuildIndex()
+    // Note: meanPunishment tracking in Isolate mode might be slightly different
+    // if we don't send back every single tick's CF signal.
+    // For now we use the latest CF signal as a proxy or keep it as is.
+    final record = EpisodeRecord(
+      episodeNumber: cold.episodeCount,
+      meanPunishment: nextHot.climbingFiberSignal, // Simplified for Isolate mode
+      finalTdError: nextHot.tdError,
     );
+    
+    if (record.meanPunishment < 0.2) {
+      _convergenceController.add(nextEpisodeCount);
+    }
+
+    _ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
+    _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(episodeCount: nextEpisodeCount));
   }
 
   void _tick() {
@@ -216,19 +291,7 @@ class SimulationController with WidgetsBindingObserver {
       _episodeTickCount++;
 
       if (nextState.episodeCount > cold.episodeCount) {
-        final record = EpisodeRecord(
-          episodeNumber: cold.episodeCount,
-          meanPunishment: _episodeTickCount > 0 ? _episodePunishmentSum / _episodeTickCount : 0.0,
-          finalTdError: nextState.tdError,
-        );
-        
-        if (record.meanPunishment < 0.2) {
-          _convergenceController.add(nextState.episodeCount);
-        }
-
-        _ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
-        _ref.read(coldSimulationProvider.notifier).setState(nextState.cold);
-        
+        _handleEpisodeEnd(nextState.episodeCount, nextState.hot);
         _episodePunishmentSum = 0.0;
         _episodeTickCount = 0;
       }
