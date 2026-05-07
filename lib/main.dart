@@ -8,6 +8,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:app_links/app_links.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'services/theme_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/auth_provider.dart';
@@ -22,6 +23,13 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 10));
+
+    // Initialize App Check
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+      webProvider: ReCaptchaV3Provider('6Lck99ApAAAAAODvF8Oq8_X4f6O6O6O6O6O6O6O6'), // Dummy key, replace with real one in console
+    );
 
     // Enable Firestore persistence
     FirebaseFirestore.instance.settings = const Settings(

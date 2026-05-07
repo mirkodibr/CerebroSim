@@ -22,6 +22,24 @@ The `firestore.rules` file enforces:
 - **Global Safety Cap:** A system-wide daily token cap is enforced to control total API costs.
 - **Data Integrity:** `public_snapshots` are immutable after creation and can only be deleted by administrators.
 
+## App Check Enforcement
+App Check protects CerebroSim from unauthorized API access by ensuring only the official app can call Cloud Functions and access Firestore.
+
+### Console Configuration
+1.  **Register App Check:** In the Firebase Console, go to App Check > Apps.
+2.  **Configure Providers:**
+    - **Android:** Register your SHA-256 fingerprint with the **Play Integrity** provider.
+    - **iOS:** Configure the **DeviceCheck** or **App Attest** provider.
+    - **Web:** Register your domain and configure the **reCAPTCHA v3** provider.
+3.  **Enable Enforcement:**
+    - **Cloud Functions:** Enforcement is enabled in code via `enforceAppCheck: true`.
+    - **Firestore:** In the App Check console, go to the "APIs" tab and click "Enforce" for Cloud Firestore.
+
+### Local Development
+In debug mode (`kDebugMode`), the app uses the App Check **Debug Provider**. 
+- On Android/iOS, look for the "App Check debug token" in the console output and register it in the Firebase Console under App Check > Apps > [Your App] > Manage debug tokens.
+- For Web, use the reCAPTCHA debug token configuration.
+
 ## Manual Verification of Atomicity
 To verify the rollback behavior:
 1.  Temporarily modify `firestore.rules` to reject all writes to `public_snapshots`.

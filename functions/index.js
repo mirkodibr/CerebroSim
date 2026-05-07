@@ -18,8 +18,16 @@ const MAX_CALLS_PER_USER_PER_DAY = 20;
 const MAX_TOKENS_PER_CALL = 1024;
 const GLOBAL_DAILY_TOKEN_CAP = 1000000; // 1M tokens total safety cap
 
-exports.interpretExperiment = functions.https.onCall(async (data, context) => {
-  // 1. Verify authentication
+exports.interpretExperiment = functions.runWith({ enforceAppCheck: true }).https.onCall(async (data, context) => {
+  // 1. Verify App Check token (already enforced by runWith, but context has the signal)
+  if (context.app === undefined && process.env.NODE_ENV !== 'test') {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'The function must be called from an App Check verified app.'
+    );
+  }
+
+  // 2. Verify authentication
   if (!context.auth) {
     throw new functions.https.HttpsError(
       'unauthenticated', 
