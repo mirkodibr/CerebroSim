@@ -30,5 +30,20 @@ void main() {
       // The ring buffer should be capped at its capacity (200)
       expect(ringBuffer.filled, equals(200));
     });
+
+    test('buffer length stays at capacity after 10,000 pushes', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(plotBufferProvider.notifier);
+      final ringBuffer = container.read(plotRingBufferProvider);
+
+      for (int i = 0; i < 10000; i++) {
+        notifier.addPoint(i.toDouble(), i * 0.5, i * 0.25);
+      }
+
+      expect(ringBuffer.filled, equals(ringBuffer.capacity));
+      expect(ringBuffer.capacity, equals(200));
+    });
   });
 }
