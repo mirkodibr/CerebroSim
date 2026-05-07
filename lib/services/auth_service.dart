@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 /// Service responsible for handling user authentication via Firebase.
 ///
@@ -9,17 +9,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AuthService {
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
-  final FirebaseFirestore _db;
+  final FirebaseFunctions _functions;
 
-  /// Creates a new [AuthService]. 
-  /// If no [auth], [googleSignIn], or [db] is provided, it uses the default instances.
+  /// Creates a new [AuthService].
+  /// If no [auth] or [googleSignIn] is provided, it uses the default instances.
   AuthService({
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
-    FirebaseFirestore? db,
+    FirebaseFunctions? functions,
   }) : _auth = auth ?? FirebaseAuth.instance,
        _googleSignIn = googleSignIn ?? GoogleSignIn(),
-       _db = db ?? FirebaseFirestore.instance;
+       _functions = functions ?? FirebaseFunctions.instance;
 
   /// Signs in a user using their [email] and [password].
   ///
@@ -88,41 +88,20 @@ class AuthService {
   }
 
   /// Permanently deletes the user's account and all associated research data.
-  /// 
-  /// This performs a batch deletion of the user's Firestore documents 
-  /// before deleting the Firebase Auth user.
+  ///
+  /// Delegates all Firestore and Auth deletion to the `deleteUserAccount`
+  /// Cloud Function, which uses the Admin SDK (no re-authentication required)
+  /// and handles arbitrarily large snapshot collections via paginated batches.
+  ///
+  /// Throws a [FirebaseFunctionsException] on failure; the caller is
+  /// responsible for surfacing an appropriate error message to the user.
   Future<void> deleteAccount() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    if (_auth.currentUser == null) return;
 
-    final uid = user.uid;
+    final callable = _functions.httpsCallable('deleteUserAccount');
+    await callable.call<void>(null);
 
-    try {
-      // 1. Delete all Firestore snapshots in a batch
-      final snapshots = await _db.collection('users').doc(uid).collection('snapshots').get();
-      
-      final batch = _db.batch();
-      for (var doc in snapshots.docs) {
-        batch.delete(doc.reference);
-        // If it was public, delete from public_snapshots too
-        if (doc.data()['isPublic'] == true) {
-          batch.delete(_db.collection('public_snapshots').doc(doc.id));
-        }
-      }
-      
-      // Delete the user document itself
-      batch.delete(_db.collection('users').doc(uid));
-
-      await batch.commit();
-
-      // 2. Delete the Firebase user
-      // This may throw 'requires-recent-login'
-      await user.delete();
-
-      // 3. Clear Google session
-      await _googleSignIn.signOut();
-    } catch (e) {
-      rethrow;
-    }
+    // Auth user is deleted server-side; sign out the Google session locally.
+    await _googleSignIn.signOut();
   }
 }

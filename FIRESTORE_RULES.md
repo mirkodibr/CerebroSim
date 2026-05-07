@@ -22,6 +22,36 @@ The `firestore.rules` file enforces:
 - **Global Safety Cap:** A system-wide daily token cap is enforced to control total API costs.
 - **Data Integrity:** `public_snapshots` are immutable after creation and can only be deleted by administrators.
 
+## Snapshot Size Bounds (Denial-of-Wallet Protection)
+
+`isValidSnapshot()` enforces the following limits to prevent runaway storage costs
+and protect the public gallery query performance:
+
+| Field | Limit | Rationale |
+|---|---|---|
+| `synapticWeights` | ≤ 5,000 entries | Largest realistic network (~40 KB) |
+| `episodeHistory` | ≤ 200 records | Keeps read costs bounded for gallery |
+| `notes` | ≤ 1,000 characters | Prevents text-blob abuse |
+| `userEmail` | ≤ 254 characters | RFC 5321 maximum |
+
+These limits are enforced **both** in `firestore.rules` (server-side) and in
+`ExperimentSnapshot.toFirestore()` (client-side), so users receive a friendly
+`ArgumentError` message before a raw `permission-denied` error from Firestore.
+
+Note: Per-element range validation of `synapticWeights` values (expected range
+`[-10.0, 10.0]`) is enforced client-side only, as Firestore Security Rules do
+not support list-element iteration.
+
+## Account Deletion
+
+`deleteUserAccount` is a Cloud Function (Admin SDK) that:
+1. Recursively deletes `users/{uid}` and all subcollections via `db.recursiveDelete()`.
+2. Paginates through `public_snapshots` where `userId == uid`, deleting in batches of 500.
+3. Deletes the Firebase Auth user **last** via `admin.auth().deleteUser(uid)`.
+
+Using the Admin SDK means no re-authentication is required from the client.
+The Flutter client calls this function and then signs out the Google session.
+
 ## App Check Enforcement
 App Check protects CerebroSim from unauthorized API access by ensuring only the official app can call Cloud Functions and access Firestore.
 

@@ -22,6 +22,48 @@ const MAX_CALLS_PER_USER_PER_DAY = 20;
 const MAX_TOKENS_PER_CALL = 1024;
 const GLOBAL_DAILY_TOKEN_CAP = 1000000; // 1M tokens total safety cap
 
+exports.deleteUserAccount = onCall({ enforceAppCheck: true }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const uid = request.auth.uid;
+
+  // 1. Recursively delete users/{uid} and every subcollection (usage, snapshots, etc.)
+  await db.recursiveDelete(db.doc(`users/${uid}`));
+
+  // 2. Delete public_snapshots owned by this user in paginated batches of 500
+  let deletedPublic = 0;
+  let lastDoc = null;
+
+  while (true) {
+    let query = db.collection('public_snapshots')
+      .where('userId', '==', uid)
+      .limit(500);
+
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) break;
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+
+    deletedPublic += snapshot.docs.length;
+    lastDoc = snapshot.docs[snapshot.docs.length - 1];
+
+    if (snapshot.docs.length < 500) break; // Last page
+  }
+
+  // 3. Delete the Firebase Auth record LAST (Admin SDK — no re-auth needed)
+  await admin.auth().deleteUser(uid);
+
+  return { deletedPublic };
+});
+
 exports.interpretExperiment = onCall({ 
   secrets: [anthropicKey],
   enforceAppCheck: true 

@@ -58,7 +58,28 @@ class ExperimentSnapshot {
   });
 
   /// Converts the snapshot into a Map suitable for storage in Cloud Firestore.
+  ///
+  /// Validates size bounds client-side (mirrors Firestore rules) so the user
+  /// sees a friendly [ArgumentError] instead of a raw `permission-denied`.
   Map<String, dynamic> toFirestore() {
+    if (synapticWeights.length > 5000) {
+      throw ArgumentError(
+          'synapticWeights exceeds the limit of 5,000 weights. '
+          'Try a smaller network configuration.');
+    }
+    if (episodeHistory.length > 200) {
+      throw ArgumentError(
+          'episodeHistory exceeds the limit of 200 records. '
+          'Only the most recent 200 episodes can be saved.');
+    }
+    if (notes != null && notes!.length > 1000) {
+      throw ArgumentError(
+          'Notes must be 1,000 characters or fewer '
+          '(currently ${notes!.length}).');
+    }
+    if (userEmail.length > 254) {
+      throw ArgumentError('User email exceeds RFC 5321 maximum length.');
+    }
     return {
       'userId': userId,
       'userEmail': userEmail,

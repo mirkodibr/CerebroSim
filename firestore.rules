@@ -13,8 +13,9 @@ service cloud.firestore {
     function isValidSnapshot(data) {
       return data.userId == request.auth.uid &&
              data.userEmail is string &&
-             data.title is string && 
-             data.title.size() >= 3 && 
+             data.userEmail.size() <= 254 &&        // RFC 5321 max
+             data.title is string &&
+             data.title.size() >= 3 &&
              data.title.size() <= 50 &&
              // FIX 1: Added 'armReaching' to the allowed task list
              data.taskName in ['eyeblink', 'sineWave', 'vor', 'armReaching'] &&
@@ -22,6 +23,11 @@ service cloud.firestore {
              data.finalErrorRate >= 0.0 &&
              data.finalErrorRate <= 1.0 &&
              data.synapticWeights is list &&
+             data.synapticWeights.size() <= 5000 &&  // ~40KB max, denial-of-wallet guard
+             data.episodeHistory is list &&
+             data.episodeHistory.size() <= 200 &&    // cap episode log
+             (!('notes' in data) || data.notes == null ||
+               (data.notes is string && data.notes.size() <= 1000)) &&
              // Relaxed validation: FieldValue.serverTimestamp() should resolve to request.time,
              // but we check for type only to ensure robust writes across all client SDKs.
              data.createdAt is timestamp;
