@@ -347,10 +347,10 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
 
   void _showExportOptions(BuildContext context, WidgetRef ref) {
     final history = ref.read(episodeHistoryProvider);
-    final plotPoints = ref.read(plotBufferProvider);
+    final ringBuffer = ref.read(plotRingBufferProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (history.isEmpty && plotPoints.isEmpty) {
+    if (history.isEmpty && ringBuffer.filled == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Run simulation first to export data.')),
       );
@@ -386,12 +386,17 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   );
                 },
               ),
-            if (plotPoints.isNotEmpty)
+            if (ringBuffer.filled > 0)
               ListTile(
                 leading: const Icon(Icons.show_chart),
                 title: const Text('Export signal data (.csv)'),
                 onTap: () {
                   Navigator.pop(context);
+                  final plotPoints = ringBuffer.entries.map((e) => PlotPoint(
+                    criticPrediction: e.criticPrediction,
+                    actualSignal: e.actualSignal,
+                    gainRatio: e.gainRatio,
+                  )).toList();
                   final csv = ExportService.plotBufferToCsv(plotPoints);
                   final bytes = utf8.encode(csv);
                   Share.shareXFiles(

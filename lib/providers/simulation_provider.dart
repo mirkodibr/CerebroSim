@@ -194,11 +194,9 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
       // Update plot buffer with latest simulation data
       ref.read(plotBufferProvider.notifier).addPoint(
-        PlotPoint(
-          criticPrediction: state.criticPrediction,
-          actualSignal: state.climbingFiberSignal,
-          gainRatio: state.rollingGainRatio,
-        ),
+        state.criticPrediction,
+        state.climbingFiberSignal,
+        state.rollingGainRatio,
       );
     } catch (e, s) {
       FirebaseCrashlytics.instance.recordError(e, s, fatal: false);

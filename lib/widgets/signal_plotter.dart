@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/plot_point.dart';
 import '../models/cerebellar_task.dart';
 import '../providers/environment_provider.dart';
 import '../providers/plot_buffer_provider.dart';
+import '../services/plot_ring_buffer.dart';
 
 /// A widget that displays a real-time line chart of simulation signals.
-///
-/// It visualizes the relationship between the cerebellar 'Critic' prediction,
-/// the 'Actual' climbing fiber signal, and (for VOR tasks) the resulting 'Gain'.
 class SignalPlotter extends ConsumerWidget {
   const SignalPlotter({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(environmentProvider);
-    final buffer = ref.watch(plotBufferProvider);
+    // Watch the tick to trigger repaints
+    final tick = ref.watch(plotBufferProvider);
+    final ringBuffer = ref.read(plotRingBufferProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
@@ -34,7 +33,8 @@ class SignalPlotter extends ConsumerWidget {
                 child: CustomPaint(
                   size: Size.infinite,
                   painter: SignalPlotterPainter(
-                    buffer: buffer, 
+                    buffer: ringBuffer,
+                    tick: tick,
                     isVor: task == CerebellarTask.vor,
                     colorScheme: colorScheme,
                   ),
@@ -47,7 +47,6 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
-  /// Builds a color-coded legend indicating which signal each line represents.
   Widget _buildLegend(BuildContext context, CerebellarTask task) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -63,7 +62,6 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
-  /// Helper for creating a single labeled legend item.
   Widget _legendItem(BuildContext context, String label, Color color) {
     final colorScheme = Theme.of(context).colorScheme;
     return Row(
@@ -76,12 +74,9 @@ class SignalPlotter extends ConsumerWidget {
   }
 }
 
-/// A [CustomPainter] that draws the signal paths on the canvas.
-///
-/// It maps normalized signal values (-1.0 to 1.0) to the vertical space of the
-/// widget, where 0.0 is the vertical center.
 class SignalPlotterPainter extends CustomPainter {
-  final List<PlotPoint> buffer;
+  final PlotRingBuffer buffer;
+  final int tick;
   final bool isVor;
   final ColorScheme colorScheme;
 
@@ -90,6 +85,7 @@ class SignalPlotterPainter extends CustomPainter {
 
   SignalPlotterPainter({
     required this.buffer,
+    required this.tick,
     required this.isVor,
     required this.colorScheme,
   });
@@ -105,10 +101,10 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 1. Draw Reference Grid
     _drawReferenceLines(canvas, size);
 
-    if (buffer.isEmpty) return;
+    final int filled = buffer.filled;
+    if (filled == 0) return;
 
     final paintCritic = Paint()
       ..color = const Color(0xFF00FFFF)
@@ -127,24 +123,23 @@ class SignalPlotterPainter extends CustomPainter {
     final pathActual = Path();
     final pathGain = Path();
 
-    final double stepX =
-        size.width / (buffer.length > 1 ? buffer.length - 1 : 1);
+    final double stepX = size.width / (filled > 1 ? filled - 1 : 1);
+    final int start = filled < buffer.capacity ? 0 : buffer.writeIndex;
 
-    for (int i = 0; i < buffer.length; i++) {
+    for (int i = 0; i < filled; i++) {
+      final int index = (start + i) % buffer.capacity;
       final x = i * stepX;
 
-      /// Maps a value between -1 and 1 to a Y coordinate on the canvas.
-      /// 1.0 maps to top, -1.0 maps to bottom, 0.0 maps to center.
       double mapY(double val) => size.height / 2 - (val * size.height / 2);
 
       if (i == 0) {
-        pathCritic.moveTo(x, mapY(buffer[i].criticPrediction));
-        pathActual.moveTo(x, mapY(buffer[i].actualSignal));
-        pathGain.moveTo(x, mapY(buffer[i].gainRatio));
+        pathCritic.moveTo(x, mapY(buffer.criticPrediction[index]));
+        pathActual.moveTo(x, mapY(buffer.actualSignal[index]));
+        pathGain.moveTo(x, mapY(buffer.gainRatio[index]));
       } else {
-        pathCritic.lineTo(x, mapY(buffer[i].criticPrediction));
-        pathActual.lineTo(x, mapY(buffer[i].actualSignal));
-        pathGain.lineTo(x, mapY(buffer[i].gainRatio));
+        pathCritic.lineTo(x, mapY(buffer.criticPrediction[index]));
+        pathActual.lineTo(x, mapY(buffer.actualSignal[index]));
+        pathGain.lineTo(x, mapY(buffer.gainRatio[index]));
       }
     }
 
@@ -154,7 +149,6 @@ class SignalPlotterPainter extends CustomPainter {
       canvas.drawPath(pathGain, paintGain);
     }
 
-    // 2. Draw "Now" Indicator
     final nowPaint = Paint()
       ..color = colorScheme.secondary.withValues(alpha: 0.5)
       ..strokeWidth = 1.0;
@@ -168,11 +162,9 @@ class SignalPlotterPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5;
 
-    // Center horizontal line (y=0)
     _drawDashedLine(canvas, Offset(0, size.height / 2),
         Offset(size.width, size.height / 2), centerPaint);
 
-    // Y-axis markers at +1 and -1
     _labelTop.paint(canvas, const Offset(2, 0));
     _labelBottom.paint(canvas, Offset(2, size.height - 12));
   }
@@ -190,6 +182,6 @@ class SignalPlotterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant SignalPlotterPainter oldDelegate) {
-    return oldDelegate.buffer != buffer;
+    return oldDelegate.tick != tick || oldDelegate.isVor != isVor;
   }
 }
