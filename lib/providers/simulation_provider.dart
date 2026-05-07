@@ -276,23 +276,28 @@ class SimulationController with WidgetsBindingObserver {
     _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(episodeCount: nextEpisodeCount));
   }
 
+  // Per-session error deduplication: record only the first occurrence of each
+  // unique exception type+message, suppressing the flood that would otherwise
+  // happen at 60 Hz if the engine starts throwing on every tick.
+  static final Map<String, int> _errorCounts = {};
+
   void _tick() {
     try {
       final hot = _ref.read(hotSimulationProvider);
       final cold = _ref.read(coldSimulationProvider);
-      
+
       final currentState = SimulationState(hot: hot, cold: cold);
 
       final env = _ref.read(environmentProvider.notifier).step(currentState);
       final learningRate = _ref.read(learningRateProvider);
       final gamma = _ref.read(gammaProvider);
       final dcnBaseline = _ref.read(dcnBaselineProvider);
-      
+
       final dt = 1.0 / SimulationConstants.kTickRateHz;
       final nextState = _engine.tick(
-        currentState, 
-        env, 
-        dt, 
+        currentState,
+        env,
+        dt,
         learningRate: learningRate,
         gamma: gamma,
         dcnBaseline: dcnBaseline,
@@ -315,7 +320,17 @@ class SimulationController with WidgetsBindingObserver {
         nextState.rollingGainRatio,
       );
     } catch (e, s) {
-      FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
+      final signature = '${e.runtimeType}:${e.toString().hashCode}';
+      final count = (_errorCounts[signature] ?? 0) + 1;
+      _errorCounts[signature] = count;
+
+      if (count == 1) {
+        FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
+      } else if (count % 100 == 0) {
+        FirebaseCrashlytics.instance.log(
+          '[CerebroSim] Suppressed repeated tick error ($count occurrences): $signature',
+        );
+      }
       stopSimulation();
     }
   }
