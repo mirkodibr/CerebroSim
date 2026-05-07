@@ -1,9 +1,13 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:cerebrosim/providers/simulation_provider.dart';
 import 'package:cerebrosim/models/cold_sim_state.dart';
 import 'package:cerebrosim/models/hot_sim_state.dart';
+import 'package:cerebrosim/services/simulation_engine.dart';
+
+class _MockSimulationEngine extends Mock implements SimulationEngine {}
 
 void main() {
   setUpAll(() {
@@ -110,6 +114,31 @@ void main() {
 
       container.read(simulationControllerProvider).setSpeed(5.0);
       expect(container.read(coldSimulationProvider).speedMultiplier, 5.0);
+    });
+  });
+
+  group('simulationEngineProvider override (P1.6)', () {
+    test('container can override engine for testing', () {
+      final mockEngine = _MockSimulationEngine();
+      // Stub the two methods called during build
+      when(() => mockEngine.initialState(config: any(named: 'config')))
+          .thenAnswer((invocation) {
+        // Fall back to real engine so the state is valid
+        return SimulationEngine().initialState();
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          simulationEngineProvider.overrideWithValue(mockEngine),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // Reading the provider triggers build() which calls ref.read(simulationEngineProvider)
+      final state = container.read(simulationProvider);
+      expect(state.isRunning, false);
+      // Verify the mock was actually used (initialState was called)
+      verify(() => mockEngine.initialState(config: any(named: 'config'))).called(1);
     });
   });
 

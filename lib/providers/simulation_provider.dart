@@ -33,7 +33,8 @@ final simulationEngineProvider = Provider<SimulationEngine>((ref) {
 /// [EnvironmentNotifier] for task-specific inputs and feedback.
 class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingObserver {
   Ticker? _ticker;
-  final SimulationEngine _engine = SimulationEngine();
+  // Engine is sourced from the provider so tests can override it.
+  late SimulationEngine _engine;
 
   // Stream for convergence events
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
@@ -51,6 +52,7 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   /// Ensures that any active tickers are disposed when the provider is disposed.
   @override
   SimulationState build() {
+    _engine = ref.read(simulationEngineProvider);
     WidgetsBinding.instance.addObserver(this);
 
     // Listen to network config changes to invalidate correctly but not auto-reset
