@@ -1,46 +1,55 @@
 /**
- * CerebroSim Firebase Functions
+ * CerebroSim Firebase Functions (v2)
  * 
  * Deployment:
- * 1. firebase functions:config:set anthropic.key="YOUR_KEY_HERE"
+ * 1. firebase functions:secrets:set ANTHROPIC_KEY
  * 2. firebase deploy --only functions
  */
 
-const functions = require('firebase-functions');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const axios = require('axios');
 
 admin.initializeApp();
 const db = admin.firestore();
 
-// Constants for limits - could be externalized further via params/config
+// Define Secrets
+const anthropicKey = defineSecret('ANTHROPIC_KEY');
+
+// Constants for limits
 const MAX_CALLS_PER_USER_PER_DAY = 20;
 const MAX_TOKENS_PER_CALL = 1024;
 const GLOBAL_DAILY_TOKEN_CAP = 1000000; // 1M tokens total safety cap
 
-exports.interpretExperiment = functions.runWith({ enforceAppCheck: true }).https.onCall(async (data, context) => {
-  // 1. Verify App Check token (already enforced by runWith, but context has the signal)
-  if (context.app === undefined && process.env.NODE_ENV !== 'test') {
-    throw new functions.https.HttpsError(
+exports.interpretExperiment = onCall({ 
+  secrets: [anthropicKey],
+  enforceAppCheck: true 
+}, async (request) => {
+  // 1. Verify App Check token
+  // Note: enforceAppCheck: true handles the rejection if missing/invalid.
+  // In local emulator/test, we might skip this if configured.
+  if (request.app === undefined && process.env.NODE_ENV !== 'test') {
+    throw new HttpsError(
       'failed-precondition',
       'The function must be called from an App Check verified app.'
     );
   }
 
   // 2. Verify authentication
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+  if (!request.auth) {
+    throw new HttpsError(
       'unauthenticated', 
       'Interpretation requires a signed-in account.'
     );
   }
 
-  const uid = context.auth.uid;
+  const uid = request.auth.uid;
   const today = new Date().toISOString().split('T')[0];
   const userUsageRef = db.collection('users').doc(uid).collection('usage').doc(today);
   const globalUsageRef = db.collection('system').doc('limits').collection('usage').doc(today);
 
-  // 2. Check limits
+  // 3. Check limits
   const [userUsageDoc, globalUsageDoc] = await Promise.all([
     userUsageRef.get(),
     globalUsageRef.get()
@@ -49,30 +58,30 @@ exports.interpretExperiment = functions.runWith({ enforceAppCheck: true }).https
   const userUsage = userUsageDoc.data() || { aiCalls: 0, tokensIn: 0, tokensOut: 0 };
   const globalUsage = globalUsageDoc.data() || { totalTokens: 0 };
 
-  // 2.1 Fetch user tier for tiered limits
+  // 3.1 Fetch user tier for tiered limits
   const userDoc = await db.collection('users').doc(uid).get();
   const userTier = userDoc.data()?.tier || 'free';
-  const callsLimit = userTier === 'free' ? MAX_CALLS_PER_USER_PER_DAY : 100; // Future tiers
+  const callsLimit = userTier === 'free' ? MAX_CALLS_PER_USER_PER_DAY : 100;
 
   if (userUsage.aiCalls >= callsLimit) {
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'resource-exhausted', 
       'Daily AI interpretation limit reached. Resets at midnight UTC.'
     );
   }
 
   if (globalUsage.totalTokens >= GLOBAL_DAILY_TOKEN_CAP) {
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'resource-exhausted',
       'The service is currently at capacity. Please try again tomorrow.'
     );
   }
 
-  const { taskName, episodeCount, finalErrorRate, learningProgress } = data;
-  const apiKey = functions.config().anthropic.key;
+  const { taskName, episodeCount, finalErrorRate, learningProgress } = request.data;
+  const apiKey = anthropicKey.value();
 
   if (!apiKey) {
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'failed-precondition', 
       'Interpretation service not configured on server.'
     );
@@ -111,7 +120,7 @@ Experiment Summary:
     const tokensOut = usage.output_tokens;
     const totalTokens = tokensIn + tokensOut;
 
-    // 3. Update counters atomically
+    // 4. Update counters atomically
     await Promise.all([
       userUsageRef.set({
         aiCalls: admin.firestore.FieldValue.increment(1),
@@ -126,7 +135,7 @@ Experiment Summary:
     return response.data.content[0].text;
   } catch (error) {
     console.error('Anthropic API Error:', error.response ? error.response.data : error.message);
-    throw new functions.https.HttpsError(
+    throw new HttpsError(
       'internal',
       'Failed to generate neuroscience interpretation.'
     );

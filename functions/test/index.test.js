@@ -29,17 +29,17 @@ describe('interpretExperiment Rate Limiting', () => {
   });
 
   it('allows calls within the limit', async () => {
-    const data = {
-      taskName: 'eyeblink',
-      episodeCount: 100,
-      finalErrorRate: 0.1,
-      learningProgress: 'decreasing'
+    const request = {
+      data: {
+        taskName: 'eyeblink',
+        episodeCount: 100,
+        finalErrorRate: 0.1,
+        learningProgress: 'decreasing'
+      },
+      auth: { uid }
     };
-    const context = { auth: { uid } };
 
-    // This would actually call axios.post, which we might want to stub
-    // but the prompt specifically says "exercises the rate limit".
-    // For a pure unit test of the rate limit, we could stub the API call.
+    // ...
   });
 
   it('fails when the daily limit is reached', async () => {
@@ -50,16 +50,18 @@ describe('interpretExperiment Rate Limiting', () => {
     // Manually set usage to the limit
     await usageRef.set({ aiCalls: 20 });
 
-    const data = {
-      taskName: 'eyeblink',
-      episodeCount: 100,
-      finalErrorRate: 0.1,
-      learningProgress: 'decreasing'
+    const request = {
+      data: {
+        taskName: 'eyeblink',
+        episodeCount: 100,
+        finalErrorRate: 0.1,
+        learningProgress: 'decreasing'
+      },
+      auth: { uid }
     };
-    const context = { auth: { uid } };
 
     try {
-      await wrapped(data, context);
+      await wrapped(request);
       assert.fail('Should have thrown an error');
     } catch (error) {
       assert.strictEqual(error.code, 'resource-exhausted');
