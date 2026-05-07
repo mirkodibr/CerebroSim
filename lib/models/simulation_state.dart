@@ -63,22 +63,26 @@ class ColdSimState {
   final bool isRunning;
   final int episodeCount;
   final double speedMultiplier;
+  final bool isThrottled;
 
   const ColdSimState({
     this.isRunning = false,
     this.episodeCount = 0,
     this.speedMultiplier = 1.0,
+    this.isThrottled = false,
   });
 
   ColdSimState copyWith({
     bool? isRunning,
     int? episodeCount,
     double? speedMultiplier,
+    bool? isThrottled,
   }) {
     return ColdSimState(
       isRunning: isRunning ?? this.isRunning,
       episodeCount: episodeCount ?? this.episodeCount,
       speedMultiplier: speedMultiplier ?? this.speedMultiplier,
+      isThrottled: isThrottled ?? this.isThrottled,
     );
   }
 }

@@ -21,6 +21,7 @@ import '../models/experiment_snapshot.dart';
 import '../models/simulation_state.dart';
 import '../services/export_service.dart';
 import '../widgets/tutorial_overlay.dart';
+import '../widgets/throttle_banner.dart';
 
 /// The primary experimental workspace for CerebroSim.
 class SimulateScreen extends ConsumerStatefulWidget {
@@ -191,6 +192,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
       children: [
         content,
         const TutorialOverlay(),
+        const ThrottleBanner(),
       ],
     );
   }

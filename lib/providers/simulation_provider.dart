@@ -69,9 +69,10 @@ class SimulationController with WidgetsBindingObserver {
   bool _wasRunningBeforePause = false;
 
   // Performance governor state
+  final Float32List _frameDurations = Float32List(30);
+  int _frameDurationIndex = 0;
   int _cleanFrameCount = 0;
-  bool _isOverloaded = false;
-  static const int _kRecoveryThresholdFrames = 120; // ~2s at 60Hz
+  static const int _kRecoveryThresholdFrames = 60; // ~1s at 60Hz
 
   SimulationController(this._ref) {
     _ticker = Ticker(_onFrame);
@@ -171,25 +172,31 @@ class SimulationController with WidgetsBindingObserver {
     }
 
     stopwatch.stop();
-    final elapsedMs = stopwatch.elapsedMilliseconds;
+    final int elapsedUs = stopwatch.elapsedMicroseconds;
+    _frameDurations[_frameDurationIndex] = elapsedUs.toDouble();
+    _frameDurationIndex = (_frameDurationIndex + 1) % _frameDurations.length;
 
-    // Governor logic (still applies in both modes)
-    if (elapsedMs > 12) {
-      if (kDebugMode) {
-        print('âš ï¸ Simulation Overload: Frame took ${elapsedMs}ms. Throttling speed.');
-      }
-      _isOverloaded = true;
+    // Compute median of _frameDurations
+    final List<double> sorted = List<double>.from(_frameDurations)..sort();
+    final double medianUs = sorted[sorted.length ~/ 2];
+
+    if (medianUs > 12000) { // 12ms threshold
       _cleanFrameCount = 0;
-      
-      final newSpeed = (cold.speedMultiplier / 2).clamp(1.0, 10.0);
-      if (newSpeed != cold.speedMultiplier) {
-        _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: newSpeed));
+      if (cold.speedMultiplier > 1.0) {
+        final newSpeed = (cold.speedMultiplier / 2).clamp(1.0, 10.0);
+        _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(
+          speedMultiplier: newSpeed,
+          isThrottled: true,
+        ));
+        if (kDebugMode) {
+          print('âš ï¸ Simulation Overload: Median frame took ${medianUs / 1000}ms. Throttling to $newSpeedÃ—.');
+        }
       }
-    } else {
-      if (_isOverloaded) {
+    } else if (medianUs < 8000) { // 8ms recovery threshold
+      if (cold.isThrottled) {
         _cleanFrameCount++;
         if (_cleanFrameCount >= _kRecoveryThresholdFrames) {
-          _isOverloaded = false;
+          _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(isThrottled: false));
           _cleanFrameCount = 0;
         }
       }
