@@ -16,7 +16,7 @@ import 'network_initializer.dart';
 ///   eligibility traces.
 /// - **Temporal Memory:** Eligibility trace updates for bridging time gaps.
 class SimulationEngine {
-  static const int _maxDelay = 10; // max axonal delay in ticks
+  static const int maxDelay = 10; // max axonal delay in ticks
 
   /// A temporal ring buffer to schedule future synaptic currents based on axonal delays.
   /// Key 1: Target tick (episodeStep).
@@ -41,6 +41,9 @@ class SimulationEngine {
     }());
     _potentialBuffer.clear();
   }
+
+  @visibleForTesting
+  int get bufferSize => _potentialBuffer.length;
 
   /// Advances the simulation by a single time step [dt].
   /// 
@@ -84,10 +87,10 @@ class SimulationEngine {
       }
     }
 
-    // Prune stale entries older than maxDelay ticks behind current step
+    // Evict all entries for past ticks (already consumed or skipped).
     final staleKeys = _potentialBuffer.keys
-      .where((k) => k < current.episodeStep - _maxDelay)
-      .toList();
+        .where((k) => k < current.episodeStep)
+        .toList();
     for (final k in staleKeys) {
       _potentialBuffer.remove(k);
     }
