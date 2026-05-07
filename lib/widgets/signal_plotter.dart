@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cerebellar_task.dart';
 import '../providers/environment_provider.dart';
 import '../providers/plot_buffer_provider.dart';
+import '../providers/legend_readout_provider.dart';
 import '../services/plot_ring_buffer.dart';
 
 /// A widget that displays a real-time line chart of simulation signals.
@@ -12,9 +13,9 @@ class SignalPlotter extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(environmentProvider);
-    // Watch the tick to trigger repaints
     final tick = ref.watch(plotBufferProvider);
     final ringBuffer = ref.read(plotRingBufferProvider);
+    final readout = ref.watch(legendReadoutProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return LayoutBuilder(
@@ -28,7 +29,7 @@ class SignalPlotter extends ConsumerWidget {
           ),
           child: Column(
             children: [
-              _buildLegend(context, task),
+              _buildLegend(context, task, readout, colorScheme),
               Expanded(
                 child: CustomPaint(
                   size: Size.infinite,
@@ -47,28 +48,59 @@ class SignalPlotter extends ConsumerWidget {
     );
   }
 
-  Widget _buildLegend(BuildContext context, CerebellarTask task) {
+  Widget _buildLegend(
+    BuildContext context,
+    CerebellarTask task,
+    LegendReadout readout,
+    ColorScheme colorScheme,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _legendItem(context, 'Critic', const Color(0xFF00FFFF)),
-        const SizedBox(width: 16),
-        _legendItem(context, 'Actual', const Color(0xFFEF9F27)),
+        _legendItem(context, 'Critic', const Color(0xFF00FFFF), readout.critic, colorScheme),
+        const SizedBox(width: 12),
+        _legendItem(context, 'Actual', const Color(0xFFEF9F27), readout.actual, colorScheme),
         if (task == CerebellarTask.vor) ...[
-          const SizedBox(width: 16),
-          _legendItem(context, 'Gain', const Color(0xFF8A2BE2)),
+          const SizedBox(width: 12),
+          _legendItem(context, 'Gain', const Color(0xFF8A2BE2), readout.gain, colorScheme),
         ],
       ],
     );
   }
 
-  Widget _legendItem(BuildContext context, String label, Color color) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _legendItem(
+    BuildContext context,
+    String label,
+    Color color,
+    double value,
+    ColorScheme colorScheme,
+  ) {
+    final bool clipping = value.abs() > 1.0;
+    final valueColor = clipping ? colorScheme.error : colorScheme.onSurface.withValues(alpha: 0.7);
+    final sign = value >= 0 ? '+' : '';
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 4),
         Text(label, style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10)),
+        const SizedBox(width: 4),
+        // Fixed-width box prevents layout jitter as value digits change
+        SizedBox(
+          width: 46,
+          child: Text(
+            '$sign${value.toStringAsFixed(3)}',
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 10,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -92,8 +124,7 @@ class SignalPlotterPainter extends CustomPainter {
     ..color = const Color(0xFF8A2BE2)
     ..strokeWidth = 2.0
     ..style = PaintingStyle.stroke;
-  final Paint _nowPaint = Paint()
-    ..strokeWidth = 1.0;
+  final Paint _nowPaint = Paint()..strokeWidth = 1.0;
   final Paint _centerPaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.5;
@@ -102,8 +133,8 @@ class SignalPlotterPainter extends CustomPainter {
   final Path _pathActual = Path();
   final Path _pathGain = Path();
 
-  late final TextPainter _labelTop = _makeLabel("1");
-  late final TextPainter _labelBottom = _makeLabel("-1");
+  late final TextPainter _labelTop = _makeLabel('1');
+  late final TextPainter _labelBottom = _makeLabel('-1');
 
   SignalPlotterPainter({
     required this.buffer,
@@ -117,10 +148,12 @@ class SignalPlotterPainter extends CustomPainter {
 
   TextPainter _makeLabel(String text) => TextPainter(
         text: TextSpan(
-            text: text,
-            style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.3),
-                fontSize: 9)),
+          text: text,
+          style: TextStyle(
+            color: colorScheme.onSurface.withValues(alpha: 0.3),
+            fontSize: 9,
+          ),
+        ),
         textDirection: TextDirection.ltr,
       )..layout();
 
@@ -162,33 +195,37 @@ class SignalPlotterPainter extends CustomPainter {
     }
 
     canvas.drawLine(
-        Offset(size.width - 1, 0), Offset(size.width - 1, size.height), _nowPaint);
+      Offset(size.width - 1, 0),
+      Offset(size.width - 1, size.height),
+      _nowPaint,
+    );
   }
 
   void _drawReferenceLines(Canvas canvas, Size size) {
-    _drawDashedLine(canvas, Offset(0, size.height / 2),
-        Offset(size.width, size.height / 2), _centerPaint);
-
+    _drawDashedLine(
+      canvas,
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      _centerPaint,
+    );
     _labelTop.paint(canvas, const Offset(2, 0));
     _labelBottom.paint(canvas, Offset(2, size.height - 12));
   }
 
-
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
     const dashWidth = 4.0;
     const dashSpace = 4.0;
-    double currentX = p1.dx;
-    while (currentX < p2.dx) {
-      canvas.drawLine(
-          Offset(currentX, p1.dy), Offset(currentX + dashWidth, p1.dy), paint);
-      currentX += dashWidth + dashSpace;
+    double x = p1.dx;
+    while (x < p2.dx) {
+      canvas.drawLine(Offset(x, p1.dy), Offset(x + dashWidth, p1.dy), paint);
+      x += dashWidth + dashSpace;
     }
   }
 
   @override
   bool shouldRepaint(covariant SignalPlotterPainter oldDelegate) {
-    return oldDelegate.tick != tick || 
-           oldDelegate.isVor != isVor || 
-           oldDelegate.colorScheme != colorScheme;
+    return oldDelegate.tick != tick ||
+        oldDelegate.isVor != isVor ||
+        oldDelegate.colorScheme != colorScheme;
   }
 }

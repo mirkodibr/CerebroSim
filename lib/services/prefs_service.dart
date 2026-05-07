@@ -9,6 +9,7 @@ class PrefsService {
   static const _canvasHintKey = 'canvas_hint_seen';
   static const _onboardingStepKey = 'onboarding_step';
   static const _tutorialSeenKey = 'tutorial_seen';
+  static const _disableCelebrationsKey = 'disable_celebrations';
 
   /// Returns true if the user has completed the initial onboarding experience.
   Future<bool> isOnboardingComplete() async {
@@ -68,5 +69,17 @@ class PrefsService {
   Future<void> clearOnboardingStep() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_onboardingStepKey);
+  }
+
+  /// Returns true when the user has disabled convergence celebration animations.
+  Future<bool> isCelebrationDisabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_disableCelebrationsKey) ?? false;
+  }
+
+  /// Enables or disables convergence celebration animations.
+  Future<void> setCelebrationDisabled(bool disabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_disableCelebrationsKey, disabled);
   }
 }
