@@ -112,4 +112,32 @@ void main() {
       expect(container.read(coldSimulationProvider).speedMultiplier, 5.0);
     });
   });
+
+  group('Ticker lifecycle (P1.3)', () {
+    test('ticker stops on pauseSimulation — isRunning becomes false', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(simulationProvider.notifier);
+      notifier.startSimulation();
+      expect(container.read(coldSimulationProvider).isRunning, true);
+
+      notifier.pauseSimulation();
+      expect(container.read(coldSimulationProvider).isRunning, false);
+    });
+
+    test('setSpeed does not require ticker restart — state updates immediately', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final notifier = container.read(simulationProvider.notifier);
+      notifier.startSimulation();
+      notifier.setSpeed(10.0);
+
+      expect(container.read(coldSimulationProvider).speedMultiplier, 10.0);
+      expect(container.read(coldSimulationProvider).isRunning, true);
+
+      notifier.pauseSimulation();
+    });
+  });
 }

@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -30,9 +32,9 @@ final simulationEngineProvider = Provider<SimulationEngine>((ref) {
 /// [SimulationEngine] for state updates, and communicates with the
 /// [EnvironmentNotifier] for task-specific inputs and feedback.
 class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingObserver {
-  Timer? _timer;
+  Ticker? _ticker;
   final SimulationEngine _engine = SimulationEngine();
-  
+
   // Stream for convergence events
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
   Stream<int> get convergenceEventStream => _convergenceController.stream;
@@ -41,8 +43,12 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   int _episodeTickCount = 0;
   bool _wasRunningBeforePause = false;
 
+  // Frame budget governor state
+  bool _overloaded = false;
+  DateTime? _overloadedSince;
+
   /// Initializes the simulation state using the [SimulationEngine]'s initial state.
-  /// Ensures that any active timers are cancelled when the provider is disposed.
+  /// Ensures that any active tickers are disposed when the provider is disposed.
   @override
   SimulationState build() {
     WidgetsBinding.instance.addObserver(this);
@@ -52,9 +58,10 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
     ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
-      _timer?.cancel();
+      _ticker?.dispose();
+      _ticker = null;
     });
-    
+
     final initialConfig = ref.read(networkConfigProvider);
     return _engine.initialState(config: initialConfig);
   }
@@ -81,30 +88,54 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
 
   /// Pauses the simulation without resetting the current episode progress.
   void pauseSimulation() {
-    _timer?.cancel();
+    _ticker?.stop();
     state = state.copyWith(isRunning: false);
   }
 
-  /// Stops the simulation and cancels the active timer.
+  /// Stops the simulation and cancels the active ticker.
   void stopSimulation() {
     pauseSimulation();
   }
 
-  /// Sets the simulation speed multiplier and restarts the ticker if running.
+  /// Sets the simulation speed multiplier.
+  /// The running Ticker picks up the new value on the next frame automatically.
   void setSpeed(double multiplier) {
     state = state.copyWith(speedMultiplier: multiplier);
-    if (state.isRunning) {
-      _timer?.cancel();
-      _startTicker();
-    }
+    _overloaded = false;
+    _overloadedSince = null;
   }
 
-  /// Private helper to start the periodic timer at the adjusted speed.
+  /// Creates a vsync-aligned [Ticker] that batches logical ticks per frame.
   void _startTicker() {
-    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * state.speedMultiplier)).round();
-    _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
+    _ticker?.dispose();
+    _ticker = Ticker(_onFrame)..start();
+  }
+
+  /// Called once per display frame by the [Ticker].
+  ///
+  /// Runs [speedMultiplier.round()] logical ticks inside a single frame.
+  /// If engine work exceeds 12 ms the frame-budget governor kicks in:
+  /// the overload flag is set so subsequent frames run only 1 tick until
+  /// 2 s of clean frames have elapsed.
+  void _onFrame(Duration _elapsed) {
+    final int ticksThisFrame = _overloaded ? 1 : state.speedMultiplier.round().clamp(1, 20);
+
+    final sw = Stopwatch()..start();
+    for (int i = 0; i < ticksThisFrame; i++) {
       _tick();
-    });
+    }
+    sw.stop();
+
+    if (kDebugMode && sw.elapsedMilliseconds > 12) {
+      debugPrint('[Sim] frame budget exceeded: ${sw.elapsedMilliseconds} ms — degrading speed');
+      _overloaded = true;
+      _overloadedSince = DateTime.now();
+    } else if (_overloaded && _overloadedSince != null) {
+      if (DateTime.now().difference(_overloadedSince!).inSeconds >= 2) {
+        _overloaded = false;
+        _overloadedSince = null;
+      }
+    }
   }
 
   /// Resets the simulation to its initial state and stops any running simulation.
