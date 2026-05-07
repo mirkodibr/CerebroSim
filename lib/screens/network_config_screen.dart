@@ -127,7 +127,7 @@ class NetworkConfigScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () {
-                    ref.read(simulationProvider.notifier).resetEpisode(config: ref.read(networkConfigProvider));
+                    ref.read(simulationControllerProvider).resetEpisode(config: ref.read(networkConfigProvider));
                     context.go('/shell/simulate');
                   },
                   child: const Text('Apply & reset simulation'),

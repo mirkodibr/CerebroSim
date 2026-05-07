@@ -14,13 +14,13 @@ void main() {
     expect(container.read(plotRingBufferProvider).filled, 0);
 
     // Start simulation
-    container.read(simulationProvider.notifier).startSimulation();
+    container.read(simulationControllerProvider).startSimulation();
 
     // Wait for at least one tick
     await Future.delayed(const Duration(milliseconds: 100));
 
     // Stop simulation to prevent further ticks
-    container.read(simulationProvider.notifier).stopSimulation();
+    container.read(simulationControllerProvider).stopSimulation();
 
     // The buffer should no longer be empty
     final tick = container.read(plotBufferProvider);

@@ -30,7 +30,7 @@ class _CanvasConvergenceListenerState extends ConsumerState<CanvasConvergenceLis
 
     // Defer accessing providers to avoid using ref in initState synchronously
     Future.microtask(() {
-      _sub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((episode) {
+      _sub = ref.read(simulationControllerProvider).convergenceEventStream.listen((episode) {
         if (mounted && !_celebrationController.isAnimating) {
           _celebrationController.forward(from: 0.0);
         }

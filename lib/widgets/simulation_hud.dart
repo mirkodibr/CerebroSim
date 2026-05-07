@@ -9,12 +9,13 @@ class SimulationHud extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(simulationProvider);
+    final hot = ref.watch(hotSimulationProvider);
+    final cold = ref.watch(coldSimulationProvider);
     final task = ref.watch(environmentProvider);
-    final speedMultiplier = state.speedMultiplier;
+    final speedMultiplier = cold.speedMultiplier;
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (!state.isRunning && state.episodeCount == 0) {
+    if (!cold.isRunning && cold.episodeCount == 0) {
       return const SizedBox.shrink();
     }
 
@@ -32,20 +33,20 @@ class SimulationHud extends ConsumerWidget {
           children: [
             _buildStatItem(
               Icons.repeat,
-              "Ep ${state.episodeCount}",
+              "Ep ${cold.episodeCount}",
               colorScheme.onSurface,
             ),
             const SizedBox(width: 16),
             _buildStatItem(
               Icons.trending_down,
-              "δ ${state.tdError.toStringAsFixed(3)}",
+              "δ ${hot.tdError.toStringAsFixed(3)}",
               colorScheme.onSurface,
             ),
             if (task == CerebellarTask.vor) ...[
               const SizedBox(width: 16),
               _buildStatItem(
                 Icons.sync,
-                "G ${state.rollingGainRatio.toStringAsFixed(2)}",
+                "G ${hot.rollingGainRatio.toStringAsFixed(2)}",
                 colorScheme.onSurface,
               ),
             ],

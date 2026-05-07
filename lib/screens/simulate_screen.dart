@@ -37,7 +37,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   @override
   void initState() {
     super.initState();
-    _convergenceSub = ref.read(simulationProvider.notifier).convergenceEventStream.listen((ep) {
+    _convergenceSub = ref.read(simulationControllerProvider).convergenceEventStream.listen((ep) {
       if (mounted) {
         _showConvergenceSnackBar(context, ep);
       }
@@ -74,8 +74,8 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(simulationProvider);
-    final notifier = ref.read(simulationProvider.notifier);
+    final coldState = ref.watch(coldSimulationProvider);
+    final controller = ref.read(simulationControllerProvider);
     final networkConfig = ref.watch(networkConfigProvider);
     final vaultSnapshots = ref.watch(vaultProvider).value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
@@ -115,7 +115,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
             ),
             actions: [
-              _buildSimControlGroup(context, state, notifier),
+              _buildSimControlGroup(context, coldState, controller),
               const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.download_outlined, size: 22),
@@ -164,21 +164,21 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
           switch (event.logicalKey) {
             case LogicalKeyboardKey.space:
-              state.isRunning
-                  ? notifier.pauseSimulation()
-                  : notifier.startSimulation();
+              coldState.isRunning
+                  ? controller.pauseSimulation()
+                  : controller.startSimulation();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.keyR:
-              notifier.resetEpisode();
+              controller.resetEpisode();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit1:
-              notifier.setSpeed(1.0);
+              controller.setSpeed(1.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit5:
-              notifier.setSpeed(5.0);
+              controller.setSpeed(5.0);
               return KeyEventResult.handled;
             case LogicalKeyboardKey.digit0:
-              notifier.setSpeed(10.0);
+              controller.setSpeed(10.0);
               return KeyEventResult.handled;
           }
           return KeyEventResult.ignored;
@@ -219,6 +219,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                 height: 34,
                 alignment: Alignment.center,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.show_chart, size: 14, color: colorScheme.secondary),
@@ -258,7 +259,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
   }
 
   Widget _buildSimControlGroup(
-      BuildContext context, SimulationState state, SimulationNotifier notifier) {
+      BuildContext context, ColdSimState state, SimulationController controller) {
     final colorScheme = Theme.of(context).colorScheme;
     final isExpanded = state.isRunning || state.episodeCount > 0;
 
@@ -276,9 +277,9 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
           ),
           onPressed: () {
             if (state.isRunning) {
-              notifier.pauseSimulation();
+              controller.pauseSimulation();
             } else {
-              notifier.startSimulation();
+              controller.startSimulation();
             }
           },
           tooltip: state.isRunning ? 'Pause' : 'Start simulation',
@@ -310,7 +311,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                 ),
               );
               if (confirm == true) {
-                notifier.resetEpisode();
+                controller.resetEpisode();
               }
             },
             tooltip: 'Reset simulation',
@@ -328,7 +329,7 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
             } else {
               nextSpeed = 1.0;
             }
-            notifier.setSpeed(nextSpeed);
+            controller.setSpeed(nextSpeed);
           },
           style: TextButton.styleFrom(
             minimumSize: const Size(40, 36),

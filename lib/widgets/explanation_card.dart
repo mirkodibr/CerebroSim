@@ -13,7 +13,8 @@ class ExplanationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(simulationProvider);
+    final hot = ref.watch(hotSimulationProvider);
+    final cold = ref.watch(coldSimulationProvider);
     final history = ref.watch(episodeHistoryProvider);
     final task = ref.watch(environmentProvider);
     final learningRate = ref.watch(learningRateProvider);
@@ -22,9 +23,9 @@ class ExplanationCard extends ConsumerWidget {
     final meanPunishment = history.isNotEmpty ? history.last.meanPunishment : 0.0;
     
     final explanation = SimulationExplainer.explain(
-      episodeCount: state.episodeCount,
+      episodeCount: cold.episodeCount,
       meanPunishment: meanPunishment,
-      tdError: state.tdError,
+      tdError: hot.tdError,
       learningRate: learningRate,
       task: task,
     );

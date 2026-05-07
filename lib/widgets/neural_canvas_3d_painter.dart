@@ -14,7 +14,7 @@ class NeuralCanvas3DPainter extends CustomPainter {
   /// allocations on every frame.
   static final Map<String, Offset3D> _positionCache = {};
 
-  final SimulationState state;
+  final HotSimState state;
   final double rotX;
   final double rotY;
   final double zoom;

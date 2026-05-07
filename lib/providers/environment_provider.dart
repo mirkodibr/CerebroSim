@@ -69,7 +69,7 @@ class EnvironmentNotifier extends Notifier<CerebellarTask> {
       config = NetworkConfig.defaultConfig().copyWith(dcnCount: 4);
     }
     
-    ref.read(simulationProvider.notifier).resetEpisode(config: config);
+    ref.read(simulationControllerProvider).resetEpisode(config: config);
   }
 
   EnvironmentStep step(SimulationState s) {

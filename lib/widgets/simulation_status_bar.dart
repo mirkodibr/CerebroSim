@@ -8,7 +8,7 @@ class SimulationStatusBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(simulationProvider);
+    final state = ref.watch(coldSimulationProvider);
     final colorScheme = Theme.of(context).colorScheme;
     
     // Get environment name safely

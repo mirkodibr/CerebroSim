@@ -3,37 +3,19 @@ import 'neuron_model.dart';
 import 'synapse_model.dart';
 import '../services/network_initializer.dart';
 
-/// The complete snapshot of the simulation's current state at any given tick.
-///
-/// It contains the status of every neuron and synapse, as well as high-level
-/// metrics like prediction error and overall progress through an experiment.
+/// State that updates at high frequency (every simulation tick).
 @immutable
-class SimulationState {
-  /// The map of all neurons in the current network architecture, keyed by their ID.
+class HotSimState {
   final Map<String, NeuronModel> neurons;
-  /// The list of all synaptic connections between neurons.
   final List<SynapseModel> synapses;
-  /// An adjacency list for instant outbound connection lookups, keyed by the pre-synaptic neuron ID.
-  /// Always rebuilt during tick() to stay consistent with synapses. Call rebuildIndex() only when loading an external snapshot.
   final Map<String, List<SynapseModel>> preSynapticIndex;
-  /// The current output of the cerebellar "critic" or prediction unit.
   final double criticPrediction;
-  /// The Temporal Difference (TD) error representing the difference between prediction and reality.
   final double tdError;
-  /// The current signal level being carried by the climbing fibers (the error signal).
   final double climbingFiberSignal;
-  /// A moving average of the gain ratio performance metric.
   final double rollingGainRatio;
-  /// The current time step index within the active episode.
   final int episodeStep;
-  /// The total number of episodes that have been completed in this session.
-  final int episodeCount;
-  /// Whether the simulation is currently active and processing ticks.
-  final bool isRunning;
-  /// The current simulation speed multiplier (e.g., 1.0, 5.0, 10.0).
-  final double speedMultiplier;
 
-  const SimulationState({
+  const HotSimState({
     required this.neurons,
     required this.synapses,
     this.preSynapticIndex = const {},
@@ -42,22 +24,107 @@ class SimulationState {
     this.climbingFiberSignal = 0.0,
     this.rollingGainRatio = 0.0,
     this.episodeStep = 0,
-    this.episodeCount = 0,
-    this.isRunning = false,
-    this.speedMultiplier = 1.0, // Default to normal speed
   });
 
-  /// Creates a default initial state for a new simulation.
-  ///
-  /// This utilizes the [NetworkInitializer] to build a standard 
-  /// cerebellar architecture rather than hardcoding neuron IDs.
-  factory SimulationState.initial({dynamic config}) {
-    // The config parameter is typed dynamic to avoid a circular dependency 
-    // with NetworkConfig in some build scenarios, though here we cast it.
-    return NetworkInitializer.createRLMockNetwork(config: config);
+  HotSimState copyWith({
+    Map<String, NeuronModel>? neurons,
+    List<SynapseModel>? synapses,
+    Map<String, List<SynapseModel>>? preSynapticIndex,
+    double? criticPrediction,
+    double? tdError,
+    double? climbingFiberSignal,
+    double? rollingGainRatio,
+    int? episodeStep,
+  }) {
+    return HotSimState(
+      neurons: neurons ?? this.neurons,
+      synapses: synapses ?? this.synapses,
+      preSynapticIndex: preSynapticIndex ?? this.preSynapticIndex,
+      criticPrediction: criticPrediction ?? this.criticPrediction,
+      tdError: tdError ?? this.tdError,
+      climbingFiberSignal: climbingFiberSignal ?? this.climbingFiberSignal,
+      rollingGainRatio: rollingGainRatio ?? this.rollingGainRatio,
+      episodeStep: episodeStep ?? this.episodeStep,
+    );
   }
 
-  /// Returns a copy of the simulation state with updated fields.
+  HotSimState rebuildIndex() {
+    final Map<String, List<SynapseModel>> index = {};
+    for (final s in synapses) {
+      index.putIfAbsent(s.fromNeuronId, () => []).add(s);
+    }
+    return copyWith(preSynapticIndex: index);
+  }
+}
+
+/// State that updates at low frequency (user action or episode boundary).
+@immutable
+class ColdSimState {
+  final bool isRunning;
+  final int episodeCount;
+  final double speedMultiplier;
+
+  const ColdSimState({
+    this.isRunning = false,
+    this.episodeCount = 0,
+    this.speedMultiplier = 1.0,
+  });
+
+  ColdSimState copyWith({
+    bool? isRunning,
+    int? episodeCount,
+    double? speedMultiplier,
+  }) {
+    return ColdSimState(
+      isRunning: isRunning ?? this.isRunning,
+      episodeCount: episodeCount ?? this.episodeCount,
+      speedMultiplier: speedMultiplier ?? this.speedMultiplier,
+    );
+  }
+}
+
+/// Legacy wrapper for backward compatibility during refactor.
+/// This will be removed once all consumers migrate to Hot/Cold providers.
+@immutable
+class SimulationState {
+  final HotSimState hot;
+  final ColdSimState cold;
+
+  const SimulationState({required this.hot, required this.cold});
+
+  Map<String, NeuronModel> get neurons => hot.neurons;
+  List<SynapseModel> get synapses => hot.synapses;
+  Map<String, List<SynapseModel>> get preSynapticIndex => hot.preSynapticIndex;
+  double get criticPrediction => hot.criticPrediction;
+  double get tdError => hot.tdError;
+  double get climbingFiberSignal => hot.climbingFiberSignal;
+  double get rollingGainRatio => hot.rollingGainRatio;
+  int get episodeStep => hot.episodeStep;
+  int get episodeCount => cold.episodeCount;
+  bool get isRunning => cold.isRunning;
+  double get speedMultiplier => cold.speedMultiplier;
+
+  factory SimulationState.initial({dynamic config}) {
+    final state = NetworkInitializer.createRLMockNetwork(config: config);
+    return SimulationState(
+      hot: HotSimState(
+        neurons: state.neurons,
+        synapses: state.synapses,
+        preSynapticIndex: state.preSynapticIndex,
+        criticPrediction: state.criticPrediction,
+        tdError: state.tdError,
+        climbingFiberSignal: state.climbingFiberSignal,
+        rollingGainRatio: state.rollingGainRatio,
+        episodeStep: state.episodeStep,
+      ),
+      cold: ColdSimState(
+        isRunning: state.isRunning,
+        episodeCount: state.episodeCount,
+        speedMultiplier: state.speedMultiplier,
+      ),
+    );
+  }
+
   SimulationState copyWith({
     Map<String, NeuronModel>? neurons,
     List<SynapseModel>? synapses,
@@ -72,29 +139,23 @@ class SimulationState {
     double? speedMultiplier,
   }) {
     return SimulationState(
-      neurons: neurons ?? this.neurons,
-      synapses: synapses ?? this.synapses,
-      preSynapticIndex: preSynapticIndex ?? this.preSynapticIndex,
-      criticPrediction: criticPrediction ?? this.criticPrediction,
-      tdError: tdError ?? this.tdError,
-      climbingFiberSignal: climbingFiberSignal ?? this.climbingFiberSignal,
-      rollingGainRatio: rollingGainRatio ?? this.rollingGainRatio,
-      episodeStep: episodeStep ?? this.episodeStep,
-      episodeCount: episodeCount ?? this.episodeCount,
-      isRunning: isRunning ?? this.isRunning,
-      speedMultiplier: speedMultiplier ?? this.speedMultiplier,
+      hot: hot.copyWith(
+        neurons: neurons,
+        synapses: synapses,
+        preSynapticIndex: preSynapticIndex,
+        criticPrediction: criticPrediction,
+        tdError: tdError,
+        climbingFiberSignal: climbingFiberSignal,
+        rollingGainRatio: rollingGainRatio,
+        episodeStep: episodeStep,
+      ),
+      cold: cold.copyWith(
+        isRunning: isRunning,
+        episodeCount: episodeCount,
+        speedMultiplier: speedMultiplier,
+      ),
     );
   }
 
-  /// Regenerates the [preSynapticIndex] from the current [synapses] list.
-  ///
-  /// This is an O(N) operation typically used after loading a new set
-  /// of synapses (e.g., when restoring a snapshot).
-  SimulationState rebuildIndex() {
-    final Map<String, List<SynapseModel>> index = {};
-    for (final s in synapses) {
-      index.putIfAbsent(s.fromNeuronId, () => []).add(s);
-    }
-    return copyWith(preSynapticIndex: index);
-  }
+  SimulationState rebuildIndex() => SimulationState(hot: hot.rebuildIndex(), cold: cold);
 }

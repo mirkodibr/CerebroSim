@@ -18,21 +18,44 @@ import 'gamma_provider.dart';
 import 'dcn_baseline_provider.dart';
 import 'network_config_provider.dart';
 
-/// A provider that exposes an instance of [SimulationEngine].
-/// The engine contains the core logic for updating the neural network state.
-final simulationEngineProvider = Provider<SimulationEngine>((ref) {
-  return SimulationEngine();
+/// A notifier for high-frequency simulation state (neurons, synapses, etc.)
+class HotSimulationNotifier extends Notifier<HotSimState> {
+  @override
+  HotSimState build() {
+    final initialConfig = ref.read(networkConfigProvider);
+    final initial = SimulationState.initial(config: initialConfig);
+    return initial.hot;
+  }
+
+  void setState(HotSimState newState) => state = newState;
+}
+
+/// A notifier for low-frequency simulation state (isRunning, speed, episodeCount)
+class ColdSimulationNotifier extends Notifier<ColdSimState> {
+  @override
+  ColdSimState build() {
+    final initialConfig = ref.read(networkConfigProvider);
+    final initial = SimulationState.initial(config: initialConfig);
+    return initial.cold;
+  }
+
+  void setState(ColdSimState newState) => state = newState;
+}
+
+final hotSimulationProvider = NotifierProvider<HotSimulationNotifier, HotSimState>(() {
+  return HotSimulationNotifier();
 });
 
-/// A notifier that manages the state of the cerebellar simulation.
-/// It orchestrates the timing of the simulation ticks, interacts with the
-/// [SimulationEngine] for state updates, and communicates with the
-/// [EnvironmentNotifier] for task-specific inputs and feedback.
-class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingObserver {
+final coldSimulationProvider = NotifierProvider<ColdSimulationNotifier, ColdSimState>(() {
+  return ColdSimulationNotifier();
+});
+
+/// A controller that manages the simulation lifecycle and updates Hot/Cold providers.
+class SimulationController with WidgetsBindingObserver {
+  final Ref _ref;
   Timer? _timer;
   final SimulationEngine _engine = SimulationEngine();
   
-  // Stream for convergence events
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
   Stream<int> get convergenceEventStream => _convergenceController.stream;
 
@@ -40,28 +63,19 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   int _episodeTickCount = 0;
   bool _wasRunningBeforePause = false;
 
-  /// Initializes the simulation state using the [SimulationEngine]'s initial state.
-  /// Ensures that any active timers are cancelled when the provider is disposed.
-  @override
-  SimulationState build() {
+  SimulationController(this._ref) {
     WidgetsBinding.instance.addObserver(this);
-
-    // Listen to network config changes to invalidate correctly but not auto-reset
-    ref.listen(networkConfigProvider, (prev, next) {});
-
-    ref.onDispose(() {
+    _ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
       _timer?.cancel();
     });
-    
-    final initialConfig = ref.read(networkConfigProvider);
-    return _engine.initialState(config: initialConfig);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    final cold = _ref.read(coldSimulationProvider);
     if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      _wasRunningBeforePause = this.state.isRunning;
+      _wasRunningBeforePause = cold.isRunning;
       pauseSimulation();
     } else if (state == AppLifecycleState.resumed) {
       if (_wasRunningBeforePause) {
@@ -70,92 +84,91 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
     }
   }
 
-  /// Starts or resumes the simulation.
   void startSimulation() {
-    if (state.isRunning) return;
+    final cold = _ref.read(coldSimulationProvider);
+    if (cold.isRunning) return;
     HapticFeedback.mediumImpact();
-    state = state.copyWith(isRunning: true);
+    _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(isRunning: true));
     _startTicker();
   }
 
-  /// Pauses the simulation without resetting the current episode progress.
   void pauseSimulation() {
     _timer?.cancel();
-    state = state.copyWith(isRunning: false);
+    final cold = _ref.read(coldSimulationProvider);
+    _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(isRunning: false));
   }
 
-  /// Stops the simulation and cancels the active timer.
-  void stopSimulation() {
-    pauseSimulation();
-  }
+  void stopSimulation() => pauseSimulation();
 
-  /// Sets the simulation speed multiplier and restarts the ticker if running.
   void setSpeed(double multiplier) {
-    state = state.copyWith(speedMultiplier: multiplier);
-    if (state.isRunning) {
+    final cold = _ref.read(coldSimulationProvider);
+    _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: multiplier));
+    if (cold.isRunning) {
       _timer?.cancel();
       _startTicker();
     }
   }
 
-  /// Private helper to start the periodic timer at the adjusted speed.
   void _startTicker() {
-    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * state.speedMultiplier)).round();
+    final cold = _ref.read(coldSimulationProvider);
+    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * cold.speedMultiplier)).round();
     _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
       _tick();
     });
   }
 
-  /// Resets the simulation to its initial state and stops any running simulation.
   void resetEpisode({NetworkConfig? config}) {
     stopSimulation();
     _episodePunishmentSum = 0.0;
     _episodeTickCount = 0;
     _engine.clearBuffer();
-    ref.read(plotBufferProvider.notifier).clear();
-    ref.read(episodeHistoryProvider.notifier).clear();
-    state = _engine.initialState(config: config).copyWith(
+    _ref.read(plotBufferProvider.notifier).clear();
+    _ref.read(episodeHistoryProvider.notifier).clear();
+    
+    final newState = SimulationState.initial(config: config);
+    _ref.read(hotSimulationProvider.notifier).setState(newState.hot);
+    _ref.read(coldSimulationProvider.notifier).setState(newState.cold.copyWith(
       speedMultiplier: SimulationConstants.kSpeedNormal,
-    );
+    ));
   }
 
-  /// Loads a previously saved snapshot into the current simulation state.
-  /// This allows restoring the network's learning state and topology from the vault.
   void loadSnapshot(ExperimentSnapshot snapshot) {
-    // If the snapshot has a different network config, we must update our config first
     if (snapshot.networkConfig != null) {
-      ref.read(networkConfigProvider.notifier).update(snapshot.networkConfig!);
-      
-      // Rebuild state with the new config first
-      state = _engine.initialState(config: snapshot.networkConfig!);
+      _ref.read(networkConfigProvider.notifier).update(snapshot.networkConfig!);
+      final newState = SimulationState.initial(config: snapshot.networkConfig!);
+      _ref.read(hotSimulationProvider.notifier).setState(newState.hot);
     }
 
+    final hot = _ref.read(hotSimulationProvider);
     final weights = snapshot.synapticWeights;
-    if (weights.length != state.synapses.length) return;
+    if (weights.length != hot.synapses.length) return;
     
-    final nextSynapses = List.generate(state.synapses.length, (i) {
-      return state.synapses[i].copyWith(weight: weights[i]);
+    final nextSynapses = List.generate(hot.synapses.length, (i) {
+      return hot.synapses[i].copyWith(weight: weights[i]);
     });
     
     _engine.clearBuffer();
-    state = state.copyWith(synapses: nextSynapses).rebuildIndex();
+    _ref.read(hotSimulationProvider.notifier).setState(
+      hot.copyWith(synapses: nextSynapses).rebuildIndex()
+    );
   }
 
-  /// Performs a single simulation step (tick).
-  /// 1. Obtains the environment's state and feedback via [EnvironmentNotifier.step].
-  /// 2. Updates the neural network state using [SimulationEngine.tick].
-  /// 3. Updates the [state] with the new simulation data.
   void _tick() {
     try {
-      final previousEpisodeCount = state.episodeCount;
-      final env = ref.read(environmentProvider.notifier).step(state);
-      final learningRate = ref.read(learningRateProvider);
-      final gamma = ref.read(gammaProvider);
-      final dcnBaseline = ref.read(dcnBaselineProvider);
+      final hot = _ref.read(hotSimulationProvider);
+      final cold = _ref.read(coldSimulationProvider);
+      
+      // Combine for engine (using legacy SimulationState wrapper)
+      final currentState = SimulationState(hot: hot, cold: cold);
+
+      final env = _ref.read(environmentProvider.notifier).step(currentState);
+      final learningRate = _ref.read(learningRateProvider);
+      final gamma = _ref.read(gammaProvider);
+      final dcnBaseline = _ref.read(dcnBaselineProvider);
       
       final dt = 1.0 / SimulationConstants.kTickRateHz;
-      state = _engine.tick(
-        state, 
+      final nextState = _engine.tick(
+        currentState, 
         env, 
         dt, 
         learningRate: learningRate,
@@ -163,40 +176,37 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
         dcnBaseline: dcnBaseline,
       );
 
-      // Track statistics for convergence history
-      _episodePunishmentSum += state.climbingFiberSignal;
+      // Update Hot State
+      _ref.read(hotSimulationProvider.notifier).setState(nextState.hot);
+
+      // Track statistics
+      _episodePunishmentSum += nextState.climbingFiberSignal;
       _episodeTickCount++;
 
-      // Check if an episode just completed
-      if (state.episodeCount > previousEpisodeCount) {
-        assert(() {
-          debugPrint("Episode completed: ${state.episodeCount}");
-          return true;
-        }());
-        
+      // Update Cold State if episode boundary reached
+      if (nextState.episodeCount > cold.episodeCount) {
         final record = EpisodeRecord(
-          episodeNumber: previousEpisodeCount,
+          episodeNumber: cold.episodeCount,
           meanPunishment: _episodeTickCount > 0 ? _episodePunishmentSum / _episodeTickCount : 0.0,
-          finalTdError: state.tdError,
+          finalTdError: nextState.tdError,
         );
         
-        // Emit convergence event if mean punishment is low enough
         if (record.meanPunishment < 0.2) {
-          _convergenceController.add(state.episodeCount);
+          _convergenceController.add(nextState.episodeCount);
         }
 
-        ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
+        _ref.read(episodeHistoryProvider.notifier).recordEpisode(record);
+        _ref.read(coldSimulationProvider.notifier).setState(nextState.cold);
         
-        // Reset counters for next episode
         _episodePunishmentSum = 0.0;
         _episodeTickCount = 0;
       }
 
-      // Update plot buffer with latest simulation data
-      ref.read(plotBufferProvider.notifier).addPoint(
-        state.criticPrediction,
-        state.climbingFiberSignal,
-        state.rollingGainRatio,
+      // Update plot buffer
+      _ref.read(plotBufferProvider.notifier).addPoint(
+        nextState.criticPrediction,
+        nextState.climbingFiberSignal,
+        nextState.rollingGainRatio,
       );
     } catch (e, s) {
       FirebaseCrashlytics.instance.recordError(e, s, fatal: false);
@@ -205,7 +215,14 @@ class SimulationNotifier extends Notifier<SimulationState> with WidgetsBindingOb
   }
 }
 
-/// A global provider for the [SimulationNotifier].
-final simulationProvider = NotifierProvider<SimulationNotifier, SimulationState>(() {
-  return SimulationNotifier();
+final simulationControllerProvider = Provider<SimulationController>((ref) {
+  return SimulationController(ref);
+});
+
+/// Legacy provider for backward compatibility. 
+/// It combines hot and cold states. Use hotSimulationProvider or coldSimulationProvider instead.
+final simulationProvider = Provider<SimulationState>((ref) {
+  final hot = ref.watch(hotSimulationProvider);
+  final cold = ref.watch(coldSimulationProvider);
+  return SimulationState(hot: hot, cold: cold);
 });

@@ -178,8 +178,8 @@ void main() {
       }
 
       final state = SimulationState(
-        neurons: neurons,
-        synapses: synapses,
+        hot: HotSimState(neurons: neurons, synapses: synapses),
+        cold: const ColdSimState(),
       ).rebuildIndex();
 
       const env = EnvironmentStep(stateVector: [0.1], punishment: 0.0, isEpisodeEnd: false);
@@ -221,9 +221,12 @@ void main() {
       );
 
       var state = SimulationState(
-        neurons: {'n1': n1, 'n2': n2},
-        synapses: [synapse],
-        episodeStep: 10,
+        hot: HotSimState(
+          neurons: {'n1': n1, 'n2': n2},
+          synapses: [synapse],
+          episodeStep: 10,
+        ),
+        cold: const ColdSimState(),
       ).rebuildIndex();
 
       const env = EnvironmentStep(stateVector: [0.0], punishment: 0.0, isEpisodeEnd: false);

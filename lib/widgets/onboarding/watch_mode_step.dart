@@ -27,7 +27,7 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
     super.initState();
     // Automatically start the simulation to demonstrate activity.
     Future.microtask(() {
-      ref.read(simulationProvider.notifier).startSimulation();
+      ref.read(simulationControllerProvider).startSimulation();
     });
     
     // Set a 30-second timeout for automatic progression.
@@ -40,7 +40,7 @@ class _WatchModeStepState extends ConsumerState<WatchModeStep> {
   void dispose() {
     _autoAdvanceTimer?.cancel();
     // Ensure the simulation is stopped when navigating away from this step.
-    ref.read(simulationProvider.notifier).stopSimulation();
+    ref.read(simulationControllerProvider).stopSimulation();
     super.dispose();
   }
 

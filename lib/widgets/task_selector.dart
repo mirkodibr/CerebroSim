@@ -28,7 +28,7 @@ class _TaskSelectorState extends ConsumerState<TaskSelector> {
   @override
   Widget build(BuildContext context) {
     final task = ref.watch(environmentProvider);
-    final isRunning = ref.watch(simulationProvider).isRunning;
+    final isRunning = ref.watch(coldSimulationProvider).isRunning;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(

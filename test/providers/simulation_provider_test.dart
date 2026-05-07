@@ -3,48 +3,52 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/providers/simulation_provider.dart';
 
 void main() {
-  group('SimulationNotifier', () {
-    test('initial state is correct', () {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Simulation Providers', () {
+    test('initial hot and cold states are correct', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final state = container.read(simulationProvider);
-      expect(state.isRunning, false);
-      expect(state.neurons.length, 5);
+      final hot = container.read(hotSimulationProvider);
+      final cold = container.read(coldSimulationProvider);
+      expect(cold.isRunning, false);
+      expect(hot.neurons.length, 21);
     });
 
-    test('startSimulation sets isRunning to true', () {
+    test('startSimulation sets isRunning to true in cold state', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final notifier = container.read(simulationProvider.notifier);
-      notifier.startSimulation();
+      final controller = container.read(simulationControllerProvider);
+      controller.startSimulation();
 
-      expect(container.read(simulationProvider).isRunning, true);
+      expect(container.read(coldSimulationProvider).isRunning, true);
     });
 
-    test('stopSimulation sets isRunning to false', () {
+    test('stopSimulation sets isRunning to false in cold state', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final notifier = container.read(simulationProvider.notifier);
-      notifier.startSimulation();
-      notifier.stopSimulation();
+      final controller = container.read(simulationControllerProvider);
+      controller.startSimulation();
+      controller.stopSimulation();
 
-      expect(container.read(simulationProvider).isRunning, false);
+      expect(container.read(coldSimulationProvider).isRunning, false);
     });
 
-    test('resetEpisode resets the state', () {
+    test('resetEpisode resets the states', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      final notifier = container.read(simulationProvider.notifier);
-      notifier.startSimulation();
-      notifier.resetEpisode();
+      final controller = container.read(simulationControllerProvider);
+      controller.startSimulation();
+      controller.resetEpisode();
 
-      final state = container.read(simulationProvider);
-      expect(state.isRunning, false);
-      expect(state.episodeStep, 0);
+      final hot = container.read(hotSimulationProvider);
+      final cold = container.read(coldSimulationProvider);
+      expect(cold.isRunning, false);
+      expect(hot.episodeStep, 0);
     });
   });
 }

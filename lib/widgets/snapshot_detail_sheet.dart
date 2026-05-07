@@ -93,7 +93,7 @@ class SnapshotDetailSheet extends ConsumerWidget {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    ref.read(simulationProvider.notifier).loadSnapshot(snapshot);
+                    ref.read(simulationControllerProvider).loadSnapshot(snapshot);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Simulation state restored!')),

@@ -88,16 +88,16 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
     final Offset localPos = box.globalToLocal(details.globalPosition);
     final size = box.size;
     
-    final state = ref.read(simulationProvider);
+    final hotState = ref.read(hotSimulationProvider);
     final Map<String, List<NeuronModel>> grouped = {};
-    for (final n in state.neurons.values) {
+    for (final n in hotState.neurons.values) {
       grouped.putIfAbsent(n.cellType, () => []).add(n);
     }
 
     String? nearestId;
     double minDistance = 28.0;
 
-    for (final n in state.neurons.values) {
+    for (final n in hotState.neurons.values) {
       final pos3d = NeuralCanvas3DPainter.calculateProceduralPosition(n, grouped);
       final projected = Neural3DProjection.project(pos3d, 
           rotX: _rotX, rotY: _rotY, zoom: _zoom ?? 120.0,
@@ -118,16 +118,17 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(simulationProvider);
+    final hotState = ref.watch(hotSimulationProvider);
+    final coldState = ref.watch(coldSimulationProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    if (state.neurons.length != _lastNeuronCount) {
+    if (hotState.neurons.length != _lastNeuronCount) {
       NeuralCanvas3DPainter.clearCache();
-      _lastNeuronCount = state.neurons.length;
+      _lastNeuronCount = hotState.neurons.length;
     }
 
     if (_zoom == _defaultZoomMarker) {
-      _zoom = (60.0 + (state.neurons.length * 3.5)).clamp(80.0, 220.0);
+      _zoom = (60.0 + (hotState.neurons.length * 3.5)).clamp(80.0, 220.0);
     }
 
     return CanvasConvergenceListener(
@@ -152,7 +153,7 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
             child: CustomPaint(
               size: Size.infinite,
               painter: NeuralCanvas3DPainter(
-                state: state, rotX: _rotX, rotY: _rotY, zoom: _zoom!,
+                state: hotState, rotX: _rotX, rotY: _rotY, zoom: _zoom!,
                 selectedNeuronId: _selectedNeuronId,
                 repaint: _animationController,
                 colorScheme: colorScheme,
@@ -166,11 +167,11 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
               color: colorScheme.surface.withValues(alpha: 0.75),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
-                child: SimulationStatusBar(key: ValueKey(state.isRunning)),
+                child: SimulationStatusBar(key: ValueKey(coldState.isRunning)),
               ),
             ),
           ),
-          if (state.episodeCount > 0)
+          if (coldState.episodeCount > 0)
             const Positioned(top: 0, left: 8, right: 8, child: IgnorePointer(child: ExplanationCard())),
           
           Positioned(
@@ -184,21 +185,21 @@ class NeuralCanvas3DState extends ConsumerState<NeuralCanvas3D> with TickerProvi
           ),
           const SimulationHud(),
           if (_selectedNeuronId != null)
-            _buildNeuronOverlay(state),
+            _buildNeuronOverlay(hotState),
         ],
       ),
     );
   }
 
-  Widget _buildNeuronOverlay(dynamic state) {
+  Widget _buildNeuronOverlay(HotSimState hotState) {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return const SizedBox.shrink();
     
-    final neuron = state.neurons[_selectedNeuronId!];
+    final neuron = hotState.neurons[_selectedNeuronId!];
     if (neuron == null) return const SizedBox.shrink();
 
     final Map<String, List<NeuronModel>> grouped = {};
-    for (final n in state.neurons.values) {
+    for (final n in hotState.neurons.values) {
       grouped.putIfAbsent(n.cellType, () => []).add(n);
     }
 

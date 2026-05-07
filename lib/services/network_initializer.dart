@@ -104,7 +104,10 @@ class NetworkInitializer {
       _connectProbabilistic(pcId, dcnIds, 0.8, synapses, random, 0, -2.0, true);
     }
 
-    return SimulationState(neurons: neurons, synapses: synapses).rebuildIndex();
+    return SimulationState(
+      hot: HotSimState(neurons: neurons, synapses: synapses),
+      cold: const ColdSimState(),
+    ).rebuildIndex();
   }
 
   /// Internal helper to create synapses between a source and a list of targets with a given probability.

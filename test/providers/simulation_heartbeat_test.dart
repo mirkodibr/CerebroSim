@@ -6,6 +6,7 @@ import 'package:cerebrosim/providers/environment_provider.dart';
 import 'package:cerebrosim/models/cerebellar_task.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('Simulation heartbeat records EpisodeRecord when episode completes', () async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -27,12 +28,12 @@ void main() {
     // and hope for the best, or better, use a more controlled approach.
     // For now, let's just start and wait a bit more than 1s.
     
-    container.read(simulationProvider.notifier).startSimulation();
+    container.read(simulationControllerProvider).startSimulation();
     
     // Wait for ~1.5 seconds to ensure at least one episode completes
     await Future.delayed(const Duration(milliseconds: 1500));
     
-    container.read(simulationProvider.notifier).stopSimulation();
+    container.read(simulationControllerProvider).stopSimulation();
     
     final history = container.read(episodeHistoryProvider);
     expect(history, isNotEmpty, reason: 'Episode history should not be empty after 1.5s of simulation');
@@ -40,7 +41,7 @@ void main() {
     expect(history.first.meanPunishment, greaterThanOrEqualTo(0.0));
 
     // Test reset clears history
-    container.read(simulationProvider.notifier).resetEpisode();
+    container.read(simulationControllerProvider).resetEpisode();
     expect(container.read(episodeHistoryProvider), isEmpty, reason: 'Reset should clear history');
   });
 }
