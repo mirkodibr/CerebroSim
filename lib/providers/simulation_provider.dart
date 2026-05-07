@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../models/simulation_state.dart';
 import '../models/simulation_constants.dart';
-import '../models/plot_point.dart';
 import '../models/episode_record.dart';
 import '../models/network_config.dart';
 import '../models/experiment_snapshot.dart';
@@ -53,7 +54,7 @@ final coldSimulationProvider = NotifierProvider<ColdSimulationNotifier, ColdSimS
 /// A controller that manages the simulation lifecycle and updates Hot/Cold providers.
 class SimulationController with WidgetsBindingObserver {
   final Ref _ref;
-  Timer? _timer;
+  late final Ticker _ticker;
   final SimulationEngine _engine = SimulationEngine();
   
   final StreamController<int> _convergenceController = StreamController<int>.broadcast();
@@ -63,11 +64,17 @@ class SimulationController with WidgetsBindingObserver {
   int _episodeTickCount = 0;
   bool _wasRunningBeforePause = false;
 
+  // Performance governor state
+  int _cleanFrameCount = 0;
+  bool _isOverloaded = false;
+  static const int _kRecoveryThresholdFrames = 120; // ~2s at 60Hz
+
   SimulationController(this._ref) {
+    _ticker = Ticker(_onFrame);
     WidgetsBinding.instance.addObserver(this);
     _ref.onDispose(() {
       WidgetsBinding.instance.removeObserver(this);
-      _timer?.cancel();
+      _ticker.dispose();
     });
   }
 
@@ -89,11 +96,11 @@ class SimulationController with WidgetsBindingObserver {
     if (cold.isRunning) return;
     HapticFeedback.mediumImpact();
     _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(isRunning: true));
-    _startTicker();
+    _ticker.start();
   }
 
   void pauseSimulation() {
-    _timer?.cancel();
+    if (_ticker.isActive) _ticker.stop();
     final cold = _ref.read(coldSimulationProvider);
     _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(isRunning: false));
   }
@@ -103,18 +110,46 @@ class SimulationController with WidgetsBindingObserver {
   void setSpeed(double multiplier) {
     final cold = _ref.read(coldSimulationProvider);
     _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: multiplier));
-    if (cold.isRunning) {
-      _timer?.cancel();
-      _startTicker();
-    }
+    // Ticker naturally adapts because it reads speedMultiplier in _onFrame
   }
 
-  void _startTicker() {
+  void _onFrame(Duration elapsed) {
     final cold = _ref.read(coldSimulationProvider);
-    final intervalMs = (1000 / (SimulationConstants.kTickRateHz * cold.speedMultiplier)).round();
-    _timer = Timer.periodic(Duration(milliseconds: intervalMs), (timer) {
+    final int ticksToRun = cold.speedMultiplier.round();
+    final stopwatch = Stopwatch()..start();
+
+    for (int i = 0; i < ticksToRun; i++) {
       _tick();
-    });
+    }
+
+    stopwatch.stop();
+    final elapsedMs = stopwatch.elapsedMilliseconds;
+
+    // Governor logic
+    if (elapsedMs > 12) {
+      if (kDebugMode) {
+        print('âš ï¸ Simulation Overload: Frame took ${elapsedMs}ms. Throttling speed.');
+      }
+      _isOverloaded = true;
+      _cleanFrameCount = 0;
+      
+      // Degrade speed for next frame
+      final newSpeed = (cold.speedMultiplier / 2).clamp(1.0, 10.0);
+      if (newSpeed != cold.speedMultiplier) {
+        _ref.read(coldSimulationProvider.notifier).setState(cold.copyWith(speedMultiplier: newSpeed));
+      }
+    } else {
+      if (_isOverloaded) {
+        _cleanFrameCount++;
+        if (_cleanFrameCount >= _kRecoveryThresholdFrames) {
+          _isOverloaded = false;
+          _cleanFrameCount = 0;
+          if (kDebugMode) {
+            print('âœ… Simulation Performance Recovered. Governor disengaged.');
+          }
+        }
+      }
+    }
   }
 
   void resetEpisode({NetworkConfig? config}) {
@@ -158,7 +193,6 @@ class SimulationController with WidgetsBindingObserver {
       final hot = _ref.read(hotSimulationProvider);
       final cold = _ref.read(coldSimulationProvider);
       
-      // Combine for engine (using legacy SimulationState wrapper)
       final currentState = SimulationState(hot: hot, cold: cold);
 
       final env = _ref.read(environmentProvider.notifier).step(currentState);
@@ -176,14 +210,11 @@ class SimulationController with WidgetsBindingObserver {
         dcnBaseline: dcnBaseline,
       );
 
-      // Update Hot State
       _ref.read(hotSimulationProvider.notifier).setState(nextState.hot);
 
-      // Track statistics
       _episodePunishmentSum += nextState.climbingFiberSignal;
       _episodeTickCount++;
 
-      // Update Cold State if episode boundary reached
       if (nextState.episodeCount > cold.episodeCount) {
         final record = EpisodeRecord(
           episodeNumber: cold.episodeCount,
@@ -202,7 +233,6 @@ class SimulationController with WidgetsBindingObserver {
         _episodeTickCount = 0;
       }
 
-      // Update plot buffer
       _ref.read(plotBufferProvider.notifier).addPoint(
         nextState.criticPrediction,
         nextState.climbingFiberSignal,
@@ -213,14 +243,15 @@ class SimulationController with WidgetsBindingObserver {
       stopSimulation();
     }
   }
+
+  @visibleForTesting
+  bool get isTickerActive => _ticker.isActive;
 }
 
 final simulationControllerProvider = Provider<SimulationController>((ref) {
   return SimulationController(ref);
 });
 
-/// Legacy provider for backward compatibility. 
-/// It combines hot and cold states. Use hotSimulationProvider or coldSimulationProvider instead.
 final simulationProvider = Provider<SimulationState>((ref) {
   final hot = ref.watch(hotSimulationProvider);
   final cold = ref.watch(coldSimulationProvider);
