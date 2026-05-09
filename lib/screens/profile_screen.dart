@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../providers/theme_provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/tutorial_provider.dart';
+import '../providers/vault_provider.dart';
+import '../providers/profile_provider.dart';
+import '../models/user_profile.dart';
+import '../widgets/snapshot_card.dart';
 
 /// A screen for managing user settings and application preferences.
 /// 
@@ -69,6 +73,9 @@ class ProfileScreen extends ConsumerWidget {
                       color: colorScheme.onSurface)),
             ]),
           ),
+          // Profile card (bio, handle, edit)
+          _ProfileCard(user: user),
+
           if (user != null && !user.emailVerified)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -131,6 +138,9 @@ class ProfileScreen extends ConsumerWidget {
               context.go('/shell/simulate');
             },
           ),
+          const Divider(),
+          // Public experiments portfolio
+          _PublicPortfolio(uid: user?.uid),
           const Divider(),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -208,6 +218,191 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Displays the user's Firestore profile with bio and edit capability.
+class _ProfileCard extends ConsumerWidget {
+  final User? user;
+  const _ProfileCard({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (user == null) return const SizedBox.shrink();
+    final profile = ref.watch(myProfileProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return profile.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(16),
+        child: LinearProgressIndicator(),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (p) {
+        if (p == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Card(
+            elevation: 0,
+            color: colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        '@${p.handle}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.edit, size: 14),
+                        label: const Text('Edit'),
+                        onPressed: () {
+                          // Access parent's method via context — use a separate callback
+                          _showEditProfileDialog(context, ref, p);
+                        },
+                      ),
+                    ],
+                  ),
+                  if (p.displayName.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(p.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                  if (p.affiliation != null && p.affiliation!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      p.affiliation!,
+                      style: TextStyle(fontSize: 12, color: colorScheme.onSurface.withValues(alpha: 0.6)),
+                    ),
+                  ],
+                  if (p.bio.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(p.bio, style: TextStyle(fontSize: 13, color: colorScheme.onSurface.withValues(alpha: 0.8))),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, UserProfile profile) {
+    final displayNameCtrl = TextEditingController(text: profile.displayName);
+    final bioCtrl = TextEditingController(text: profile.bio);
+    final affiliationCtrl = TextEditingController(text: profile.affiliation ?? '');
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          left: 24, right: 24, top: 24,
+        ),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Edit Profile', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: displayNameCtrl,
+                decoration: const InputDecoration(labelText: 'Display Name', border: OutlineInputBorder()),
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: bioCtrl,
+                decoration: const InputDecoration(labelText: 'Bio (optional)', border: OutlineInputBorder()),
+                maxLines: 3,
+                maxLength: 200,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: affiliationCtrl,
+                decoration: const InputDecoration(labelText: 'Affiliation (optional)', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () async {
+                  if (!formKey.currentState!.validate()) return;
+                  final updated = profile.copyWith(
+                    displayName: displayNameCtrl.text.trim(),
+                    bio: bioCtrl.text.trim(),
+                    affiliation: affiliationCtrl.text.trim().isEmpty ? null : affiliationCtrl.text.trim(),
+                  );
+                  await saveProfile(updated);
+                  ref.invalidate(myProfileProvider);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Displays the user's public experiments as a portfolio.
+class _PublicPortfolio extends ConsumerWidget {
+  final String? uid;
+  const _PublicPortfolio({required this.uid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vault = ref.watch(vaultProvider);
+
+    return vault.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (snaps) {
+        final public = snaps.where((s) => s.isPublic).toList();
+        if (public.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'Public Portfolio (${public.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            ...public.take(5).map((snap) => SnapshotCard(
+              snapshot: snap,
+              onTap: () => context.push('/shell/vault/${snap.id}'),
+              onReplay: snap.episodeHistory.isNotEmpty
+                  ? () => context.push('/replay', extra: snap)
+                  : null,
+            )),
+            if (public.length > 5)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  '+${public.length - 5} more in your Vault',
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
