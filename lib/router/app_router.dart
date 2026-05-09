@@ -12,6 +12,9 @@ import '../screens/simulate_screen.dart';
 import '../screens/vault_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/network_config_screen.dart';
+import '../screens/replay_screen.dart';
+import '../screens/leaderboard_screen.dart';
+import '../screens/snapshot_view_screen.dart';
 
 /*
 Manual Test Steps for Onboarding Flow:
@@ -102,6 +105,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/network_config',
         builder: (context, state) => const NetworkConfigScreen(),
       ),
+      GoRoute(
+        path: '/replay',
+        builder: (context, state) {
+          final snapshot = state.extra as dynamic;
+          return ReplayScreen(snapshot: snapshot);
+        },
+      ),
+      GoRoute(
+        path: '/view/:id',
+        builder: (context, state) => SnapshotViewScreen(
+          snapshotId: state.pathParameters['id']!,
+        ),
+      ),
       ShellRoute(
         builder: (context, state, child) {
           return AppShell(child: child);
@@ -115,9 +131,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/shell/vault',
             builder: (context, state) => VaultScreen(
               onTabChange: (index) {
-                // Keep for backward compatibility with manual tab switching if needed
                 if (index == 0) context.go('/shell/simulate');
-                if (index == 2) context.go('/shell/profile');
+                if (index == 2) context.go('/shell/leaderboard');
+                if (index == 3) context.go('/shell/profile');
               },
             ),
           ),
@@ -127,9 +143,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               highlightedId: state.pathParameters['id'],
               onTabChange: (index) {
                 if (index == 0) context.go('/shell/simulate');
-                if (index == 2) context.go('/shell/profile');
+                if (index == 2) context.go('/shell/leaderboard');
+                if (index == 3) context.go('/shell/profile');
               },
             ),
+          ),
+          GoRoute(
+            path: '/shell/leaderboard',
+            builder: (context, state) => const LeaderboardScreen(),
           ),
           GoRoute(
             path: '/shell/profile',

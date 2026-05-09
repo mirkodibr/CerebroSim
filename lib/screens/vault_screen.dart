@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/vault_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/episode_history_provider.dart';
 import '../widgets/snapshot_card.dart';
 import '../widgets/snapshot_detail_sheet.dart';
@@ -62,6 +63,12 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
       });
     }
 
+    final isOffline = ref.watch(vaultIsOfflineProvider);
+    final user = ref.watch(authProvider).value;
+    final pendingCount = user != null
+        ? ref.watch(pendingSaveCountProvider(user.uid)).value ?? 0
+        : 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -85,6 +92,17 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
           ],
         ),
         actions: [
+          if (pendingCount > 0)
+            Tooltip(
+              message: '$pendingCount save(s) pending sync',
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Badge(
+                  label: Text('$pendingCount'),
+                  child: const Icon(Icons.cloud_upload_outlined),
+                ),
+              ),
+            ),
           IconButton(
             icon: Icon(
               _isCompareMode ? Icons.compare_arrows : Icons.compare_arrows_outlined,
@@ -107,11 +125,40 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildUserSnapshots(context, ref),
-          _buildPublicGallery(context, ref),
+          if (isOffline)
+            Material(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.signal_wifi_off,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSecondaryContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Offline — showing cached experiments',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUserSnapshots(context, ref),
+                _buildPublicGallery(context, ref),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -236,6 +283,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                           onTap: () => _loadSnapshot(context, ref, snap),
                           showCompareAction: _isCompareMode,
                           isHighlighted: snap.id == _compareSnapshot?.id,
+                          onReplay: snap.episodeHistory.isNotEmpty
+                              ? () => context.push('/replay', extra: snap)
+                              : null,
                         );
                       },
                     ),
@@ -283,6 +333,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                           onTap: () => _loadSnapshot(context, ref, snap),
                           showCompareAction: _isCompareMode,
                           isHighlighted: snap.id == _compareSnapshot?.id,
+                          onReplay: snap.episodeHistory.isNotEmpty
+                              ? () => context.push('/replay', extra: snap)
+                              : null,
                         );
                       },
                     ),

@@ -29,6 +29,9 @@ class AppShell extends ConsumerWidget {
         context.go('/shell/vault');
         break;
       case 2:
+        context.go('/shell/leaderboard');
+        break;
+      case 3:
         context.go('/shell/profile');
         break;
     }
@@ -39,7 +42,8 @@ class AppShell extends ConsumerWidget {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/shell/simulate')) return 0;
     if (location.startsWith('/shell/vault')) return 1;
-    if (location.startsWith('/shell/profile')) return 2;
+    if (location.startsWith('/shell/leaderboard')) return 2;
+    if (location.startsWith('/shell/profile')) return 3;
     return 0;
   }
 
@@ -94,6 +98,10 @@ class AppShell extends ConsumerWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.science),
             label: 'Vault',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emoji_events_outlined),
+            label: 'Ranks',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

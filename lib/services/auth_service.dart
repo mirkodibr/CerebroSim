@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'snapshot_cache.dart';
 
 /// Service responsible for handling user authentication via Firebase.
 ///
@@ -80,8 +81,10 @@ class AuthService {
   /// This ensures that the next sign-in attempt requires credentials.
   Future<void> signOut() async {
     try {
+      final uid = _auth.currentUser?.uid;
       await _googleSignIn.signOut();
       await _auth.signOut();
+      if (uid != null) await SnapshotCache().clearCache(uid);
     } catch (e) {
       rethrow;
     }
