@@ -14,6 +14,7 @@ import '../screens/profile_screen.dart';
 import '../screens/network_config_screen.dart';
 import '../screens/replay_screen.dart';
 import '../screens/leaderboard_screen.dart';
+import '../screens/snapshot_view_screen.dart';
 
 /*
 Manual Test Steps for Onboarding Flow:
@@ -110,6 +111,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           final snapshot = state.extra as dynamic;
           return ReplayScreen(snapshot: snapshot);
         },
+      ),
+      GoRoute(
+        path: '/view/:id',
+        builder: (context, state) => SnapshotViewScreen(
+          snapshotId: state.pathParameters['id']!,
+        ),
       ),
       ShellRoute(
         builder: (context, state, child) {

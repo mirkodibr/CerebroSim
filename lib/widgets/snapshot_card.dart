@@ -225,7 +225,7 @@ class SnapshotCard extends StatelessWidget {
                               Share.share(
                                 'Check out my CerebroSim experiment: ${snapshot.title}\n'
                                 'Task: ${snapshot.taskName} | Error rate: ${snapshot.finalErrorRate.toStringAsFixed(3)}\n'
-                                'cerebrosim://snapshot/${snapshot.id}'
+                                'https://cerebrosim.app/view/${snapshot.id}'
                               );
                             } else {
                               final json = snapshot.toJson();
