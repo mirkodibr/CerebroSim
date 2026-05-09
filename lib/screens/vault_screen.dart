@@ -283,6 +283,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                           onTap: () => _loadSnapshot(context, ref, snap),
                           showCompareAction: _isCompareMode,
                           isHighlighted: snap.id == _compareSnapshot?.id,
+                          onReplay: snap.episodeHistory.isNotEmpty
+                              ? () => context.push('/replay', extra: snap)
+                              : null,
                         );
                       },
                     ),
@@ -330,6 +333,9 @@ class _VaultScreenState extends ConsumerState<VaultScreen> with SingleTickerProv
                           onTap: () => _loadSnapshot(context, ref, snap),
                           showCompareAction: _isCompareMode,
                           isHighlighted: snap.id == _compareSnapshot?.id,
+                          onReplay: snap.episodeHistory.isNotEmpty
+                              ? () => context.push('/replay', extra: snap)
+                              : null,
                         );
                       },
                     ),

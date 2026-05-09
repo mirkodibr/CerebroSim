@@ -11,13 +11,17 @@ class SnapshotCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool isHighlighted;
   final bool showCompareAction;
+  final VoidCallback? onReplay;
+  final int? leaderboardRank;
 
   const SnapshotCard({
-    super.key, 
-    required this.snapshot, 
+    super.key,
+    required this.snapshot,
     required this.onTap,
     this.isHighlighted = false,
     this.showCompareAction = false,
+    this.onReplay,
+    this.leaderboardRank,
   });
 
   // Parse taskName string back to enum for display:
@@ -115,6 +119,20 @@ class SnapshotCard extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                              if (leaderboardRank != null)
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+                                  ),
+                                  child: Text(
+                                    '🏆 #$leaderboardRank',
+                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -181,6 +199,12 @@ class SnapshotCard extends StatelessWidget {
                             icon: Icon(Icons.compare_arrows, size: 20, color: colorScheme.primary),
                             onPressed: onTap,
                             tooltip: 'Select for comparison',
+                          ),
+                        if (snapshot.episodeHistory.isNotEmpty)
+                          IconButton(
+                            icon: Icon(Icons.play_circle_outline, size: 20, color: colorScheme.primary),
+                            onPressed: onReplay,
+                            tooltip: 'Replay learning',
                           ),
                         IconButton(
                           icon: Icon(Icons.psychology, size: 20, color: colorScheme.secondary),

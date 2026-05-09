@@ -86,68 +86,82 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
 
-    Widget content = Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            floating: true,
-            snap: true,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('CerebroSim RL Lab'),
-                const NetworkConfigBreadcrumb(),
-              ],
-            ),
-            backgroundColor: colorScheme.surface,
-            elevation: 0,
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1.0),
-              child: Divider(
-                  height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
-            ),
-            actions: [
-              _buildSimControlGroup(context, coldState, controller),
-              const SizedBox(width: 4),
-              IconButton(
-                icon: const Icon(Icons.download_outlined, size: 22),
-                onPressed: () => _showExportOptions(context, ref),
-                tooltip: 'Export data',
+    Widget stacked = LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 1024;
+
+        Widget content = Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                floating: true,
+                snap: true,
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('CerebroSim RL Lab'),
+                    const NetworkConfigBreadcrumb(),
+                  ],
+                ),
+                backgroundColor: colorScheme.surface,
+                elevation: 0,
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(1.0),
+                  child: Divider(
+                      height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
+                ),
+                actions: [
+                  _buildSimControlGroup(context, coldState, controller),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.download_outlined, size: 22),
+                    onPressed: () => _showExportOptions(context, ref),
+                    tooltip: 'Export data (Ctrl+E)',
+                  ),
+                  const SizedBox(width: 4),
+                  Badge(
+                    label: Text(vaultSnapshots.length.toString()),
+                    isLabelVisible: vaultSnapshots.isNotEmpty,
+                    child: IconButton(
+                      icon: const Icon(Icons.bookmark_add_outlined, size: 22),
+                      onPressed: () => _showSaveDialog(context, ref),
+                      tooltip: 'Save Snapshot (Ctrl+S)',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
               ),
-              const SizedBox(width: 4),
-              Badge(
-                label: Text(vaultSnapshots.length.toString()),
-                isLabelVisible: vaultSnapshots.isNotEmpty,
-                child: IconButton(
-                  icon: const Icon(Icons.bookmark_add_outlined, size: 22),
-                  onPressed: () => _showSaveDialog(context, ref),
-                  tooltip: 'Save Snapshot',
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 4, bottom: 4),
+                  child: TaskSelector(),
                 ),
               ),
-              const SizedBox(width: 12),
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: isWide
+                    ? _buildWideBody(colorScheme)
+                    : Column(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          const Expanded(child: NeuralCanvas3D()),
+                          const SpeedSegmentedControl(),
+                          _buildChartsDrawer(colorScheme),
+                        ],
+                      ),
+              ),
             ],
           ),
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.only(top: 4, bottom: 4),
-              child: TaskSelector(),
-            ),
-          ),
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                const Expanded(
-                  child: NeuralCanvas3D(),
-                ),
-                const SpeedSegmentedControl(),
-                _buildChartsDrawer(colorScheme),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+
+        return Stack(
+          children: [
+            content,
+            const TutorialOverlay(),
+            const ThrottleBanner(),
+          ],
+        );
+      },
     );
 
     if (isDesktop) {
@@ -155,6 +169,8 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
         autofocus: true,
         onKeyEvent: (node, event) {
           if (event is! KeyDownEvent) return KeyEventResult.ignored;
+          final isModifier = HardwareKeyboard.instance.isMetaPressed ||
+              HardwareKeyboard.instance.isControlPressed;
           switch (event.logicalKey) {
             case LogicalKeyboardKey.space:
               coldState.isRunning
@@ -162,30 +178,94 @@ class _SimulateScreenState extends ConsumerState<SimulateScreen> {
                   : controller.startSimulation();
               return KeyEventResult.handled;
             case LogicalKeyboardKey.keyR:
-              controller.resetEpisode();
-              return KeyEventResult.handled;
+              if (!isModifier) {
+                controller.resetEpisode();
+                return KeyEventResult.handled;
+              }
             case LogicalKeyboardKey.digit1:
-              controller.setSpeed(1.0);
-              return KeyEventResult.handled;
+              if (!isModifier) {
+                controller.setSpeed(1.0);
+                return KeyEventResult.handled;
+              }
             case LogicalKeyboardKey.digit5:
-              controller.setSpeed(5.0);
-              return KeyEventResult.handled;
+              if (!isModifier) {
+                controller.setSpeed(5.0);
+                return KeyEventResult.handled;
+              }
             case LogicalKeyboardKey.digit0:
-              controller.setSpeed(10.0);
+              if (!isModifier) {
+                controller.setSpeed(10.0);
+                return KeyEventResult.handled;
+              }
+            case LogicalKeyboardKey.keyS:
+              if (isModifier) {
+                _showSaveDialog(context, ref);
+                return KeyEventResult.handled;
+              }
+            case LogicalKeyboardKey.keyE:
+              if (isModifier) {
+                _showExportOptions(context, ref);
+                return KeyEventResult.handled;
+              }
+            case LogicalKeyboardKey.escape:
+              FocusScope.of(context).unfocus();
               return KeyEventResult.handled;
           }
           return KeyEventResult.ignored;
         },
-        child: content,
+        child: stacked,
       );
     }
 
-    return Stack(
+    return stacked;
+  }
+
+  Widget _buildWideBody(ColorScheme colorScheme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        content,
-        const TutorialOverlay(),
-        const ThrottleBanner(),
+        const Expanded(
+          flex: 6,
+          child: Column(
+            children: [
+              Expanded(child: NeuralCanvas3D()),
+              SpeedSegmentedControl(),
+            ],
+          ),
+        ),
+        VerticalDivider(
+          width: 1,
+          color: colorScheme.outline.withValues(alpha: 0.1),
+        ),
+        SizedBox(
+          width: 320,
+          child: _buildChartsSidePanel(colorScheme),
+        ),
       ],
+    );
+  }
+
+  Widget _buildChartsSidePanel(ColorScheme colorScheme) {
+    return Container(
+      color: colorScheme.surface,
+      padding: const EdgeInsets.all(12),
+      child: const Column(
+        children: [
+          Text(
+            'Signal Monitor',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 4),
+          Expanded(child: SignalPlotter()),
+          SizedBox(height: 8),
+          Text(
+            'Convergence',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 4),
+          Expanded(child: ConvergenceChart()),
+        ],
+      ),
     );
   }
 
