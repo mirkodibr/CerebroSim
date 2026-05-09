@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/experiment_snapshot.dart';
+import '../utils/retry.dart';
 
 /// Service for managing persistence and retrieval of [ExperimentSnapshot] data.
 /// 
@@ -44,7 +45,9 @@ class DatabaseService {
         batch.set(publicSnapRef, snap.toFirestore());
       }
 
-      await batch.commit().timeout(const Duration(seconds: 10));
+      await retryWithBackoff(
+        () => batch.commit().timeout(const Duration(seconds: 10)),
+      );
     } on TimeoutException {
       throw 'Connection timed out. Please check your internet and try again.';
     } catch (e) {

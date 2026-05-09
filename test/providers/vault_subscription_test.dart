@@ -1,16 +1,29 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cerebrosim/providers/vault_provider.dart';
 import 'package:cerebrosim/providers/auth_provider.dart';
+import 'package:cerebrosim/providers/connectivity_provider.dart';
 import 'package:cerebrosim/services/database_service.dart';
+import 'package:cerebrosim/services/snapshot_cache.dart';
 import 'package:cerebrosim/models/experiment_snapshot.dart';
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockUser extends Mock implements auth.User {
   @override
   String get uid => 'test_user';
+}
+
+class FakeSnapshotCache extends Fake implements SnapshotCache {
+  @override
+  Future<List<ExperimentSnapshot>> loadCached(String uid) async => [];
+  @override
+  Future<void> saveCached(String uid, List<ExperimentSnapshot> snaps) async {}
+  @override
+  Future<void> clearCache(String uid) async {}
 }
 
 class FakeDatabaseService extends Mock implements DatabaseService {
@@ -33,11 +46,19 @@ class FakeDatabaseService extends Mock implements DatabaseService {
 }
 
 void main() {
+  setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('VaultNotifier does not leak subscriptions on rapid auth changes', () async {
     final fakeDb = FakeDatabaseService();
     final container = ProviderContainer(
       overrides: [
         databaseServiceProvider.overrideWithValue(fakeDb),
+        snapshotCacheProvider.overrideWithValue(FakeSnapshotCache()),
+        // Provide an empty connectivity stream so _pendingFlushProvider never
+        // tries to use real platform channels.
+        connectivityProvider.overrideWith((_) => const Stream.empty()),
       ],
     );
     addTearDown(container.dispose);
